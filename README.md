@@ -9,6 +9,3 @@ sudo ufw allow 80
 sudo ufw allow 5999
 sudo ufw allow 22
 sudo ufw enable
-
-
-192.168.2.102

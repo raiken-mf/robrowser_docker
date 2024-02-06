@@ -1,0 +1,15 @@
+/rathena/repository_override/*
+/robrowser/repository_override/*
+/client/AI/*
+!/client/AI/add-AI-folder-files-here.txt
+/client/AI/USER_AI/*
+!/client/AI/USER_AI/add_custom_AI_files_here.txt
+/client/BGM/*
+!/client/BGM/add-bgm-here.txt
+/client/data/*
+!/client/data/add-data-folder-files-here.txt
+/client/resources/*
+!/client/resources/.htaccess
+/client/System/*
+!/client/System/add-system-folder-files-here.txt
+.env

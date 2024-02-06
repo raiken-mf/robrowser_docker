@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  database:
+    container_name: "database"
+    image: mariadb:latest
+    restart: always
+    env_file: .env
+    ports:
+      - 3306:3306
+    volumes:
+      # Uncomment line below to use on volume
+      #- ./database/data:/var/lib/mysql
+      - ./database/conf.d:/etc/mariadb.conf.d
+    healthcheck:
+        test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+        start_period: 10s
+        start_interval: 10s
+        interval: 3s
+        timeout: 5s
+        retries: 3
+    networks:
+      - backend
+  
+  wsproxy:
+    container_name: "wsproxy"
+    image: wsproxy
+    build:
+      context: ./wsproxy
+    command: wsproxy -a ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121
+    tty: true
+    ports:
+      - 5999:5999
+    networks:
+      - backend
+
+  robrowser:
+    container_name: "robrowser"
+    image: robrowser
+    env_file: .env
+    volumes:
+      #- ./robrowser/repository:/var/www/localhost/htdocs/
+      - ./client/AI:/opt/client_files/AI/
+      - ./client/BGM:/opt/client_files/BGM/
+      - ./client/data:/opt/client_files/data/
+      - ./client/System:/opt/client_files/System/
+      - ./client/resources:/opt/client_files/resources/
+    build:
+      context: ./
+      args:
+          PACKETVER: ${PACKETVER}
+          SET_PRERENEWAL: ${SET_PRERENEWAL}
+          PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
+          PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
+          PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
+          HOST: ${HOST}
+      dockerfile: ./robrowser/Dockerfile
+    entrypoint: sh -c "cp -rs /opt/client_files/data/* /var/www/localhost/htdocs/client/data/ && cp -rs /opt/client_files/System/* /var/www/localhost/htdocs/client/System/ && httpd && tail -f /dev/null"
+    tty: true
+    depends_on:
+      - wsproxy
+    ports:
+      - 80:80
+    networks:
+      - backend
+      - frontend
+
+networks:
+  backend:
+  frontend:

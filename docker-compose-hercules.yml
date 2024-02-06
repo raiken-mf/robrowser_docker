@@ -1,0 +1,81 @@
+version: "3.8"
+
+services:
+  hercules:
+    container_name: "hercules"
+    image: hercules
+    env_file: .env
+    volumes:
+      - ./hercules/repository_override:/opt/repository_override
+    build:
+      context: ./hercules
+      args:
+          PACKETVER: ${PACKETVER}
+          SET_PRERENEWAL: ${SET_PRERENEWAL}
+          PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
+          PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
+          PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
+          MARIADB_HOST: ${MARIADB_HOST}
+          MARIADB_DATABASE: ${MARIADB_DATABASE}
+          MARIADB_USER: ${MARIADB_USER}
+          MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+          SET_MOTD: ${SET_MOTD}
+          SET_INTERSRV_USER: ${SET_INTERSRV_USER}
+          SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD}
+    entrypoint: sh -c ". /usr/local/bin/docker-entrypoint.sh && setup_database"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - backend
+
+  hercules_login:
+    container_name: "ragnarok_login"
+    image: hercules
+    user: ragnarok:ragnarok
+    #volumes:
+    #  - ./hercules/repository:/opt/ragnarok
+    command: /opt/ragnarok/login-server
+    tty: true
+    depends_on:
+      hercules:
+        condition: service_completed_successfully
+    ports:
+      - 6900:6900
+    networks:
+      - backend
+
+  hercules_char:
+    container_name: "ragnarok_char"
+    image: hercules
+    user: ragnarok:ragnarok
+    #volumes:
+    #  - ./hercules/repository:/opt/ragnarok
+    command: /opt/ragnarok/char-server
+    tty: true
+    depends_on:
+      hercules:
+        condition: service_completed_successfully
+    ports:
+      - 6121:6121
+    networks:
+      - backend
+
+  hercules_map:
+    container_name: "ragnarok_map"
+    image: hercules
+    user: ragnarok:ragnarok
+    #volumes:
+    #  - ./hercules/repository:/opt/ragnarok
+    command: /opt/ragnarok/map-server
+    tty: true
+    depends_on:
+      hercules:
+        condition: service_completed_successfully
+    ports:
+      - 5121:5121
+    networks:
+      - backend
+
+networks:
+  backend:

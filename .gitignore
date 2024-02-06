@@ -1,5 +1,9 @@
 /rathena/repository_override/*
+!/rathena/repository_override/put_files_to_override_here.txt
+/hercules/repository_override/*
+!/hercules/repository_override/put_files_to_override_here.txt
 /robrowser/repository_override/*
+!/robrowser/repository_override/put_files_to_override_here.txt
 /client/AI/*
 !/client/AI/add-AI-folder-files-here.txt
 /client/AI/USER_AI/*

@@ -19,7 +19,7 @@ RUN apk add --no-cache git
 RUN apk add --no-cache apache2
 RUN apk add --no-cache php$phpverx-apache2
 
-RUN	rm -r /var/www/localhost/htdocs
+RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
 
@@ -60,7 +60,7 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 					type:          ROBrowser.TYPE.FRAME,
 					application:   ROBrowser.APP.ONLINE,
 					remoteClient:  "http://${HOST}/client/",
-					renewal:      	true,
+					renewal:      	"${SET_PRERENEWAL}" == 1 ? false : true,
 					width:          '100%',
 					height:         '100%',
 					development:    true,

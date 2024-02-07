@@ -16,4 +16,6 @@
 !/client/resources/.htaccess
 /client/System/*
 !/client/System/add-system-folder-files-here.txt
+/database/conf.d/*
+!/database/conf.d/mariadb.cnf
 .env

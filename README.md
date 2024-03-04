@@ -1,5 +1,6 @@
 # robrowser_docker
 This project sets up a database, downloads and compiles the latest versions of [rathena](https://github.com/rathena/rathena)/[Hercules](https://github.com/HerculesWS/Hercules) and [roBrowserLegacy](https://github.com/MrAntares/roBrowserLegacy).
+The translation of the project is used from llchrisll's repository [ROEnglishRE](https://github.com/llchrisll/ROenglishRE).
 You can override files in `repository_override` if you feel like changing settings, npcs or source files.
 
 # How to use the project

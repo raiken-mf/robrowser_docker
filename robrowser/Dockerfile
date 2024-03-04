@@ -64,6 +64,7 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 					width:          '100%',
 					height:         '100%',
 					development:    true,
+					loadlua:		true,
 					servers: [{
 						display:     "Demo Server",
 						desc:        "roBrowser's demo server",

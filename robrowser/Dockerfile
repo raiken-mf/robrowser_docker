@@ -23,9 +23,12 @@ RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
 
-RUN git clone https://github.com/MrAntares/roBrowserLegacy.git /var/www/localhost/htdocs
+RUN git clone https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
+RUN git clone https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
+RUN mkdir /var/www/localhost/htdocs/client/resources
+RUN mkdir /var/www/localhost/htdocs/AI
 
-RUN git clone -n --depth=1 --filter=tree:0 https://github.com/llchrisll/ROenglishRE.git /opt/translation
+RUN git clone -n --depth=1 --filter=tree:0 https://github.com/raiken-mf/ROenglishRE.git /opt/translation
 RUN cd /opt/translation && \
     if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
 		git sparse-checkout set --no-cone Translation/Pre-Renewal && \

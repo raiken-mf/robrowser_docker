@@ -63,11 +63,10 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 					type:          ROBrowser.TYPE.FRAME,
 					application:   ROBrowser.APP.ONLINE,
 					remoteClient:  "http://${HOST}/client/",
-					renewal:      	"${SET_PRERENEWAL}" == 0 ? false : true,
 					width:          '100%',
 					height:         '100%',
 					development:    true,
-					loadlua:		true,
+					loadLua:	true,
 					servers: [{
 						display:     "Demo Server",
 						desc:        "roBrowser's demo server",

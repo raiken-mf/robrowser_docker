@@ -26,7 +26,6 @@ RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
 RUN git clone https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
 RUN git clone https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
 RUN mkdir /var/www/localhost/htdocs/client/resources
-RUN mkdir /var/www/localhost/htdocs/AI
 
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/raiken-mf/ROenglishRE.git /opt/translation
 RUN cd /opt/translation && \
@@ -44,7 +43,6 @@ RUN cd /opt/translation && \
 
 RUN rm -r /var/www/localhost/htdocs/client/resources && \
 	rm -r /var/www/localhost/htdocs/client/BGM && \
-	rm -r /var/www/localhost/htdocs/AI && \
 	ln -s /opt/client_files/resources /var/www/localhost/htdocs/client/resources && \
 	ln -s /opt/client_files/BGM /var/www/localhost/htdocs/client/BGM && \
 	ln -s /opt/client_files/AI /var/www/localhost/htdocs/AI

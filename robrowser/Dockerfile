@@ -38,7 +38,8 @@ RUN cd /opt/translation && \
 		git sparse-checkout set --no-cone Translation/Renewal && \
 		git checkout && \
 		cp -rs /opt/translation/Translation/Renewal/data/* /var/www/localhost/htdocs/client/data/&& \
-		cp -rs /opt/translation/Translation/Renewal/System/* /var/www/localhost/htdocs/client/System/; \
+		cp -rs /opt/translation/Translation/Renewal/System/* /var/www/localhost/htdocs/client/System/ && \
+                cp /var/www/localhost/htdocs/client/System/itemInfo_EN.lua /var/www/localhost/htdocs/client/System/itemInfo.lub \
     fi
 
 RUN rm -r /var/www/localhost/htdocs/client/resources && \

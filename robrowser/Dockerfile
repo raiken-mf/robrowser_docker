@@ -23,8 +23,8 @@ RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
 
-RUN git clone https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
-RUN git clone https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
+RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
+RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
 RUN mkdir /var/www/localhost/htdocs/client/resources
 
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/raiken-mf/ROenglishRE.git /opt/translation

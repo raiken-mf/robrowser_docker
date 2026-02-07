@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   database:
     container_name: "database"
@@ -37,6 +35,7 @@ services:
   robrowser:
     container_name: "robrowser"
     image: robrowser
+    pull_policy: never
     env_file: .env
     volumes:
       #- ./robrowser/repository:/var/www/localhost/htdocs/

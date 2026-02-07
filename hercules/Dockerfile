@@ -43,7 +43,7 @@ RUN apk add --no-cache pcre
 RUN apk add --no-cache libstdc++
 RUN apk add --no-cache linux-headers
 
-RUN git clone https://github.com/raiken-mf/Hercules.git /opt/ragnarok
+RUN git clone --depth 1 https://github.com/raiken-mf/Hercules.git /opt/ragnarok
 
 COPY repository_override /opt/ragnarok/
 

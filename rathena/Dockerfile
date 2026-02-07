@@ -43,7 +43,7 @@ RUN apk add --no-cache pcre
 RUN apk add --no-cache libstdc++
 RUN apk add --no-cache linux-headers
 
-RUN git clone https://github.com/raiken-mf/rathena.git /opt/ragnarok
+RUN git clone --depth 1 https://github.com/raiken-mf/rathena.git /opt/ragnarok
 
 RUN patch --ignore-whitespace /opt/ragnarok/src/custom/defines_pre.hpp <<EOF
 --- defines_post.hpp	2024-01-29 20:25:41.731355800 +0100

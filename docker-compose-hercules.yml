@@ -1,9 +1,8 @@
-version: "3.8"
-
 services:
   hercules:
     container_name: "hercules"
     image: hercules
+    pull_policy: never
     env_file: .env
     volumes:
       - ./hercules/repository_override:/opt/repository_override
@@ -32,6 +31,7 @@ services:
   hercules_login:
     container_name: "ragnarok_login"
     image: hercules
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok
@@ -48,6 +48,7 @@ services:
   hercules_char:
     container_name: "ragnarok_char"
     image: hercules
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok
@@ -64,6 +65,7 @@ services:
   hercules_map:
     container_name: "ragnarok_map"
     image: hercules
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok

@@ -1,9 +1,8 @@
-version: "3.8"
-
 services:
   rathena:
     container_name: "rathena"
     image: rathena
+    pull_policy: never
     env_file: .env
     volumes:
       - ./rathena/repository_override:/opt/repository_override
@@ -32,6 +31,7 @@ services:
   rathena_login:
     container_name: "ragnarok_login"
     image: rathena
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./rathena/repository:/opt/ragnarok
@@ -48,6 +48,7 @@ services:
   rathena_char:
     container_name: "ragnarok_char"
     image: rathena
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./rathena/repository:/opt/ragnarok
@@ -64,6 +65,7 @@ services:
   rathena_map:
     container_name: "ragnarok_map"
     image: rathena
+    pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
     #  - ./rathena/repository:/opt/ragnarok

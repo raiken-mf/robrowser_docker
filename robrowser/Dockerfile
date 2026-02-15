@@ -17,7 +17,7 @@ ENV HOST=$HOST
 RUN apk update
 RUN apk add --no-cache git
 RUN apk add --no-cache apache2
-RUN apk add --no-cache php$phpverx-apache2
+RUN apk add --no-cache php-apache2
 
 RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf

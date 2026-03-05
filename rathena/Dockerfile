@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.23.3
 
 ARG PACKETVER
 ARG SET_PRERENEWAL
@@ -81,7 +81,7 @@ new_account: yes
 EOF
 
 RUN cat <<EOF > /opt/ragnarok/conf/import/inter_conf.txt
-use_sql_db: yes
+// use_sql_db: yes
 
 login_server_ip: ${MARIADB_HOST}
 login_server_db: ${MARIADB_DATABASE}
@@ -140,6 +140,7 @@ RUN apk del git
 RUN apk del patch
 
 COPY docker-entrypoint.sh /usr/local/bin/
+RUN chown -R ragnarok:ragnarok /opt/ragnarok
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 WORKDIR /opt/ragnarok

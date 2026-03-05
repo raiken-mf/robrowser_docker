@@ -1,7 +1,7 @@
 services:
   database:
     container_name: "database"
-    image: mariadb:latest
+    image: mariadb:11.8.6
     restart: always
     env_file: .env
     ports:
@@ -9,20 +9,21 @@ services:
     volumes:
       # Uncomment line below to use on volume
       #- ./database/data:/var/lib/mysql
-      - ./database/conf.d:/etc/mariadb.conf.d
+      - ./database/conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
-        test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+        test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
         start_period: 10s
         start_interval: 10s
-        interval: 3s
+        interval: 10s
         timeout: 5s
         retries: 3
     networks:
       - backend
-  
+
   wsproxy:
     container_name: "wsproxy"
     image: wsproxy
+    restart: always
     build:
       context: ./wsproxy
     command: wsproxy -a ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121
@@ -35,6 +36,7 @@ services:
   robrowser:
     container_name: "robrowser"
     image: robrowser
+    restart: always
     pull_policy: never
     env_file: .env
     volumes:
@@ -54,7 +56,7 @@ services:
           PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
           HOST: ${HOST}
       dockerfile: ./robrowser/Dockerfile
-    entrypoint: sh -c "cp -rs /opt/client_files/data/* /var/www/localhost/htdocs/client/data/ && cp -rs /opt/client_files/System/* /var/www/localhost/htdocs/client/System/ && httpd && tail -f /dev/null"
+    entrypoint: sh -c "php /var/www/localhost/htdocs/client/tools/convert-encoding.php && httpd && tail -f /dev/null"
     tty: true
     depends_on:
       - wsproxy

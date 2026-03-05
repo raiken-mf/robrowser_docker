@@ -17,11 +17,17 @@ ENV HOST=$HOST
 RUN apk update
 RUN apk add --no-cache git
 RUN apk add --no-cache apache2
+RUN apk add --no-cache php
+RUN apk add --no-cache php-mbstring
+RUN apk add --no-cache php-iconv
 RUN apk add --no-cache php-apache2
 
 RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
+
+RUN sed -i "s/memory_limit = .*/memory_limit = 1024M/g" $(php -r 'echo php_ini_loaded_file();')
+RUN sed -i "s/max_execution_time = .*/max_execution_time = 600/g" $(php -r 'echo php_ini_loaded_file();')
 
 RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
 RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
@@ -54,7 +60,7 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 	<head>
 		<title>ROBrowsers App from http://www.robrowser.com</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
-		<script type="text/javascript" src="../api.js"></script>
+		<script type="text/javascript" src="applications/api/api.js"></script>
 		<script type="text/javascript">
 			function initialize() {
 				var ROConfig = {
@@ -117,6 +123,10 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 EOF
 
 COPY robrowser/repository_override /var/www/localhost/htdocs/
+
+RUN cat <<EOF > /var/www/localhost/htdocs/.htaccess
+ErrorDocument 404 /client/index.php
+EOF
 
 RUN apk del git
 

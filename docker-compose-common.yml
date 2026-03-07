@@ -24,6 +24,7 @@ services:
     container_name: "wsproxy"
     image: wsproxy
     restart: always
+    pull_policy: never
     build:
       context: ./wsproxy
     command: wsproxy -a ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121

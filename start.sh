@@ -14,10 +14,10 @@ fi
 
 case "$EMULATOR" in
   rathena)
-    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml up --build $MODE
+    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml up $MODE
     ;;
   hercules)
-    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml up --build $MODE
+    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml up $MODE
     ;;
   stop)
     sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml down

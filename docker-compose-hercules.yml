@@ -31,6 +31,7 @@ services:
   hercules_login:
     container_name: "ragnarok_login"
     image: hercules
+    restart: always
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
@@ -48,6 +49,7 @@ services:
   hercules_char:
     container_name: "ragnarok_char"
     image: hercules
+    restart: always
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
@@ -65,6 +67,7 @@ services:
   hercules_map:
     container_name: "ragnarok_map"
     image: hercules
+    restart: always
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:

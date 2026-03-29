@@ -25,6 +25,7 @@ RUN apk add --no-cache php-apache2
 RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
+RUN echo "TraceEnable Off" >> /etc/apache2/httpd.conf
 
 RUN sed -i "s/memory_limit = .*/memory_limit = 1024M/g" $(php -r 'echo php_ini_loaded_file();')
 RUN sed -i "s/max_execution_time = .*/max_execution_time = 600/g" $(php -r 'echo php_ini_loaded_file();')
@@ -126,6 +127,14 @@ COPY robrowser/repository_override /var/www/localhost/htdocs/
 
 RUN cat <<EOF > /var/www/localhost/htdocs/.htaccess
 ErrorDocument 404 /client/index.php
+
+RedirectMatch 404 /\.git
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_METHOD} ^TRACE
+    RewriteRule .* - [F]
+</IfModule>
 EOF
 
 RUN apk del git

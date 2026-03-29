@@ -4,8 +4,8 @@ services:
     image: mariadb:11.8.6
     restart: always
     env_file: .env
-    ports:
-      - 3306:3306
+    #ports:
+    #  - 3306:3306
     volumes:
       # Uncomment line below to use on volume
       #- ./database/data:/var/lib/mysql

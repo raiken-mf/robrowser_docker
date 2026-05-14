@@ -20,8 +20,8 @@ case "$EMULATOR" in
     sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml up $MODE
     ;;
   stop)
-    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml down
-    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml down
+    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml stop
+    sudo docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml stop
     ;;
   *)
     exit 1

@@ -21,18 +21,24 @@ RUN apk add --no-cache php
 RUN apk add --no-cache php-mbstring
 RUN apk add --no-cache php-iconv
 RUN apk add --no-cache php-apache2
+RUN apk add --no-cache nodejs
+RUN apk add --no-cache npm
 
 RUN rm -r /var/www/localhost/htdocs
 RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf
 RUN sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf
 RUN echo "TraceEnable Off" >> /etc/apache2/httpd.conf
+RUN sed -i '/LoadModule headers_module/s/^#//g' /etc/apache2/httpd.conf
+RUN echo "Header set Access-Control-Allow-Origin \"*\"" >> /etc/apache2/httpd.conf
 
 RUN sed -i "s/memory_limit = .*/memory_limit = 1024M/g" $(php -r 'echo php_ini_loaded_file();')
 RUN sed -i "s/max_execution_time = .*/max_execution_time = 600/g" $(php -r 'echo php_ini_loaded_file();')
 
 RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs
 RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client
-RUN mkdir /var/www/localhost/htdocs/client/resources
+RUN npm install --prefix /var/www/localhost/htdocs
+RUN sed -i 's/server: {/server: { allowedHosts: true,/g' /var/www/localhost/htdocs/vite.config.js
+#RUN mkdir /var/www/localhost/htdocs/client/resources
 
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/raiken-mf/ROenglishRE.git /opt/translation
 RUN cd /opt/translation && \
@@ -68,7 +74,7 @@ RUN cat <<EOF > /var/www/localhost/htdocs/index.html
 					target:        document.getElementById("robrowser"),
 					type:          ROBrowser.TYPE.FRAME,
 					application:   ROBrowser.APP.ONLINE,
-					remoteClient:  "http://${HOST}/client/",
+					remoteClient:  "http://${HOST}:3000/client/",
 					width:          '100%',
 					height:         '100%',
 					development:    true,
@@ -144,3 +150,4 @@ WORKDIR /var/www/localhost/htdocs
 #RUN git clone https://github.com/MrAntares/roBrowserLegacy.git /opt/ragnarok_browser
 #RUN svn checkout https://github.com/llchrisll/ROenglishRE/trunk/Renewal/data /var/www/localhost/htdocs/client/data
 #RUN cd /opt/ragnarok_browser && git pr checkout https://github.com/wjrosa/Ragna.roBrowser/pull/3
+

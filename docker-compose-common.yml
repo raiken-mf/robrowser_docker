@@ -57,12 +57,13 @@ services:
           PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
           HOST: ${HOST}
       dockerfile: ./robrowser/Dockerfile
-    entrypoint: sh -c "php /var/www/localhost/htdocs/client/tools/convert-encoding.php && httpd && tail -f /dev/null"
+    entrypoint: sh -c "php /var/www/localhost/htdocs/client/tools/convert-encoding.php && httpd && cd /var/www/localhost/htdocs && npm run dev -- --host 0.0.0.0 --port 3000"
     tty: true
     depends_on:
       - wsproxy
     ports:
-      - 80:80
+      - 80:3000
+      - 3000:80
     networks:
       - backend
       - frontend

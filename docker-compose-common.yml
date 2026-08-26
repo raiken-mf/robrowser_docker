@@ -22,12 +22,9 @@ services:
 
   wsproxy:
     container_name: "wsproxy"
-    image: wsproxy
+    image: ghcr.io/raiken-mf/wsproxy:1.2.32
     restart: always
-    pull_policy: never
-    build:
-      context: ./wsproxy
-    command: wsproxy -a ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121
+    command: ["-a", "ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121"]
     tty: true
     ports:
       - 5999:5999

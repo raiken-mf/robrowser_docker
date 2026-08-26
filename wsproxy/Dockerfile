@@ -1,6 +1,6 @@
 FROM alpine:3.23.5
 
-RUN apk add --no-cache nodejs=~24.18 npm=~11.11 && \
+RUN apk add --no-cache nodejs npm && \
     npm install -g wsproxy@1.2.32 && \
     npm cache clean --force
 

@@ -11,12 +11,12 @@ services:
       #- ./database/data:/var/lib/mysql
       - ./database/conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
-        test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
-        start_period: 10s
-        start_interval: 10s
-        interval: 10s
-        timeout: 5s
-        retries: 3
+      test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
+      start_period: 10s
+      start_interval: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
     networks:
       - backend
 
@@ -33,34 +33,21 @@ services:
 
   robrowser:
     container_name: "robrowser"
-    image: robrowser
+    image: ghcr.io/raiken-mf/robrowser:2.0.0
     restart: always
-    pull_policy: never
     env_file: .env
     volumes:
-      #- ./robrowser/repository:/var/www/localhost/htdocs/
-      - ./client/AI:/opt/client_files/AI/
-      - ./client/BGM:/opt/client_files/BGM/
-      - ./client/data:/opt/client_files/data/
-      - ./client/System:/opt/client_files/System/
-      - ./client/resources:/opt/client_files/resources/
-    build:
-      context: ./
-      args:
-          PACKETVER: ${PACKETVER}
-          SET_PRERENEWAL: ${SET_PRERENEWAL}
-          PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
-          PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
-          PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
-          HOST: ${HOST}
-      dockerfile: ./robrowser/Dockerfile
-    entrypoint: sh -c "php /var/www/localhost/htdocs/client/tools/convert-encoding.php && httpd && cd /var/www/localhost/htdocs && npm run dev -- --host 0.0.0.0 --port 3000"
+      - ./client/AI:/opt/client_files/AI:ro
+      - ./client/BGM:/opt/client_files/BGM:ro
+      - ./client/data:/opt/client_files/data:ro
+      - ./client/System:/opt/client_files/System:ro
+      - ./client/resources:/opt/client_files/resources:ro
     tty: true
     depends_on:
       - wsproxy
     ports:
-      - 80:3000
-      - 3000:80
+      - "${PORT_HTTP:-8080}:80"
+      - "${PORT_FRONTEND:-3000}:3000"
     networks:
       - backend
       - frontend

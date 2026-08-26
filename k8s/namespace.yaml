@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok
+    app.kubernetes.io/part-of: ragnarok-stack

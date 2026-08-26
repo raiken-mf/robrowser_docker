@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wsproxy
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: wsproxy
+    app.kubernetes.io/part-of: ragnarok-stack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wsproxy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wsproxy
+        app.kubernetes.io/part-of: ragnarok-stack
+    spec:
+      containers:
+        - name: wsproxy
+          image: ghcr.io/raiken-mf/wsproxy:1.2.32
+          imagePullPolicy: IfNotPresent
+          args:
+            - "-a"
+            - "ragnarok-login:6900,ragnarok-char:6121,ragnarok-map:5121"
+          ports:
+            - name: ws-port
+              containerPort: 5999
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wsproxy
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: wsproxy
+    app.kubernetes.io/part-of: ragnarok-stack
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: wsproxy
+  ports:
+    - name: ws
+      port: 5999
+      targetPort: 5999
+      nodePort: 30599
+      protocol: TCP

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client-data-loader
+  namespace: ragnarok
+spec:
+  restartPolicy: Never
+  containers:
+    - name: loader
+      image: alpine:3.23.5
+      command: ["sleep", "3600"]
+      volumeMounts:
+        - name: pvc-target
+          mountPath: /data
+  volumes:
+    - name: pvc-target
+      persistentVolumeClaim:
+        claimName: client-data

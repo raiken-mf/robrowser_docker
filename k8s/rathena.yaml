@@ -1,0 +1,194 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rathena-config
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: rathena
+data:
+  MARIADB_HOST: "mariadb"
+  MARIADB_DATABASE: "ragnarok"
+  MARIADB_USER: "ragnarok-user"
+  LOGIN_SERVER_HOST: "ragnarok-login"
+  CHAR_SERVER_HOST: "ragnarok-char"
+  MAP_SERVER_HOST: "ragnarok-map"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragnarok-login
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-login
+spec:
+  type: ClusterIP
+  ports:
+    - name: login-port
+      port: 6900
+      targetPort: 6900
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ragnarok-login
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragnarok-login
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-login
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ragnarok-login
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ragnarok-login
+    spec:
+      initContainers:
+        - name: wait-for-mariadb
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -v -w3 mariadb 3306; do echo "Waiting for MariaDB..."; sleep 2; done;']
+      containers:
+        - name: login-server
+          image: ghcr.io/raiken-mf/rathena:1.0.0-20211103-re
+          command: ["/usr/local/bin/docker-entrypoint.sh"]
+          args: ["./login-server"]
+          envFrom:
+            - configMapRef:
+                name: rathena-config
+          env:
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-user-secret
+                  key: password
+            - name: INIT_DB
+              value: "true"
+          ports:
+            - containerPort: 6900
+              name: login-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragnarok-char
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-char
+spec:
+  type: ClusterIP
+  ports:
+    - name: char-port
+      port: 6121
+      targetPort: 6121
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ragnarok-char
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragnarok-char
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-char
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ragnarok-char
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ragnarok-char
+    spec:
+      initContainers:
+        - name: wait-for-login
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -v -w3 ragnarok-login 6900; do echo "Waiting for Login Server..."; sleep 2; done;']
+      containers:
+        - name: char-server
+          image: ghcr.io/raiken-mf/rathena:1.0.0-20211103-re
+          command: ["/usr/local/bin/docker-entrypoint.sh"]
+          args: ["./char-server"]
+          envFrom:
+            - configMapRef:
+                name: rathena-config
+          env:
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-user-secret
+                  key: password
+            - name: INIT_DB
+              value: "false"
+          ports:
+            - containerPort: 6121
+              name: char-port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ragnarok-map
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-map
+spec:
+  type: ClusterIP
+  ports:
+    - name: map-port
+      port: 5121
+      targetPort: 5121
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: ragnarok-map
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ragnarok-map
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: ragnarok-map
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ragnarok-map
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ragnarok-map
+    spec:
+      initContainers:
+        - name: wait-for-char
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z -v -w3 ragnarok-char 6121; do echo "Waiting for Char Server..."; sleep 2; done;']
+      containers:
+        - name: map-server
+          image: ghcr.io/raiken-mf/rathena:1.0.0-20211103-re
+          command: ["/usr/local/bin/docker-entrypoint.sh"]
+          args: ["./map-server"]
+          envFrom:
+            - configMapRef:
+                name: rathena-config
+          env:
+            - name: MARIADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-user-secret
+                  key: password
+            - name: INIT_DB
+              value: "false"
+          ports:
+            - containerPort: 5121
+              name: map-port

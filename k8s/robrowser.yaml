@@ -8,6 +8,8 @@ metadata:
     app.kubernetes.io/part-of: ragnarok-stack
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: robrowser
@@ -19,8 +21,8 @@ spec:
     spec:
       containers:
         - name: robrowser
-          image: ghcr.io/raiken-mf/robrowser:2.0.0
-          imagePullPolicy: Always
+          image: ghcr.io/raiken-mf/robrowser:2.0.1
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: robrowser-config
@@ -44,8 +46,7 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: 500m
-              memory: 1024Mi
+              memory: 2048Mi
       volumes:
         - name: client-data
           persistentVolumeClaim:

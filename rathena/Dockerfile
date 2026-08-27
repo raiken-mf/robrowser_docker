@@ -1,47 +1,21 @@
-FROM alpine:3.23.3
+FROM alpine:3.23.5
 
-ARG PACKETVER
-ARG SET_PRERENEWAL
-ARG PACKET_OBFUSCATION_KEY1
-ARG PACKET_OBFUSCATION_KEY2
-ARG PACKET_OBFUSCATION_KEY3
-ARG MARIADB_HOST
-ARG MARIADB_DATABASE
-ARG MARIADB_USER
-ARG MARIADB_PASSWORD
-ARG SET_INTERSRV_USER
-ARG SET_INTERSRV_PASSWORD
-ARG SET_MOTD
+ARG PACKETVER=20211103
+ARG SET_PRERENEWAL=0
+ARG PACKET_OBFUSCATION_KEY1=0x6DED6DEE
+ARG PACKET_OBFUSCATION_KEY2=0x3DFD6AED
+ARG PACKET_OBFUSCATION_KEY3=0x0A3D5C0D
 
 ENV PACKETVER=$PACKETVER
 ENV SET_PRERENEWAL=$SET_PRERENEWAL
-ENV PACKET_OBFUSCATION_KEY1=$PACKET_OBFUSCATION_KEY1
-ENV PACKET_OBFUSCATION_KEY2=$PACKET_OBFUSCATION_KEY2
-ENV PACKET_OBFUSCATION_KEY3=$PACKET_OBFUSCATION_KEY3
-ENV MARIADB_HOST=$MARIADB_HOST
-ENV MARIADB_DATABASE=$MARIADB_DATABASE
-ENV MARIADB_USER=$MARIADB_USER
-ENV MARIADB_PASSWORD=$MARIADB_PASSWORD
-ENV SET_INTERSRV_USER=$SET_INTERSRV_USER
-ENV SET_INTERSRV_PASSWORD=$SET_INTERSRV_PASSWORD
-ENV SET_MOTD=$SET_MOTD
 
 RUN addgroup -S ragnarok && adduser -S ragnarok -G ragnarok
 
-RUN apk update
-RUN apk add --no-cache patch
-RUN apk add --no-cache git
-RUN apk add --no-cache make
-RUN apk add --no-cache gcc
-RUN apk add --no-cache g++
-RUN apk add --no-cache mariadb-dev
-RUN apk add --no-cache mariadb-connector-c
-RUN apk add --no-cache mariadb-client
-RUN apk add --no-cache zlib-dev
-RUN apk add --no-cache pcre-dev
-RUN apk add --no-cache pcre
-RUN apk add --no-cache libstdc++
-RUN apk add --no-cache linux-headers
+# Build dependencies
+RUN apk add --no-cache \
+    patch git make gcc g++ \
+    mariadb-dev mariadb-connector-c mariadb-client \
+    zlib-dev pcre-dev pcre libstdc++ linux-headers
 
 RUN git clone --depth=1 https://github.com/raiken-mf/rathena.git /opt/ragnarok
 
@@ -70,77 +44,17 @@ RUN cd /opt/ragnarok && \
     fi && \
     make clean && \
     make server && \
-    chmod a+x login-server && \
-    chmod a+x char-server && \
-    chmod a+x map-server
+    chmod a+x login-server char-server map-server
 
-RUN mkdir -p /opt/ragnarok/conf/import
-
-RUN cat <<EOF > /opt/ragnarok/conf/import/login_conf.txt
-new_account: yes
-EOF
-
-RUN cat <<EOF > /opt/ragnarok/conf/import/inter_conf.txt
-// use_sql_db: yes
-
-login_server_ip: ${MARIADB_HOST}
-login_server_db: ${MARIADB_DATABASE}
-login_server_id: ${MARIADB_USER}
-login_server_pw: ${MARIADB_PASSWORD}
-
-map_server_ip: ${MARIADB_HOST}
-map_server_db: ${MARIADB_DATABASE}
-map_server_id: ${MARIADB_USER}
-map_server_pw: ${MARIADB_PASSWORD}
-
-char_server_ip: ${MARIADB_HOST}
-char_server_db: ${MARIADB_DATABASE}
-char_server_id: ${MARIADB_USER}
-char_server_pw: ${MARIADB_PASSWORD}
-
-ipban_db_ip: ${MARIADB_HOST}
-ipban_db_db: ${MARIADB_DATABASE}
-ipban_db_id: ${MARIADB_USER}
-ipban_db_pw: ${MARIADB_PASSWORD}
-
-log_db_ip: ${MARIADB_HOST}
-log_db_db: ${MARIADB_DATABASE}
-log_db_id: ${MARIADB_USER}
-log_db_pw: ${MARIADB_PASSWORD}
-EOF
-
-RUN cat <<EOF > /opt/ragnarok/conf/import/char_conf.txt
-userid: ${SET_INTERSRV_USER}
-passwd: ${SET_INTERSRV_PASSWORD}
-
-login_ip: ragnarok_login
-char_ip: ragnarok_char
-
-pincode_enabled: no
-EOF
-
-RUN cat <<EOF > /opt/ragnarok/conf/import/map_conf.txt
-userid: ${SET_INTERSRV_USER}
-passwd: ${SET_INTERSRV_PASSWORD}
-
-char_ip: ragnarok_char
-map_ip: ragnarok_map
-EOF
-
-RUN printf "%s" "${SET_MOTD}" > /opt/ragnarok/conf/motd.txt
-
-RUN apk del linux-headers
-RUN apk del pcre-dev 
-RUN apk del zlib-dev 
-RUN apk del mariadb-dev 
-RUN apk del g++
-RUN apk del gcc
-RUN apk del make
-RUN apk del git
-RUN apk del patch
+# Remove build-only tooling to save space
+RUN apk del linux-headers pcre-dev zlib-dev mariadb-dev g++ gcc make git patch
 
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chown -R ragnarok:ragnarok /opt/ragnarok
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chown -R ragnarok:ragnarok /opt/ragnarok
 
+USER ragnarok
 WORKDIR /opt/ragnarok
+
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["./login-server"]

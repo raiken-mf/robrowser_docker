@@ -21,21 +21,9 @@ spec:
         - name: robrowser
           image: ghcr.io/raiken-mf/robrowser:2.0.0
           imagePullPolicy: Always
-          env:
-            - name: HOST
-              value: "${HOST}"
-            - name: PORT_HTTP
-              value: "${PORT_HTTP}"
-            - name: PORT_WSPROXY
-              value: "${PORT_WSPROXY}"
-            - name: PACKETVER
-              value: "${PACKETVER}"
-            - name: PACKET_OBFUSCATION_KEY1
-              value: "${PACKET_OBFUSCATION_KEY1}"
-            - name: PACKET_OBFUSCATION_KEY2
-              value: "${PACKET_OBFUSCATION_KEY2}"
-            - name: PACKET_OBFUSCATION_KEY3
-              value: "${PACKET_OBFUSCATION_KEY3}"
+          envFrom:
+            - configMapRef:
+                name: robrowser-config
           ports:
             - name: http-backend
               containerPort: 80

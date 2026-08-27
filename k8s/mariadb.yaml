@@ -1,0 +1,82 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: mariadb
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: mariadb
+    app.kubernetes.io/part-of: ragnarok-stack
+spec:
+  # Today: Single Node | Future: Scale to 3
+  replicas: 1
+
+  # Galera Cluster (kept disabled for single node)
+  galera:
+    enabled: false
+
+  image: mariadb:11.8.6
+  imagePullPolicy: IfNotPresent
+
+  rootPasswordSecretKeyRef:
+    name: mariadb-root-secret
+    key: password
+
+  storage:
+    size: 5Gi
+    storageClassName: longhorn
+
+  myCnf: |
+    [mysqld]
+    character-set-server=utf8mb4
+    collation-server=utf8mb4_unicode_ci
+    default-time-zone='+00:00'
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1024Mi
+
+  service:
+    type: ClusterIP
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Database
+metadata:
+  name: ragnarok
+  namespace: ragnarok
+spec:
+  mariaDbRef:
+    name: mariadb
+  characterSet: utf8mb4
+  collate: utf8mb4_unicode_ci
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: User
+metadata:
+  name: ragnarok-user
+  namespace: ragnarok
+spec:
+  mariaDbRef:
+    name: mariadb
+  passwordSecretKeyRef:
+    name: mariadb-user-secret
+    key: password
+  maxUserConnections: 50
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: ragnarok-grant
+  namespace: ragnarok
+spec:
+  mariaDbRef:
+    name: mariadb
+  privileges:
+    - "ALL PRIVILEGES"
+  database: "ragnarok"
+  table: "*"
+  username: "ragnarok-user"
+  grantOption: false

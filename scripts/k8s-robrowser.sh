@@ -1,36 +1,32 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-# Prüfen ob .env existiert
+# Ensure Kubeconfig fallback
+export KUBECONFIG=${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}
+
+# Check if .env file exists
 if [ ! -f .env ]; then
-  echo "Fehler: .env Datei nicht gefunden!"
+  echo "Error: .env file not found!"
   exit 1
 fi
 
-# .env laden und exportieren
-set -a
-source .env
-set +a
+echo "==> 1. Ensuring namespace exists..."
+kubectl create namespace ragnarok --dry-run=client -o yaml | kubectl apply -f -
 
-# Defaults setzen falls nicht in .env definiert
-export PORT_HTTP=${PORT_HTTP:-"30080"}
-export PORT_WSPROXY=${PORT_WSPROXY:-"30599"}
-export HOST=${HOST:-"127.0.0.1"}
-export PACKETVER=${PACKETVER:-"20211103"}
-export PACKET_OBFUSCATION_KEY1=${PACKET_OBFUSCATION_KEY1:-"0x6DED6DEE"}
-export PACKET_OBFUSCATION_KEY2=${PACKET_OBFUSCATION_KEY2:-"0x3DFD6AED"}
-export PACKET_OBFUSCATION_KEY3=${PACKET_OBFUSCATION_KEY3:-"0x0A3D5C0D"}
+echo "==> 2. Creating/updating ConfigMap from .env..."
+kubectl create configmap robrowser-config \
+  --from-env-file=.env \
+  -n ragnarok \
+  --dry-run=client -o yaml | kubectl apply -f -
 
-echo "==> Deploye roBrowser mit Host: ${HOST}, HTTP-Port: ${PORT_HTTP}..."
-
-# Namespace sicherstellen
-kubectl get namespace ragnarok >/dev/null 2>&1 || kubectl apply -f k8s/namespace.yaml
-
-kubectl apply -f k8s/wsproxy.yaml
+echo "==> 3. Applying PVCs & wsproxy..."
 kubectl apply -f k8s/pvc-client-data.yaml
+kubectl apply -f k8s/wsproxy.yaml
 
-# Template via envsubst befüllen und direkt an kubectl übergeben
-envsubst < k8s/robrowser.template.yaml | kubectl apply -f -
+echo "==> 4. Applying roBrowser deployment & service..."
+kubectl apply -f k8s/robrowser.yaml
 
-kubectl rollout status deployment/robrowser -n ragnarok
+echo "==> 5. Waiting for deployment rollout..."
+kubectl rollout status deployment/robrowser -n ragnarok --timeout=120s
 
+echo "==> roBrowser successfully deployed and ready!"

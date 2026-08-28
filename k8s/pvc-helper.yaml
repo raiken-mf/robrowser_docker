@@ -2,17 +2,31 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: client-data-loader
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: client-data-loader
 spec:
-  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
   containers:
     - name: loader
-      image: alpine:3.23.5
-      command: ["sleep", "3600"]
+      image: busybox:1.36
+      command: ["sh", "-c", "trap : TERM INT; sleep 3600 & wait"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
       volumeMounts:
-        - name: pvc-target
+        - name: client-data
           mountPath: /data
   volumes:
-    - name: pvc-target
+    - name: client-data
       persistentVolumeClaim:
         claimName: client-data
+  restartPolicy: Never

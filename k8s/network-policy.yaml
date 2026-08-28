@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-db-rathena-only
+  namespace: ${NAMESPACE}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ${MARIADB_HOST}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: ["ragnarok-login", "ragnarok-char", "ragnarok-map", "client-data-loader"]
+      ports:
+        - protocol: TCP
+          port: 3306

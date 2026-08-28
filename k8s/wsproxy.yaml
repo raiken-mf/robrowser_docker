@@ -2,10 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wsproxy
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: wsproxy
-    app.kubernetes.io/part-of: ragnarok-stack
 spec:
   replicas: 1
   selector:
@@ -15,41 +14,43 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: wsproxy
-        app.kubernetes.io/part-of: ragnarok-stack
     spec:
       containers:
         - name: wsproxy
           image: ghcr.io/raiken-mf/wsproxy:1.2.32
           imagePullPolicy: IfNotPresent
-          args:
-            - "-a"
-            - "ragnarok-login:6900,ragnarok-char:6121,ragnarok-map:5121"
+          env:
+            - name: PORT
+              value: "5999"
+            - name: RAG_LOGIN_HOST
+              value: "ragnarok-login"
+            - name: RAG_LOGIN_PORT
+              value: "6900"
+            - name: RAG_CHAR_HOST
+              value: "ragnarok-char"
+            - name: RAG_CHAR_PORT
+              value: "6121"
+            - name: RAG_MAP_HOST
+              value: "ragnarok-map"
+            - name: RAG_MAP_PORT
+              value: "5121"
           ports:
-            - name: ws-port
-              containerPort: 5999
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 200m
-              memory: 128Mi
+            - containerPort: 5999
+              name: wsproxy
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: wsproxy
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: wsproxy
-    app.kubernetes.io/part-of: ragnarok-stack
 spec:
   type: NodePort
   selector:
     app.kubernetes.io/name: wsproxy
   ports:
-    - name: ws
+    - name: wsproxy
       port: 5999
       targetPort: 5999
       nodePort: 30599
-      protocol: TCP

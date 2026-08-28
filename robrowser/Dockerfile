@@ -3,18 +3,22 @@ FROM alpine:3.23.5
 # Install system dependencies and web server packages
 RUN apk add --no-cache \
     apache2 \
-    php84 \
-    php84-apache2 \
-    php84-mbstring \
-    php84-iconv \
+    php \
+    php-apache2 \
+    php-mbstring \
+    php-iconv \
+    php-gd \
+    php-zlib \
     nodejs \
     npm \
     git \
     gettext \
     && rm -rf /var/www/localhost/htdocs/*
 
-# Configure Apache & PHP runtime settings
-RUN echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf && \
+# Configure Apache to unprivileged port 8080 & PHP runtime settings
+RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
+    sed -i 's/:80/:8080/g' /etc/apache2/httpd.conf && \
+    echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf && \
     echo "LoadModule headers_module modules/mod_headers.so" >> /etc/apache2/httpd.conf && \
     sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf && \
     echo "TraceEnable Off" >> /etc/apache2/httpd.conf && \
@@ -80,10 +84,16 @@ COPY robrowser/index.html.template /var/www/localhost/htdocs/index.html.template
 COPY robrowser/repository_override/ /var/www/localhost/htdocs/
 COPY robrowser/entrypoint.sh /entrypoint.sh
 
-RUN chmod +x /entrypoint.sh
+# Create non-root user and set permissions for runtime directories
+RUN addgroup -g 1000 robrowser && \
+    adduser -u 1000 -G robrowser -D robrowser && \
+    mkdir -p /run/apache2 /var/log/apache2 && \
+    chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /run/apache2 /var/log/apache2 && \
+    chmod +x /entrypoint.sh
 
+USER robrowser
 WORKDIR /var/www/localhost/htdocs
 
-EXPOSE 80 3000
+EXPOSE 8080 3000
 
 ENTRYPOINT ["/entrypoint.sh"]

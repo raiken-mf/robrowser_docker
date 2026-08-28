@@ -1,16 +1,14 @@
 apiVersion: k8s.mariadb.com/v1alpha1
 kind: MariaDB
 metadata:
-  name: mariadb
-  namespace: ragnarok
+  name: ${MARIADB_HOST}
+  namespace: ${NAMESPACE}
   labels:
-    app.kubernetes.io/name: mariadb
+    app.kubernetes.io/name: ${MARIADB_HOST}
     app.kubernetes.io/part-of: ragnarok-stack
 spec:
-  # Today: Single Node | Future: Scale to 3
   replicas: 1
 
-  # Galera Cluster (kept disabled for single node)
   galera:
     enabled: false
 
@@ -45,22 +43,22 @@ spec:
 apiVersion: k8s.mariadb.com/v1alpha1
 kind: Database
 metadata:
-  name: ragnarok
-  namespace: ragnarok
+  name: ${MARIADB_DATABASE}
+  namespace: ${NAMESPACE}
 spec:
   mariaDbRef:
-    name: mariadb
+    name: ${MARIADB_HOST}
   characterSet: utf8mb4
   collate: utf8mb4_unicode_ci
 ---
 apiVersion: k8s.mariadb.com/v1alpha1
 kind: User
 metadata:
-  name: ragnarok-user
-  namespace: ragnarok
+  name: ${MARIADB_USER}
+  namespace: ${NAMESPACE}
 spec:
   mariaDbRef:
-    name: mariadb
+    name: ${MARIADB_HOST}
   passwordSecretKeyRef:
     name: mariadb-user-secret
     key: password
@@ -69,14 +67,14 @@ spec:
 apiVersion: k8s.mariadb.com/v1alpha1
 kind: Grant
 metadata:
-  name: ragnarok-grant
-  namespace: ragnarok
+  name: ${MARIADB_USER}-grant
+  namespace: ${NAMESPACE}
 spec:
   mariaDbRef:
-    name: mariadb
+    name: ${MARIADB_HOST}
   privileges:
     - "ALL PRIVILEGES"
-  database: "ragnarok"
+  database: "${MARIADB_DATABASE}"
   table: "*"
-  username: "ragnarok-user"
+  username: "${MARIADB_USER}"
   grantOption: false

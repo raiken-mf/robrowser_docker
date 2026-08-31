@@ -21,6 +21,11 @@ envsubst < k8s/namespace.yaml | kubectl apply -f -
 echo "==> 3. Deploying MariaDB..."
 ./scripts/k8s-mariadb.sh
 
+echo "==> 3.1. Ensuring MariaDB Operator Webhook is ready..."
+if kubectl get deployment mariadb-operator-webhook -n mariadb-operator >/dev/null 2>&1; then
+  kubectl rollout status deployment/mariadb-operator-webhook -n mariadb-operator --timeout=90s
+fi
+
 echo "==> 4. Initializing Client Data..."
 ./scripts/k8s-client-data.sh
 

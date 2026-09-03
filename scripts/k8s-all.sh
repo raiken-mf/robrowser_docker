@@ -12,8 +12,12 @@ fi
 export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
 
 echo "==> 1. Wiping namespace '${NAMESPACE}'..."
-kubectl delete namespace "${NAMESPACE}" --ignore-not-found=true
-kubectl wait --for=delete namespace/"${NAMESPACE}" --timeout=120s 2>/dev/null || true
+kubectl delete namespace "${NAMESPACE}" --ignore-not-found=true || true
+
+while kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; do
+  echo "Waiting for namespace '${NAMESPACE}' deletion..."
+  sleep 3
+done
 
 echo "==> 2. Creating hardened namespace '${NAMESPACE}'..."
 envsubst < k8s/namespace.yaml | kubectl apply -f -

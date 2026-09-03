@@ -33,7 +33,23 @@ helm upgrade --install mariadb-operator mariadb-operator/mariadb-operator \
   --create-namespace
 
 echo "==> 4. Waiting for Operator deployment rollout..."
-kubectl rollout status deployment/mariadb-operator -n mariadb-operator --timeout=60s
+kubectl rollout status deployment/mariadb-operator -n mariadb-operator --timeout=90s
+
+echo "==> 4.1. Waiting for MariaDB Webhook deployment & endpoints..."
+if kubectl get deployment mariadb-operator-webhook -n mariadb-operator >/dev/null 2>&1; then
+  kubectl rollout status deployment/mariadb-operator-webhook -n mariadb-operator --timeout=90s
+fi
+
+# Warte bis der Webhook-Service tatsächliche Endpoints registriert hat
+for i in {1..30}; do
+  ENDPOINTS=$(kubectl get endpoints mariadb-operator-webhook -n mariadb-operator -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)
+  if [ -n "$ENDPOINTS" ]; then
+    echo "Webhook endpoints ready: ${ENDPOINTS}"
+    break
+  fi
+  echo "Waiting for webhook endpoints to register ($i/30)..."
+  sleep 2
+done
 
 echo "==> 5. Ensuring target namespace exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -

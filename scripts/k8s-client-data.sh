@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ==============================================================================
+# Client Data Initializer (Universal Throttled Streaming)
+# ==============================================================================
+
 export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 
 if [ -f .env ]; then
@@ -11,61 +15,56 @@ fi
 
 export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
 
-# Ensure namespace & PVC exist
+# 1. Ensure target namespace and PVC exist
+echo "==> [1/4] Ensuring namespace and client-data PVC..."
 envsubst < k8s/namespace.yaml | kubectl apply -f -
 envsubst < k8s/pvc-client-data.yaml | kubectl apply -f -
 
-# Start helper loader pod
+# 2. Deploy helper loader pod
+echo "==> [2/4] Deploying loader helper pod..."
 envsubst < k8s/pvc-helper.yaml | kubectl apply -f -
-
-# Wait until helper pod is ready
 kubectl wait --for=condition=Ready pod/client-data-loader -n "${NAMESPACE}" --timeout=90s
 
-# Prepare target directories on PVC
+# 3. Create directory layout inside the Longhorn PVC
+echo "==> [3/4] Preparing volume directory structure..."
 kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p /data/resources /data/BGM /data/AI /data/System /data/data
 
-# Detect environment: Multipass Lab (Mac) vs Bare-Metal (Pi)
-if command -v multipass >/dev/null 2>&1 && multipass info lab-node-1 &>/dev/null; then
-  echo "==> [Multipass Lab detected] Transferring assets via VM to prevent API timeouts..."
+# 4. Ingest assets file-by-file with rate limiting
+echo "==> [4/4] Ingesting client assets file-by-file (25MB/s throttled)..."
+
+for cat_dir in resources BGM AI System data; do
+  src_path="./client/${cat_dir}"
   
-  VM_STAGE_DIR="/tmp/client-staging"
-  multipass exec lab-node-1 -- rm -rf "${VM_STAGE_DIR}"
-  
-  echo "--> Copying assets to lab-node-1..."
-  multipass transfer -r ./client "lab-node-1:${VM_STAGE_DIR}"
-  
-  echo "--> Ingesting assets from node into Pod volume..."
-  multipass exec lab-node-1 -- bash -c "
-    set -e
-    for dir in resources BGM AI System data; do
-      if [ -d '${VM_STAGE_DIR}/'\$dir ] && [ \"\$(ls -A '${VM_STAGE_DIR}/'\$dir 2>/dev/null)\" ]; then
-        echo '    --> Streaming '\$dir'...'
-        tar -cf - -C '${VM_STAGE_DIR}/'\$dir . | kubectl exec -i -n '${NAMESPACE}' client-data-loader -- tar -xf - -C '/data/'\$dir
+  if [ -d "${src_path}" ] && [ "$(ls -A "${src_path}" 2>/dev/null)" ]; then
+    echo "  --> Processing ${cat_dir}..."
+
+    # Iterate over every file individually to avoid API streaming timeouts
+    find "${src_path}" -mindepth 1 -type f | while IFS= read -r file; do
+      rel_path="${file#"${src_path}/"}"
+      target_file="/data/${cat_dir}/${rel_path}"
+      target_parent="$(dirname "${target_file}")"
+
+      # Ensure parent directory exists inside the volume
+      kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p "${target_parent}"
+
+      # Stream file with rate limiting (25 MB/s) if pv is present, otherwise fallback to cat
+      if command -v pv >/dev/null 2>&1; then
+        pv -q -L 25M "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${target_file}" >/dev/null
+      else
+        cat "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${target_file}" >/dev/null
       fi
+
+      # 100ms pause to let Kubernetes API server process heartbeats and pings
+      sleep 0.1
     done
-    rm -rf '${VM_STAGE_DIR}'
-  "
-else
-  echo "==> [Native / Bare-Metal detected] Streaming directly..."
-  stream_copy() {
-    local src_dir="$1"
-    local dest_dir="$2"
-    if [ -d "$src_dir" ] && [ "$(ls -A "$src_dir" 2>/dev/null)" ]; then
-      echo "--> Streaming $src_dir to $dest_dir..."
-      tar -cf - -C "$src_dir" . | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tar -xf - -C "$dest_dir"
-    fi
-  }
+  fi
+done
 
-  stream_copy "./client/resources" "/data/resources"
-  stream_copy "./client/BGM" "/data/BGM"
-  stream_copy "./client/AI" "/data/AI"
-  stream_copy "./client/System" "/data/System"
-  stream_copy "./client/data" "/data/data"
-fi
-
-# Ensure all buffers are flushed to disk before tearing down
+# 5. Flush pending disk buffers before removing the loader pod
+echo "==> Flushing disk buffers to storage volume..."
 kubectl exec -n "${NAMESPACE}" client-data-loader -- sync
 
-# Tear down helper pod
+# 6. Clean up helper pod
+echo "==> Cleaning up helper pod..."
 envsubst < k8s/pvc-helper.yaml | kubectl delete -f -
-echo "==> Client data initialization completed!"
+echo "==> Client data initialization completed successfully! 🚀"

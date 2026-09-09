@@ -24,10 +24,10 @@ services:
     container_name: "wsproxy"
     image: ghcr.io/raiken-mf/wsproxy:1.2.32
     restart: always
-    command: ["-a", "ragnarok_login:6900,ragnarok_char:6121,ragnarok_map:5121"]
+    command: ["-a", "ragnarok-login:6900,ragnarok-char:6121,ragnarok-map:5121"]
     tty: true
     ports:
-      - 5999:5999
+      - "${PORT_WSPROXY:-5999}:5999"
     networks:
       - backend
 

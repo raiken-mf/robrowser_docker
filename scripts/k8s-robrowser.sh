@@ -14,6 +14,7 @@ export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
 export HOST="${HOST:-127.0.0.1}"
 export PORT_HTTP="${PORT_HTTP:-30080}"
 export PORT_WSPROXY="${PORT_WSPROXY:-30599}"
+export PORT_FRONTEND="${PORT_FRONTEND:-30000}"
 export SERVER_NAME="${SERVER_NAME:-Ragnarok Online}"
 export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export PACKETVER="${PACKETVER:-20211103}"
@@ -31,7 +32,8 @@ kubectl create configmap robrowser-config \
   --namespace "${NAMESPACE}" \
   --from-literal=HOST="${HOST}" \
   --from-literal=PORT_HTTP="${PORT_HTTP}" \
-  --from-literal=PORT_WSPROXY="${PORT_WSPROXY}" \
+  --from-literal=PORT_WSPROXY="${PORT_WSPROXY:-30599}" \
+  --from-literal=PORT_FRONTEND="${PORT_FRONTEND:-30000}" \
   --from-literal=SERVER_NAME="${SERVER_NAME}" \
   --from-literal=SET_PRERENEWAL="${SET_PRERENEWAL}" \
   --from-literal=PACKETVER="${PACKETVER}" \

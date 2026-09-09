@@ -53,4 +53,4 @@ spec:
     - name: wsproxy
       port: 5999
       targetPort: 5999
-      nodePort: 30599
+      nodePort: ${PORT_WSPROXY:-30599}

@@ -28,8 +28,8 @@ services:
     networks:
       - backend
 
-  hercules_login:
-    container_name: "ragnarok_login"
+  ragnarok-login:
+    container_name: "ragnarok-login"
     image: hercules
     restart: always
     pull_policy: never
@@ -46,8 +46,8 @@ services:
     networks:
       - backend
 
-  hercules_char:
-    container_name: "ragnarok_char"
+  ragnarok-char:
+    container_name: "ragnarok-char"
     image: hercules
     restart: always
     pull_policy: never
@@ -57,15 +57,15 @@ services:
     command: /opt/ragnarok/char-server
     tty: true
     depends_on:
-      hercules:
-        condition: service_completed_successfully
+      ragnarok-login:
+        condition: service_started
     ports:
       - 6121:6121
     networks:
       - backend
 
-  hercules_map:
-    container_name: "ragnarok_map"
+  ragnarok-map:
+    container_name: "ragnarok-map"
     image: hercules
     restart: always
     pull_policy: never
@@ -75,8 +75,8 @@ services:
     command: /opt/ragnarok/map-server
     tty: true
     depends_on:
-      hercules:
-        condition: service_completed_successfully
+      ragnarok-char:
+        condition: service_started
     ports:
       - 5121:5121
     networks:

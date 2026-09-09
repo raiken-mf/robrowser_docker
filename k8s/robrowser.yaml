@@ -50,8 +50,8 @@ spec:
     - name: frontend
       port: 3000
       targetPort: 3000
-      nodePort: 30000
+      nodePort: ${PORT_FRONTEND:-30000}
     - name: apache
       port: 8080
       targetPort: 8080
-      nodePort: 30080
+      nodePort: ${PORT_HTTP:-30080}

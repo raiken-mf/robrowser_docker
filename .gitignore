@@ -1,3 +1,6 @@
+# ==========================================
+# Bestehende Projektregeln (Ragnarok / Client)
+# ==========================================
 /rathena/repository_override/*
 !/rathena/repository_override/put_files_to_override_here.txt
 /hercules/repository_override/*
@@ -18,4 +21,61 @@
 !/client/System/add-system-folder-files-here.txt
 /database/conf.d/*
 !/database/conf.d/mariadb.cnf
+
+# ==========================================
+# Secrets & Credentials (STRENGSTENS IGNORIEREN)
+# ==========================================
 .env
+.env.*
+*.key
+*.pem
+credentials.json
+
+# ==========================================
+# Python & Environment
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+env/
+venv/
+ENV/
+
+# ==========================================
+# VS Code (Workspace teilen, Nutzer-Caches ignorieren)
+# ==========================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/mcp.json
+
+# ==========================================
+# Git Hooks (Lokale Sicherheitssperren)
+# ==========================================
+.git/hooks/pre-push
+
+# ==========================================
+# OS & Diverses
+# ==========================================
+.DS_Store
+Thumbs.db

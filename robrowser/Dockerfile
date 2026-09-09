@@ -89,7 +89,10 @@ RUN addgroup -g 1000 robrowser && \
     adduser -u 1000 -G robrowser -D robrowser && \
     mkdir -p /run/apache2 /var/log/apache2 && \
     chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /run/apache2 /var/log/apache2 && \
-    chmod +x /entrypoint.sh
+    chmod 755 /entrypoint.sh
+
+# Add security hardening
+RUN chmod 755 /var/www/localhost/htdocs/index.html.template
 
 USER robrowser
 WORKDIR /var/www/localhost/htdocs

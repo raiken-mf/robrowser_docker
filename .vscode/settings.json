@@ -1,0 +1,8 @@
+{
+  "chat.tools.edits.autoApprove": {
+    "**/.env*": false,
+    "**/*.key": false,
+    "**/*.pem": false,
+    "**/.git/**": false
+  }
+}

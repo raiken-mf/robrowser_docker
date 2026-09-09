@@ -1,4 +1,7 @@
 #!/bin/sh
+# Security hardening
+umask 077
+
 check_database_exist () {
     TABLE_COUNT=$(mariadb -u "${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -s -N -e "SELECT COUNT(DISTINCT table_name) FROM information_schema.columns WHERE table_schema = '${MARIADB_DATABASE}'")
     if [ ! "$TABLE_COUNT" -gt 0 ]; then

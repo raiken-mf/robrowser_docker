@@ -28,6 +28,9 @@ ENV SET_MOTD=$SET_MOTD
 
 RUN addgroup -S ragnarok && adduser -S ragnarok -G ragnarok
 
+# Add security hardening
+RUN chmod 755 /usr/local/bin/docker-entrypoint.sh
+
 RUN apk update
 RUN apk add --no-cache patch
 RUN apk add --no-cache git

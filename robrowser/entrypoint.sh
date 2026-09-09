@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Security hardening
+umask 077
+
 export HOST=${HOST:-"127.0.0.1"}
 export PORT_HTTP=${PORT_HTTP:-"8080"}
 export PORT_WSPROXY=${PORT_WSPROXY:-"5999"}
@@ -16,6 +19,9 @@ envsubst '${HOST} ${PORT_HTTP} ${PORT_WSPROXY} ${PACKETVER} ${PACKET_OBFUSCATION
 if [ -f "/var/www/localhost/htdocs/client/tools/convert-encoding.php" ]; then
     php /var/www/localhost/htdocs/client/tools/convert-encoding.php
 fi
+
+# Security: Ensure proper permissions on generated files
+chmod 644 /var/www/localhost/htdocs/index.html
 
 httpd
 

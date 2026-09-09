@@ -12,6 +12,9 @@ MAP_SERVER_HOST="${MAP_SERVER_HOST:-ragnarok-map}"
 SET_INTERSRV_USER="${SET_INTERSRV_USER:-s1}"
 SET_INTERSRV_PASSWORD="${SET_INTERSRV_PASSWORD:-p1}"
 
+# Security hardening
+umask 077
+
 check_database_exist() {
     TABLE_COUNT=$(mariadb -u "${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -s -N -e "SELECT COUNT(DISTINCT table_name) FROM information_schema.columns WHERE table_schema = '${MARIADB_DATABASE}'" 2>/dev/null || echo 0)
     if [ "$TABLE_COUNT" -gt 0 ]; then

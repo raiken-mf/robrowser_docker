@@ -52,6 +52,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh && \
     mkdir -p /opt/ragnarok/conf/import && \
     chown -R ragnarok:ragnarok /opt/ragnarok
 
+# Add security hardening
+RUN chmod 755 /usr/local/bin/entrypoint.sh
+
 USER ragnarok
 WORKDIR /opt/ragnarok
 

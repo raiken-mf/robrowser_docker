@@ -1,5 +1,5 @@
 # ==========================================
-# Bestehende Projektregeln (Ragnarok / Client)
+# Existing Project Rules (Ragnarok / Client)
 # ==========================================
 /rathena/repository_override/*
 !/rathena/repository_override/put_files_to_override_here.txt
@@ -23,7 +23,7 @@
 !/database/conf.d/mariadb.cnf
 
 # ==========================================
-# Secrets & Credentials (STRENGSTENS IGNORIEREN)
+# Secrets & Credentials (STRICTLY IGNORED)
 # ==========================================
 .env
 .env.*
@@ -32,7 +32,7 @@
 credentials.json
 
 # ==========================================
-# Python & Environment
+# Python & Virtual Environments
 # ==========================================
 __pycache__/
 *.py[cod]
@@ -60,7 +60,7 @@ venv/
 ENV/
 
 # ==========================================
-# VS Code (Workspace teilen, Nutzer-Caches ignorieren)
+# VS Code (Share Workspace Config, Ignore Caches)
 # ==========================================
 .vscode/*
 !.vscode/settings.json
@@ -70,12 +70,12 @@ ENV/
 !.vscode/mcp.json
 
 # ==========================================
-# Git Hooks (Lokale Sicherheitssperren)
+# Git Hooks (Local Security Safeguards)
 # ==========================================
 .git/hooks/pre-push
 
 # ==========================================
-# OS & Diverses
+# OS & Miscellaneous
 # ==========================================
 .DS_Store
 Thumbs.db

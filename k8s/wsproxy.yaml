@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: wsproxy
-          image: ghcr.io/raiken-mf/wsproxy:1.2.32
+          image: ghcr.io/raiken-mf/wsproxy:${WSPROXY_IMAGE_TAG}
           imagePullPolicy: IfNotPresent
           env:
             - name: PORT

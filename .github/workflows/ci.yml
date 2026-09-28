@@ -67,3 +67,24 @@ jobs:
             --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
             --build-arg RATHENA_REF="$RATHENA_REF" \
             -t rathena:ci ./rathena
+      - name: Build wsProxy image
+        run: docker build -t wsproxy:ci ./wsproxy
+      - name: Smoke-test wsProxy image
+        shell: bash
+        run: |
+          docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
+          for i in $(seq 1 15); do
+            if docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}' | grep -q .; then
+              break
+            fi
+            sleep 1
+          done
+          test -n "$(docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}')"
+      - name: Show wsProxy diagnostics
+        if: always()
+        run: |
+          docker ps -a --filter name=wsproxy-ci
+          docker logs wsproxy-ci || true
+      - name: Remove wsProxy smoke-test container
+        if: always()
+        run: docker rm -f wsproxy-ci || true

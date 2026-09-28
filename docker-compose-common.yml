@@ -22,7 +22,7 @@ services:
 
   wsproxy:
     container_name: "wsproxy"
-    image: ghcr.io/raiken-mf/wsproxy:1.2.32
+    image: ghcr.io/raiken-mf/wsproxy:${WSPROXY_IMAGE_TAG:-stable}
     restart: always
     command: ["-a", "ragnarok-login:6900,ragnarok-char:6121,ragnarok-map:5121"]
     tty: true

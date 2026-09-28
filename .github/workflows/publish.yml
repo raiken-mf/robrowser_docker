@@ -1,10 +1,11 @@
 name: Publish Images
 
-# Publish only after CI passed. The detect job limits publication to images whose
-# source or pinned build inputs actually changed.
+# Publish only after the build-and-smoke-test CI workflow and the follow-up
+# Container Security workflow both succeed. Each image is published only when
+# its source inputs changed.
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [Container Security]
     branches: [main]
     types: [completed]
   workflow_dispatch:
@@ -19,6 +20,11 @@ on:
         required: true
         default: true
         type: boolean
+      publish_wsproxy:
+        description: Publish wsProxy regardless of changed files
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -26,7 +32,6 @@ permissions:
 
 jobs:
   detect-changes:
-    # Manual publishing remains available. Automatic publishing needs green CI.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
@@ -34,12 +39,13 @@ jobs:
     outputs:
       robrowser: ${{ steps.filter.outputs.robrowser }}
       rathena: ${{ steps.filter.outputs.rathena }}
+      wsproxy: ${{ steps.filter.outputs.wsproxy }}
       ref: ${{ steps.ref.outputs.ref }}
     steps:
-      - name: Resolve CI-tested revision
+      - name: Resolve security-validated revision
         id: ref
         run: echo "ref=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
         with:
           ref: ${{ steps.ref.outputs.ref }}
           fetch-depth: 2
@@ -50,11 +56,13 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           FORCE_ROBROWSER: ${{ inputs.publish_robrowser || false }}
           FORCE_RATHENA: ${{ inputs.publish_rathena || false }}
+          FORCE_WSPROXY: ${{ inputs.publish_wsproxy || false }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
             echo "robrowser=$FORCE_ROBROWSER" >> "$GITHUB_OUTPUT"
             echo "rathena=$FORCE_RATHENA" >> "$GITHUB_OUTPUT"
+            echo "wsproxy=$FORCE_WSPROXY" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -62,7 +70,7 @@ jobs:
           changed=$(git diff --name-only "$base" HEAD)
           printf 'Changed files:\n%s\n' "$changed"
 
-          # dependencies.env is image build input, despite living under .github.
+          # dependencies.env is an image build input despite living under .github.
           if grep -Eq '^(robrowser/|\.dockerignore$|\.github/dependencies\.env$)' <<< "$changed"; then
             echo 'robrowser=true' >> "$GITHUB_OUTPUT"
           else
@@ -73,6 +81,11 @@ jobs:
           else
             echo 'rathena=false' >> "$GITHUB_OUTPUT"
           fi
+          if grep -Eq '^(wsproxy/|\.dockerignore$)' <<< "$changed"; then
+            echo 'wsproxy=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'wsproxy=false' >> "$GITHUB_OUTPUT"
+          fi
 
   publish-robrowser:
     needs: detect-changes
@@ -82,19 +95,19 @@ jobs:
       group: publish-robrowser-main
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
         with:
           ref: ${{ needs.detect-changes.outputs.ref }}
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
       - name: Load pinned source revisions
         run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
       - name: Build and push roBrowser
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.18.0
         with:
           context: .
           file: robrowser/Dockerfile
@@ -116,19 +129,19 @@ jobs:
       group: publish-rathena-main
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
         with:
           ref: ${{ needs.detect-changes.outputs.ref }}
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.5.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
       - name: Load pinned source revisions
         run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
       - name: Build and push rAthena
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.18.0
         with:
           context: ./rathena
           push: true
@@ -138,3 +151,29 @@ jobs:
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
+
+  publish-wsproxy:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.wsproxy == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-wsproxy-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          ref: ${{ needs.detect-changes.outputs.ref }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
+      - name: Build and push wsProxy
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.18.0
+        with:
+          context: ./wsproxy
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${{ needs.detect-changes.outputs.ref }}
+            ghcr.io/${{ github.repository_owner }}/wsproxy:stable

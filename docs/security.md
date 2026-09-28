@@ -2,7 +2,7 @@
 
 ## Vulnerability scan
 
-The **Container Security** workflow runs when an image-relevant roBrowser or rAthena file changes. It builds the same pinned source revisions as CI and scans the resulting images with [Trivy](https://github.com/aquasecurity/trivy).
+The **Container Security** workflow runs after CI succeeds. It scans the same roBrowser, rAthena, and wsProxy images CI built with [Trivy](https://github.com/aquasecurity/trivy).
 
 The scan fails on **HIGH** or **CRITICAL** vulnerabilities that have a fix available. Findings without an available fix are reported by the scanner but do not block the build; otherwise Alpine base-image findings could make routine development impossible to ship.
 
@@ -16,6 +16,7 @@ The workflow creates one SPDX JSON SBOM artifact per scanned image:
 
 - `sbom-robrowser`
 - `sbom-rathena`
+- `sbom-wsproxy`
 
 The SBOM and Trivy report are workflow artifacts, not public client data and not runtime secrets.
 

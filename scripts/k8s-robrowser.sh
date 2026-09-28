@@ -20,6 +20,7 @@ export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export PACKETVER="${PACKETVER:-20211103}"
 # Use an immutable sha-<commit> image tag in production; stable is only a convenience default.
 export ROBROWSER_IMAGE_TAG="${ROBROWSER_IMAGE_TAG:-stable}"
+export WSPROXY_IMAGE_TAG="${WSPROXY_IMAGE_TAG:-stable}"
 
 echo "==> 2. Ensuring target namespace exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -

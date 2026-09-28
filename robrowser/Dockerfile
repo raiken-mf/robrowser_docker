@@ -38,8 +38,9 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
     sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 
-# The lockfile was generated for the pinned roBrowser source revision. Keep it in
-# this repository because the upstream commit does not contain one.
+# The package manifest and lockfile were generated for the pinned roBrowser
+# source revision. Keep them here because the upstream commit has no lockfile.
+COPY robrowser/package.json /tmp/robrowser-package.json
 COPY robrowser/package-lock.json /tmp/robrowser-package-lock.json
 
 # Clone pinned client sources and install reproducible frontend dependencies.
@@ -47,6 +48,7 @@ COPY robrowser/package-lock.json /tmp/robrowser-package-lock.json
 RUN test -n "${ROBROWSER_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
     git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
+    cp /tmp/robrowser-package.json /var/www/localhost/htdocs/package.json && \
     cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
     git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client && \
     npm ci --prefix /var/www/localhost/htdocs && \

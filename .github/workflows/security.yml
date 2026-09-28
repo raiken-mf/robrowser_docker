@@ -1,21 +1,11 @@
 name: Container Security
 
+# Security scans run only after the build-and-smoke-test CI workflow passed.
 on:
-  pull_request:
-    paths:
-      - 'robrowser/**'
-      - 'rathena/**'
-      - '.dockerignore'
-      - '.github/dependencies.env'
-      - '.github/workflows/security.yml'
-  push:
+  workflow_run:
+    workflows: [CI]
     branches: [main]
-    paths:
-      - 'robrowser/**'
-      - 'rathena/**'
-      - '.dockerignore'
-      - '.github/dependencies.env'
-      - '.github/workflows/security.yml'
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +13,9 @@ permissions:
 
 jobs:
   scan:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,8 +27,13 @@ jobs:
           - name: rathena
             context: ./rathena
             file: rathena/Dockerfile
+          - name: wsproxy
+            context: ./wsproxy
+            file: wsproxy/Dockerfile
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Load pinned source revisions
         run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
       - name: Build ${{ matrix.name }} image for scanning
@@ -48,11 +46,13 @@ jobs:
               --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
               --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
               -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
-          else
+          elif [ "${{ matrix.name }}" = rathena ]; then
             docker build -f "${{ matrix.file }}" \
               --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
               --build-arg RATHENA_REF="$RATHENA_REF" \
               -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
+          else
+            docker build -f "${{ matrix.file }}" -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
           fi
       - name: Scan ${{ matrix.name }} image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0

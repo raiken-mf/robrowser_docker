@@ -1,21 +1,90 @@
 name: Publish Images
 
-# Publishing is deliberately manual while the build pipeline is being stabilized.
+# Publish only after CI passed. The detect job limits publication to images whose
+# source or pinned build inputs actually changed.
 on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
   workflow_dispatch:
+    inputs:
+      publish_robrowser:
+        description: Publish roBrowser regardless of changed files
+        required: true
+        default: true
+        type: boolean
+      publish_rathena:
+        description: Publish rAthena regardless of changed files
+        required: true
+        default: true
+        type: boolean
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  publish:
+  detect-changes:
+    # Manual publishing remains available. Automatic publishing needs green CI.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      robrowser: ${{ steps.filter.outputs.robrowser }}
+      rathena: ${{ steps.filter.outputs.rathena }}
+      ref: ${{ steps.ref.outputs.ref }}
+    steps:
+      - name: Resolve CI-tested revision
+        id: ref
+        run: echo "ref=${{ github.event.workflow_run.head_sha || github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
+          fetch-depth: 2
+      - name: Detect image-relevant changes
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE_ROBROWSER: ${{ inputs.publish_robrowser || false }}
+          FORCE_RATHENA: ${{ inputs.publish_rathena || false }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "robrowser=$FORCE_ROBROWSER" >> "$GITHUB_OUTPUT"
+            echo "rathena=$FORCE_RATHENA" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          base=$(git rev-parse HEAD^)
+          changed=$(git diff --name-only "$base" HEAD)
+          printf 'Changed files:\n%s\n' "$changed"
+
+          # dependencies.env is image build input, despite living under .github.
+          if grep -Eq '^(robrowser/|\.dockerignore$|\.github/dependencies\.env$)' <<< "$changed"; then
+            echo 'robrowser=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'robrowser=false' >> "$GITHUB_OUTPUT"
+          fi
+          if grep -Eq '^(rathena/|\.github/dependencies\.env$)' <<< "$changed"; then
+            echo 'rathena=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'rathena=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  publish-robrowser:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.robrowser == 'true'
     runs-on: ubuntu-latest
     concurrency:
-      group: publish-images-main
+      group: publish-robrowser-main
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.detect-changes.outputs.ref }}
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -23,7 +92,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - name: Load pinned source revisions
-        # GITHUB_ENV accepts only KEY=VALUE lines, not comments.
         run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
       - name: Build and push roBrowser
         uses: docker/build-push-action@v6
@@ -32,20 +100,40 @@ jobs:
           file: robrowser/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/robrowser:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/robrowser:sha-${{ needs.detect-changes.outputs.ref }}
             ghcr.io/${{ github.repository_owner }}/robrowser:stable
           build-args: |
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
             ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}
             ROENGLISH_REF=${{ env.ROENGLISH_REF }}
+
+  publish-rathena:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.rathena == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: publish-rathena-main
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.detect-changes.outputs.ref }}
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Load pinned source revisions
+        run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
       - name: Build and push rAthena
         uses: docker/build-push-action@v6
         with:
           context: ./rathena
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/rathena:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/rathena:sha-${{ needs.detect-changes.outputs.ref }}
             ghcr.io/${{ github.repository_owner }}/rathena:stable
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}

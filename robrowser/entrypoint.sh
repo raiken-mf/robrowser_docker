@@ -28,7 +28,8 @@ fi
 # Security: Ensure proper permissions on generated files
 chmod 644 /var/www/localhost/htdocs/index.html
 
-# Keep Apache alive in the background; Vite remains the container's foreground process.
+# Apache writes its pid file under /run/apache2, which is owned by robrowser.
+# Vite remains the foreground process.
 httpd -D FOREGROUND &
 
 cd /var/www/localhost/htdocs

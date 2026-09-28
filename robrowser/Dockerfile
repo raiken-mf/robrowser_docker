@@ -33,7 +33,9 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     echo 'Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"' >> /etc/apache2/httpd.conf && \
     echo 'Header always set Access-Control-Allow-Headers "*"' >> /etc/apache2/httpd.conf && \
     sed -i "s/memory_limit = .*/memory_limit = 1024M/g" /etc/php84/php.ini && \
-    sed -i "s/max_execution_time = .*/max_execution_time = 600/g" /etc/php84/php.ini
+    sed -i "s/max_execution_time = .*/max_execution_time = 600/g" /etc/php84/php.ini && \
+    sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
+    sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 
 # Clone pinned client sources and install frontend dependencies.
 # Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.

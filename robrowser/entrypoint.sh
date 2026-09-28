@@ -16,8 +16,13 @@ envsubst '${HOST} ${PORT_HTTP} ${PORT_WSPROXY} ${PACKETVER} ${PACKET_OBFUSCATION
   < /var/www/localhost/htdocs/index.html.template \
   > /var/www/localhost/htdocs/index.html
 
-if [ -f "/var/www/localhost/htdocs/client/tools/convert-encoding.php" ]; then
+# Encoding mapping requires a mounted client DATA.INI and GRF files. These are
+# intentionally absent from the immutable image and CI smoke-test container.
+if [ -f "/var/www/localhost/htdocs/client/tools/convert-encoding.php" ] && \
+   [ -f "/opt/client_files/resources/DATA.INI" ]; then
     php /var/www/localhost/htdocs/client/tools/convert-encoding.php
+else
+    echo "Skipping encoding mapping: client resources/DATA.INI is not mounted."
 fi
 
 # Security: Ensure proper permissions on generated files

@@ -1,12 +1,12 @@
-# alpine:3.23.5 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.23.5@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
+# alpine:3.23.6 pinned by immutable multi-architecture manifest digest.
+FROM alpine:3.23.6@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
 ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
 ARG ROENGLISH_REF
 
-# Install system dependencies and web server packages
+# Install runtime/build packages from the pinned Alpine release.
 RUN apk add --no-cache \
     apache2 \
     php \

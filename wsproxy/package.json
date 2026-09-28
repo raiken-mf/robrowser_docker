@@ -1,0 +1,12 @@
+{
+  "name": "wsproxy-container",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "wsproxy": "1.2.32"
+  },
+  "overrides": {
+    "ws": "8.21.0",
+    "minimist": "1.2.6"
+  }
+}

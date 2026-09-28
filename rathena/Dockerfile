@@ -1,5 +1,5 @@
-# alpine:3.23.5 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.23.5@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
+# alpine:3.23.6 pinned by immutable multi-architecture manifest digest.
+FROM alpine:3.23.6@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
 
 ARG PACKETVER=20211103
 ARG SET_PRERENEWAL=0
@@ -14,7 +14,7 @@ ENV SET_PRERENEWAL=$SET_PRERENEWAL
 
 RUN addgroup -g 1000 ragnarok && adduser -u 1000 -G ragnarok -D ragnarok
 
-# Build dependencies
+# Install build/runtime packages from the pinned Alpine release.
 RUN apk add --no-cache \
     patch git make gcc g++ \
     mariadb-dev mariadb-connector-c mariadb-client \

@@ -1,6 +1,9 @@
 site_name: roBrowser Docker Stack
 site_description: Documentation for roBrowser, rAthena and Kubernetes Deployment
 repo_url: https://github.com/raiken-mf/robrowser_docker
+nav:
+  - Home: index.md
+  - Safe fork updates: upstream-updates.md
 theme:
   name: material
   palette:

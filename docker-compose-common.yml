@@ -33,7 +33,8 @@ services:
 
   robrowser:
     container_name: "robrowser"
-    image: ghcr.io/raiken-mf/robrowser:2.0.0
+    image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG:-stable}
+    pull_policy: always
     restart: always
     env_file: .env
     volumes:
@@ -42,11 +43,20 @@ services:
       - ./client/data:/opt/client_files/data:ro
       - ./client/System:/opt/client_files/System:ro
       - ./client/resources:/opt/client_files/resources:ro
+    build:
+      context: .
+      dockerfile: robrowser/Dockerfile
+      args:
+        SET_PRERENEWAL: ${SET_PRERENEWAL}
+        ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
+        ROBROWSER_REF: ${ROBROWSER_REF:-2f114a1f3dc0e9721e45c4731420ee2417e00fe4}
+        ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
+        ROENGLISH_REF: ${ROENGLISH_REF:-fc674823d7830d0ff75b73c79c99caf640af5a0e}
     tty: true
     depends_on:
       - wsproxy
     ports:
-      - "${PORT_HTTP:-8080}:80"
+      - "${PORT_HTTP:-8080}:8080"
       - "${PORT_FRONTEND:-3000}:3000"
     networks:
       - backend

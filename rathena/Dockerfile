@@ -2,6 +2,8 @@ FROM alpine:3.23.5
 
 ARG PACKETVER=20211103
 ARG SET_PRERENEWAL=0
+ARG RATHENA_REPOSITORY=https://github.com/raiken-mf/rathena.git
+ARG RATHENA_REF
 ARG PACKET_OBFUSCATION_KEY1=0x6DED6DEE
 ARG PACKET_OBFUSCATION_KEY2=0x3DFD6AED
 ARG PACKET_OBFUSCATION_KEY3=0x0A3D5C0D
@@ -17,7 +19,10 @@ RUN apk add --no-cache \
     mariadb-dev mariadb-connector-c mariadb-client \
     zlib-dev pcre-dev pcre libstdc++ linux-headers
 
-RUN git clone --depth=1 https://github.com/raiken-mf/rathena.git /opt/ragnarok
+# Build from an explicit revision so a fork sync cannot silently change an image.
+RUN test -n "${RATHENA_REF}" && \
+    git clone "${RATHENA_REPOSITORY}" /opt/ragnarok && \
+    git -C /opt/ragnarok checkout --detach "${RATHENA_REF}"
 
 RUN patch --ignore-whitespace /opt/ragnarok/src/custom/defines_pre.hpp <<PATCH_EOF
 --- defines_post.hpp	2024-01-29 20:25:41.731355800 +0100

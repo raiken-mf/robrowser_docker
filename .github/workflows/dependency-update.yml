@@ -1,0 +1,44 @@
+name: Check Fork Updates
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check whether pinned revisions still exist
+        run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
+      - name: Report newer fork heads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -a
+          . .github/dependencies.env
+          set +a
+          changed=""
+          for dependency in ROBROWSER RATHENA HERCULES ROENGLISH; do
+            eval "repo=\${${dependency}_REPOSITORY}"
+            eval "pinned=\${${dependency}_REF}"
+            head=$(git ls-remote "$repo" HEAD | awk '{print $1}')
+            if [ "$head" != "$pinned" ]; then
+              changed="$changed\n- $dependency: pinned \`$pinned\`, fork head \`$head\`"
+            fi
+          done
+          if [ -n "$changed" ]; then
+            title='Fork updates are available'
+            body="Do not sync blindly. Create a PR that updates the relevant pinned SHA in .github/dependencies.env; CI validates required layouts and builds the images.\n$changed"
+            existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "$body"
+            else
+              gh issue create --title "$title" --body "$body"
+            fi
+          fi

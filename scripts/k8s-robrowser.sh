@@ -18,6 +18,8 @@ export PORT_FRONTEND="${PORT_FRONTEND:-30000}"
 export SERVER_NAME="${SERVER_NAME:-Ragnarok Online}"
 export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export PACKETVER="${PACKETVER:-20211103}"
+# Use an immutable sha-<commit> image tag in production; stable is only a convenience default.
+export ROBROWSER_IMAGE_TAG="${ROBROWSER_IMAGE_TAG:-stable}"
 
 echo "==> 2. Ensuring target namespace exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -

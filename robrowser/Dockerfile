@@ -1,5 +1,10 @@
 FROM alpine:3.23.5
 
+ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
+ARG ROBROWSER_REF
+ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
+ARG ROENGLISH_REF
+
 # Install system dependencies and web server packages
 RUN apk add --no-cache \
     apache2 \
@@ -30,8 +35,11 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i "s/memory_limit = .*/memory_limit = 1024M/g" /etc/php84/php.ini && \
     sed -i "s/max_execution_time = .*/max_execution_time = 600/g" /etc/php84/php.ini
 
-# Clone client repositories and install frontend dependencies
-RUN git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy.git /var/www/localhost/htdocs && \
+# Clone pinned client sources and install frontend dependencies.
+# Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.
+RUN test -n "${ROBROWSER_REF}" && test -n "${ROENGLISH_REF}" && \
+    git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
+    git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
     git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client && \
     npm install --prefix /var/www/localhost/htdocs && \
     npm cache clean --force
@@ -41,21 +49,23 @@ RUN sed -i '/server: {/a \ \ \ \ host: "0.0.0.0",\n    allowedHosts: true,' /var
 
 # Fetch translation files and extract client data/System folders
 ARG SET_PRERENEWAL
-RUN git clone --depth=1 https://github.com/raiken-mf/ROenglishRE.git /opt/translation && \
+RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
+    git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
+    test -d /opt/translation/Translation && \
     mkdir -p /var/www/localhost/htdocs/client/data /var/www/localhost/htdocs/client/System && \
     if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
         if [ -d "/opt/translation/Translation/Pre-Renewal/data" ]; then \
             cp -rf /opt/translation/Translation/Pre-Renewal/data/* /var/www/localhost/htdocs/client/data/; \
         fi; \
-        if [ -d "/opt/translation/Translation/Pre-Renewal/System" ]; then \
-            cp -rf /opt/translation/Translation/Pre-Renewal/System/* /var/www/localhost/htdocs/client/System/; \
+        if [ -d "/opt/translation/Translation/Pre-Renewal/SystemEN" ]; then \
+            cp -rf /opt/translation/Translation/Pre-Renewal/SystemEN/* /var/www/localhost/htdocs/client/System/; \
         fi; \
     else \
         if [ -d "/opt/translation/Translation/Renewal/data" ]; then \
             cp -rf /opt/translation/Translation/Renewal/data/* /var/www/localhost/htdocs/client/data/; \
         fi; \
-        if [ -d "/opt/translation/Translation/Renewal/System" ]; then \
-            cp -rf /opt/translation/Translation/Renewal/System/* /var/www/localhost/htdocs/client/System/; \
+        if [ -d "/opt/translation/Translation/Renewal/SystemEN" ]; then \
+            cp -rf /opt/translation/Translation/Renewal/SystemEN/* /var/www/localhost/htdocs/client/System/; \
         fi; \
         sed -i 's/itemInfo.lub/itemInfo_EN.lua/g' /var/www/localhost/htdocs/src/DB/DBManager.js; \
     fi && \

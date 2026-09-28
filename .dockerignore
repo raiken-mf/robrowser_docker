@@ -1,0 +1,9 @@
+.git
+.github
+client/AI
+client/BGM
+client/data
+client/resources
+client/System
+**/repository_override/*
+!**/repository_override/put_files_to_override_here.txt

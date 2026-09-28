@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: robrowser
-          image: ghcr.io/raiken-mf/robrowser:2.0.5
+          image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG:-stable}
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:

@@ -11,6 +11,8 @@ services:
       args:
           PACKETVER: ${PACKETVER}
           SET_PRERENEWAL: ${SET_PRERENEWAL}
+          HERCULES_REPOSITORY: ${HERCULES_REPOSITORY:-https://github.com/raiken-mf/Hercules.git}
+          HERCULES_REF: ${HERCULES_REF:-1d07ca6a2b57fbd68c973b5224e4efcb7589818b}
           PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
           PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
           PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
@@ -21,7 +23,10 @@ services:
           SET_MOTD: ${SET_MOTD}
           SET_INTERSRV_USER: ${SET_INTERSRV_USER}
           SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD}
-    entrypoint: sh -c ". /usr/local/bin/docker-entrypoint.sh && setup_database"
+    command: ["/bin/true"]
+    environment:
+      INIT_DB: "true"
+      INIT_ONLY: "true"
     depends_on:
       database:
         condition: service_healthy
@@ -36,7 +41,7 @@ services:
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok
-    command: /opt/ragnarok/login-server
+    command: ["/opt/ragnarok/login-server"]
     tty: true
     depends_on:
       hercules:
@@ -54,7 +59,7 @@ services:
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok
-    command: /opt/ragnarok/char-server
+    command: ["/opt/ragnarok/char-server"]
     tty: true
     depends_on:
       ragnarok-login:
@@ -72,7 +77,7 @@ services:
     user: ragnarok:ragnarok
     #volumes:
     #  - ./hercules/repository:/opt/ragnarok
-    command: /opt/ragnarok/map-server
+    command: ["/opt/ragnarok/map-server"]
     tty: true
     depends_on:
       ragnarok-char:

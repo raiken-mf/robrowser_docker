@@ -15,10 +15,23 @@ spec:
       labels:
         app.kubernetes.io/name: robrowser
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: robrowser
-          image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG:-stable}
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG}
+          # stable intentionally follows the current main image on each rollout.
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           envFrom:
             - configMapRef:
                 name: robrowser-config
@@ -30,6 +43,30 @@ spec:
           volumeMounts:
             - name: client-data
               mountPath: /opt/client_files
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: apache
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: apache
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
       volumes:
         - name: client-data
           persistentVolumeClaim:

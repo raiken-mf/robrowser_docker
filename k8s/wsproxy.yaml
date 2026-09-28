@@ -15,10 +15,23 @@ spec:
       labels:
         app.kubernetes.io/name: wsproxy
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: wsproxy
           image: ghcr.io/raiken-mf/wsproxy:${WSPROXY_IMAGE_TAG}
-          imagePullPolicy: IfNotPresent
+          # stable intentionally follows the current main image on each rollout.
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: PORT
               value: "5999"
@@ -37,6 +50,27 @@ spec:
           ports:
             - containerPort: 5999
               name: wsproxy
+          readinessProbe:
+            tcpSocket:
+              port: wsproxy
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: wsproxy
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service

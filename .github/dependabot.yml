@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Tracks pinned GitHub Action commits and opens a reviewable update PR.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # Tracks the Alpine tag/digest used by each image build.
+  - package-ecosystem: docker
+    directory: /robrowser
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /rathena
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /wsproxy
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /hercules
+    schedule:
+      interval: weekly
+
+  # The project-owned manifest/lockfile overlay for the pinned roBrowser source.
+  - package-ecosystem: npm
+    directory: /robrowser
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

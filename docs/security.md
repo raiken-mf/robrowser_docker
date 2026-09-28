@@ -20,12 +20,17 @@ The workflow creates one SPDX JSON SBOM artifact per scanned image:
 
 The SBOM and Trivy report are workflow artifacts, not public client data and not runtime secrets.
 
+## Runtime hardening
+
+The Kubernetes deployments run containers as non-root, drop Linux capabilities, use the runtime-default seccomp profile, define liveness/readiness probes, and set initial CPU/memory requests and limits. wsProxy also uses a read-only root filesystem; roBrowser cannot yet do so because Apache, Vite, and the generated client configuration require writable runtime paths.
+
 ## Reproducibility controls
 
 - Base images are pinned to immutable Alpine manifest digests.
 - roBrowserLegacy, rAthena, and ROenglishRE are pinned to Git commit SHAs.
 - roBrowser's upstream revision has no lockfile. The project-owned `robrowser/package-lock.json` was generated for the pinned upstream revision and is installed with `npm ci`.
 - Third-party GitHub Actions are pinned to complete commit SHAs rather than mutable version tags.
+- Dependabot opens weekly reviewable pull requests for GitHub Actions, Alpine base-image digests, and the project-owned npm lockfile overlay. Review them through the same CI, security scan, and selective publish flow; do not auto-merge them blindly.
 
 When updating `ROBROWSER_REF`, regenerate the lockfile before merging:
 

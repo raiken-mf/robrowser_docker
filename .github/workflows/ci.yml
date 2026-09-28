@@ -49,9 +49,12 @@ jobs:
           done
           curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null
-      - name: Show roBrowser logs after smoke-test failure
-        if: failure()
-        run: docker logs robrowser-ci || true
+      - name: Show roBrowser container diagnostics
+        if: always()
+        run: |
+          docker ps -a --filter name=robrowser-ci
+          docker inspect robrowser-ci --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' || true
+          docker logs robrowser-ci || true
       - name: Remove roBrowser smoke-test container
         if: always()
         run: docker rm -f robrowser-ci || true

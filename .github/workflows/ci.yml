@@ -38,14 +38,23 @@ jobs:
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
             -t robrowser:ci .
       - name: Smoke-test roBrowser image
+        shell: bash
         run: |
           docker run -d --name robrowser-ci -p 8080:8080 -p 3000:3000 robrowser:ci
           for i in $(seq 1 30); do
-            curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null && break
+            if curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null; then
+              break
+            fi
             sleep 2
           done
           curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null
+      - name: Show roBrowser logs after smoke-test failure
+        if: failure()
+        run: docker logs robrowser-ci || true
+      - name: Remove roBrowser smoke-test container
+        if: always()
+        run: docker rm -f robrowser-ci || true
       - name: Build rAthena image
         run: |
           set -a

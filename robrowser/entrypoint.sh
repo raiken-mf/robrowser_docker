@@ -23,7 +23,8 @@ fi
 # Security: Ensure proper permissions on generated files
 chmod 644 /var/www/localhost/htdocs/index.html
 
-httpd
+# Keep Apache alive in the background; Vite remains the container's foreground process.
+httpd -D FOREGROUND &
 
 cd /var/www/localhost/htdocs
 exec npx vite --host 0.0.0.0 --port 3000 --cors --no-open

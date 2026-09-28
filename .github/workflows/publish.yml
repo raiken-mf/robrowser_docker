@@ -62,14 +62,3 @@ jobs:
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
-      - name: Build and push Hercules
-        uses: docker/build-push-action@v6
-        with:
-          context: ./hercules
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/hercules:sha-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/hercules:stable
-          build-args: |
-            HERCULES_REPOSITORY=${{ env.HERCULES_REPOSITORY }}
-            HERCULES_REF=${{ env.HERCULES_REF }}

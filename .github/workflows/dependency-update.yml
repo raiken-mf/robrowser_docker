@@ -24,7 +24,7 @@ jobs:
           . .github/dependencies.env
           set +a
           changed=""
-          for dependency in ROBROWSER RATHENA HERCULES ROENGLISH; do
+          for dependency in ROBROWSER RATHENA ROENGLISH; do
             eval "repo=\${${dependency}_REPOSITORY}"
             eval "pinned=\${${dependency}_REF}"
             head=$(git ls-remote "$repo" HEAD | awk '{print $1}')

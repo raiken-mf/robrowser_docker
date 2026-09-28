@@ -1,6 +1,6 @@
 # Safe fork updates
 
-The stack builds from fixed Git revisions, listed in [`.github/dependencies.env`](../.github/dependencies.env). This includes roBrowserLegacy, rAthena, Hercules, and ROenglishRE. Syncing a GitHub fork alone therefore does **not** alter local or published images.
+The automated build pipeline uses fixed Git revisions, listed in [`.github/dependencies.env`](../.github/dependencies.env), for roBrowserLegacy, rAthena, and ROenglishRE. Syncing a GitHub fork alone therefore does **not** alter local or published images. Hercules remains available for local Docker Compose builds but is not built, published, or monitored by CI.
 
 ## Updating a fork safely
 
@@ -17,7 +17,6 @@ The CI check deliberately verifies paths that the Dockerfiles rely on:
 
 - **roBrowserLegacy:** `package.json`, `vite.config.js`, and `src/DB/DBManager.js`
 - **rAthena:** `configure`, `src/custom/defines_pre.hpp`, and `conf/`
-- **Hercules:** `configure`, `conf/`, `npc/`, and `sql-files/`
 - **ROenglishRE:** both Renewal and Pre-Renewal `Translation/.../data` and `SystemEN` directories
 
 If a synced fork changed a required structure, the pull request fails before publication. It cannot prove gameplay compatibility; the smoke test only verifies that roBrowser's Apache and Vite endpoints start. Run a login/map/effect regression test before promoting the image.

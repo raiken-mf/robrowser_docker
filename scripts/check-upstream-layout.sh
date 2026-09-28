@@ -31,12 +31,6 @@ require_file "$workdir/rathena/configure"
 require_file "$workdir/rathena/src/custom/defines_pre.hpp"
 require_dir "$workdir/rathena/conf"
 
-checkout hercules "$HERCULES_REPOSITORY" "$HERCULES_REF"
-require_file "$workdir/hercules/configure"
-require_dir "$workdir/hercules/conf"
-require_dir "$workdir/hercules/npc"
-require_dir "$workdir/hercules/sql-files"
-
 checkout roenglish "$ROENGLISH_REPOSITORY" "$ROENGLISH_REF"
 require_dir "$workdir/roenglish/Translation/Renewal/data"
 require_dir "$workdir/roenglish/Translation/Renewal/SystemEN"

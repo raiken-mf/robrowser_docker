@@ -17,12 +17,12 @@ export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
 
 # 1. Ensure target namespace and PVC exist
 echo "==> [1/4] Ensuring namespace and client-data PVC..."
-envsubst < k8s/namespace.yaml | kubectl apply -f -
-envsubst < k8s/pvc-client-data.yaml | kubectl apply -f -
+envsubst < deploy/k8s/namespace.yaml | kubectl apply -f -
+envsubst < deploy/k8s/pvc-client-data.yaml | kubectl apply -f -
 
 # 2. Deploy helper loader pod
 echo "==> [2/4] Deploying loader helper pod..."
-envsubst < k8s/pvc-helper.yaml | kubectl apply -f -
+envsubst < deploy/k8s/pvc-helper.yaml | kubectl apply -f -
 kubectl wait --for=condition=Ready pod/client-data-loader -n "${NAMESPACE}" --timeout=90s
 
 # 3. Create directory layout inside the Longhorn PVC
@@ -33,7 +33,7 @@ kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p /data/resources /d
 echo "==> [4/4] Ingesting client assets file-by-file (25MB/s throttled)..."
 
 for cat_dir in resources BGM AI System data; do
-  src_path="./client/${cat_dir}"
+  src_path="../../client/${cat_dir}"
   
   if [ -d "${src_path}" ] && [ "$(ls -A "${src_path}" 2>/dev/null)" ]; then
     echo "  --> Processing ${cat_dir}..."
@@ -66,5 +66,5 @@ kubectl exec -n "${NAMESPACE}" client-data-loader -- sync
 
 # 6. Clean up helper pod
 echo "==> Cleaning up helper pod..."
-envsubst < k8s/pvc-helper.yaml | kubectl delete -f -
+envsubst < deploy/k8s/pvc-helper.yaml | kubectl delete -f -
 echo "==> Client data initialization completed successfully! 🚀"

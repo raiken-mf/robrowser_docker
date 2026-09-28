@@ -11,25 +11,25 @@ updates:
 
   # Tracks the Alpine tag/digest used by each image build.
   - package-ecosystem: docker
-    directory: /robrowser
+    directory: /images/robrowser
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directory: /rathena
+    directory: /images/rathena
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directory: /wsproxy
+    directory: /images/wsproxy
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directory: /hercules
+    directory: /images/hercules
     schedule:
       interval: weekly
 
   # The project-owned manifest/lockfile overlay for the pinned roBrowser source.
   - package-ecosystem: npm
-    directory: /robrowser
+    directory: /images/robrowser
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

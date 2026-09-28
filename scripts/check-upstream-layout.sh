@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-DEPENDENCIES_FILE="${1:-.github/dependencies.env}"
+DEPENDENCIES_FILE="${1:-build/dependencies.env}"
 [ -f "$DEPENDENCIES_FILE" ] || { echo "Missing dependency file: $DEPENDENCIES_FILE" >&2; exit 1; }
 # This file is versioned project configuration, not a credentials file.
 . "$DEPENDENCIES_FILE"

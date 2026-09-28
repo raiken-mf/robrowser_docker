@@ -3,13 +3,13 @@ services:
     container_name: "database"
     image: mariadb:11.8.6
     restart: always
-    env_file: .env
+    env_file: ../../.env
     #ports:
     #  - 3306:3306
     volumes:
       # Uncomment line below to use on volume
       #- ./database/data:/var/lib/mysql
-      - ./database/conf.d:/etc/mariadb.conf.d:ro
+      - ../.../../database/conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
       start_period: 10s
@@ -36,16 +36,16 @@ services:
     image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG:-stable}
     pull_policy: always
     restart: always
-    env_file: .env
+    env_file: ../../.env
     volumes:
-      - ./client/AI:/opt/client_files/AI:ro
-      - ./client/BGM:/opt/client_files/BGM:ro
-      - ./client/data:/opt/client_files/data:ro
-      - ./client/System:/opt/client_files/System:ro
-      - ./client/resources:/opt/client_files/resources:ro
+      - ../.../../client/AI:/opt/client_files/AI:ro
+      - ../.../../client/BGM:/opt/client_files/BGM:ro
+      - ../.../../client/data:/opt/client_files/data:ro
+      - ../.../../client/System:/opt/client_files/System:ro
+      - ../.../../client/resources:/opt/client_files/resources:ro
     build:
-      context: .
-      dockerfile: robrowser/Dockerfile
+      context: ../..
+      dockerfile: images/robrowser/Dockerfile
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}

@@ -3,11 +3,11 @@ services:
     container_name: "rathena"
     image: rathena
     pull_policy: never
-    env_file: .env
+    env_file: ../../.env
     volumes:
-      - ./rathena/repository_override:/opt/repository_override
+      - ../../images/rathena/repository_override:/opt/repository_override
     build:
-      context: ./rathena
+      context: ../../images/rathena
       args:
           PACKETVER: ${PACKETVER}
           SET_PRERENEWAL: ${SET_PRERENEWAL}
@@ -37,7 +37,7 @@ services:
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
-    #  - ./rathena/repository:/opt/ragnarok
+    #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/login-server
     tty: true
     depends_on:
@@ -55,7 +55,7 @@ services:
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
-    #  - ./rathena/repository:/opt/ragnarok
+    #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/char-server
     tty: true
     depends_on:
@@ -73,7 +73,7 @@ services:
     pull_policy: never
     user: ragnarok:ragnarok
     #volumes:
-    #  - ./rathena/repository:/opt/ragnarok
+    #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/map-server
     tty: true
     depends_on:

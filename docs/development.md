@@ -10,19 +10,18 @@ This guide provides information for developers working with the robrowser_docker
 robrowser_docker/
 ├── client/                 # Client files (DATA.INI, GRF files)
 ├── database/               # Database configuration and data
-├── docker-compose-common.yml  # Common Docker Compose configuration
-├── docker-compose-rathena.yml # Rathena-specific Docker Compose
-├── docker-compose-hercules.yml # Hercules-specific Docker Compose
-├── hercules/               # Hercules server files
+├── build/dependencies.env  # Pinned upstream revisions
+├── deploy/compose/         # Docker Compose configurations
+├── deploy/k8s/             # Kubernetes configurations
+├── images/hercules/        # Hercules image files
 │   ├── Dockerfile          # Hercules server Dockerfile
 │   ├── docker-entrypoint.sh # Hercules entrypoint script
 │   └── repository_override/ # Override files for Hercules
-├── k8s/                    # Kubernetes configurations
-├── rathena/                # Rathena server files
+├── images/rathena/         # Rathena image files
 │   ├── Dockerfile          # Rathena server Dockerfile
 │   ├── entrypoint.sh       # Rathena entrypoint script
 │   └── repository_override/ # Override files for Rathena
-├── robrowser/              # roBrowser files
+├── images/robrowser/       # roBrowser image files
 │   ├── Dockerfile          # roBrowser Dockerfile
 │   ├── entrypoint.sh       # roBrowser entrypoint script
 │   ├── index.html.template # Template for HTML generation

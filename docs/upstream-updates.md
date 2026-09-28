@@ -1,12 +1,12 @@
 # Safe fork updates
 
-The automated build pipeline uses fixed Git revisions, listed in [`.github/dependencies.env`](../.github/dependencies.env), for roBrowserLegacy, rAthena, and ROenglishRE. Syncing a GitHub fork alone therefore does **not** alter local or published images. Hercules remains available for local Docker Compose builds but is not built, published, or monitored by CI.
+The automated build pipeline uses fixed Git revisions, listed in [`build/dependencies.env`](../build/dependencies.env), for roBrowserLegacy, rAthena, and ROenglishRE. Syncing a GitHub fork alone therefore does **not** alter local or published images. Hercules remains available for local Docker Compose builds but is not built, published, or monitored by CI.
 
 ## Updating a fork safely
 
 1. Sync the fork on GitHub, or select a specific upstream commit.
 2. Create a branch in this repository.
-3. Change only the corresponding `*_REF` value in `.github/dependencies.env`.
+3. Change only the corresponding `*_REF` value in `build/dependencies.env`.
 4. Open a pull request. CI checks the exact source layout required by the Dockerfiles, validates Compose, and builds roBrowser and rAthena.
 5. Test the PR image before merge. A merged `main` publishes immutable `sha-<repository commit>` tags plus the moving `stable` tag to GHCR.
 6. Point Compose or Kubernetes at the verified immutable image tag for production.

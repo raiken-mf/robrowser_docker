@@ -20,7 +20,7 @@ while kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; do
 done
 
 echo "==> 2. Creating hardened namespace '${NAMESPACE}'..."
-envsubst < k8s/namespace.yaml | kubectl apply -f -
+envsubst < deploy/k8s/namespace.yaml | kubectl apply -f -
 
 echo "==> 3. Deploying MariaDB..."
 ./scripts/k8s-mariadb.sh

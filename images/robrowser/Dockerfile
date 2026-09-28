@@ -42,8 +42,8 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
 
 # The package manifest and lockfile were generated for the pinned roBrowser
 # source revision. Keep them here because the upstream commit has no lockfile.
-COPY robrowser/package.json /tmp/robrowser-package.json
-COPY robrowser/package-lock.json /tmp/robrowser-package-lock.json
+COPY images/robrowser/package.json /tmp/robrowser-package.json
+COPY images/robrowser/package-lock.json /tmp/robrowser-package-lock.json
 
 # Clone pinned client sources and install reproducible frontend dependencies.
 # Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.
@@ -102,9 +102,9 @@ RedirectMatch 404 /\.git
 EOT
 
 # Copy templates, custom overrides, and startup entrypoint
-COPY robrowser/index.html.template /var/www/localhost/htdocs/index.html.template
-COPY robrowser/repository_override/ /var/www/localhost/htdocs/
-COPY robrowser/entrypoint.sh /entrypoint.sh
+COPY images/robrowser/index.html.template /var/www/localhost/htdocs/index.html.template
+COPY images/robrowser/repository_override/ /var/www/localhost/htdocs/
+COPY images/robrowser/entrypoint.sh /entrypoint.sh
 
 # Create non-root user and set permissions for runtime directories
 RUN addgroup -g 1000 robrowser && \

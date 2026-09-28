@@ -1,12 +1,12 @@
 # ==========================================
 # Existing Project Rules (Ragnarok / Client)
 # ==========================================
-/rathena/repository_override/*
-!/rathena/repository_override/put_files_to_override_here.txt
-/hercules/repository_override/*
-!/hercules/repository_override/put_files_to_override_here.txt
-/robrowser/repository_override/*
-!/robrowser/repository_override/put_files_to_override_here.txt
+/images/rathena/repository_override/*
+!/images/rathena/repository_override/put_files_to_override_here.txt
+/images/hercules/repository_override/*
+!/images/hercules/repository_override/put_files_to_override_here.txt
+/images/robrowser/repository_override/*
+!/images/robrowser/repository_override/put_files_to_override_here.txt
 /client/AI/*
 !/client/AI/add-AI-folder-files-here.txt
 /client/AI/USER_AI/*
@@ -39,7 +39,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
 dist/
 downloads/

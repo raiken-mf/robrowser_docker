@@ -43,11 +43,11 @@ kubectl create configmap robrowser-config \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 5. Applying PVCs & wsproxy..."
-envsubst < k8s/pvc-client-data.yaml | kubectl apply -f -
-envsubst < k8s/wsproxy.yaml | kubectl apply -f -
+envsubst < deploy/k8s/pvc-client-data.yaml | kubectl apply -f -
+envsubst < deploy/k8s/wsproxy.yaml | kubectl apply -f -
 
 echo "==> 6. Applying roBrowser deployment & service..."
-envsubst < k8s/robrowser.yaml | kubectl apply -f -
+envsubst < deploy/k8s/robrowser.yaml | kubectl apply -f -
 
 echo "==> 7. Restarting roBrowser rollout..."
 kubectl rollout restart deployment/robrowser -n "${NAMESPACE}"

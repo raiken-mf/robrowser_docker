@@ -71,17 +71,17 @@ kubectl create secret generic mariadb-user-secret \
 
 echo "==> 7. Applying MariaDB custom resources (templated from .env)..."
 if command -v envsubst >/dev/null 2>&1; then
-  envsubst < k8s/mariadb.yaml | kubectl apply -f -
+  envsubst < deploy/k8s/mariadb.yaml | kubectl apply -f -
 else
   # Fallback if envsubst is not installed
   python3 -c '
 import os, sys, string
-template = open("k8s/mariadb.yaml").read()
+template = open("deploy/k8s/mariadb.yaml").read()
 print(string.Template(template).safe_substitute(os.environ))
 ' | kubectl apply -f -
 fi
 
-envsubst < k8s/network-policy.yaml | kubectl apply -f -
+envsubst < deploy/k8s/network-policy.yaml | kubectl apply -f -
 
 echo "==> 8. Waiting for MariaDB instance '${MARIADB_HOST}' to become ready..."
 kubectl wait --for=condition=Ready "mariadb/${MARIADB_HOST}" -n "${NAMESPACE}" --timeout=180s

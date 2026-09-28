@@ -26,14 +26,14 @@ fi
 
 case "$EMULATOR" in
   rathena)
-    docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml up $MODE
+    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml up $MODE
     ;;
   hercules)
-    docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml up $MODE
+    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml up $MODE
     ;;
   stop)
-    docker compose -f ./docker-compose-common.yml -f ./docker-compose-rathena.yml stop
-    docker compose -f ./docker-compose-common.yml -f ./docker-compose-hercules.yml stop
+    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml stop
+    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml stop
     ;;
   *)
     echo "Usage: $0 [rathena|hercules] [detached]"

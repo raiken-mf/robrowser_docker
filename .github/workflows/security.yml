@@ -23,19 +23,19 @@ jobs:
         include:
           - name: robrowser
             context: .
-            file: robrowser/Dockerfile
+            file: images/robrowser/Dockerfile
           - name: rathena
-            context: ./rathena
-            file: rathena/Dockerfile
+            context: ./images/rathena
+            file: images/rathena/Dockerfile
           - name: wsproxy
-            context: ./wsproxy
-            file: wsproxy/Dockerfile
+            context: ./images/wsproxy
+            file: images/wsproxy/Dockerfile
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Load pinned source revisions
-        run: grep -E '^[A-Z0-9_]+=' .github/dependencies.env >> "$GITHUB_ENV"
+        run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
       - name: Build ${{ matrix.name }} image for scanning
         shell: bash
         run: |

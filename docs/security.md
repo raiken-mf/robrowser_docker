@@ -28,7 +28,7 @@ The Kubernetes deployments run containers as non-root, drop Linux capabilities, 
 
 - Base images are pinned to immutable Alpine manifest digests.
 - roBrowserLegacy, rAthena, and ROenglishRE are pinned to Git commit SHAs.
-- roBrowser's upstream revision has no lockfile. The project-owned `robrowser/package-lock.json` was generated for the pinned upstream revision and is installed with `npm ci`.
+- roBrowser's upstream revision has no lockfile. The project-owned `images/robrowser/package-lock.json` was generated for the pinned upstream revision and is installed with `npm ci`.
 - Third-party GitHub Actions are pinned to complete commit SHAs rather than mutable version tags.
 - Dependabot opens weekly reviewable pull requests for GitHub Actions, Alpine base-image digests, and the project-owned npm lockfile overlay. Review them through the same CI, security scan, and selective publish flow; do not auto-merge them blindly.
 
@@ -40,7 +40,7 @@ git clone https://github.com/raiken-mf/roBrowserLegacy.git "$workdir/robrowser"
 git -C "$workdir/robrowser" checkout --detach <new-ROBROWSER_REF>
 cd "$workdir/robrowser"
 npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-cp package-lock.json /path/to/robrowser_docker/robrowser/package-lock.json
+cp package-lock.json /path/to/robrowser_docker/images/robrowser/package-lock.json
 ```
 
 Then commit the updated dependency reference and lockfile together. CI validates that `npm ci` can consume the lockfile during the image build.

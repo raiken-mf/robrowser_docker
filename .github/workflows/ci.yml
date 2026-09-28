@@ -21,17 +21,17 @@ jobs:
           cp .env-tmpl .env
           set -a
           . .env
-          . .github/dependencies.env
+          . build/dependencies.env
           set +a
-          docker compose -f docker-compose-common.yml -f docker-compose-rathena.yml config --quiet
-          docker compose -f docker-compose-common.yml -f docker-compose-hercules.yml config --quiet
+          docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
+          docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
       - name: Build roBrowser image
         run: |
           set -a
-          . .github/dependencies.env
+          . build/dependencies.env
           set +a
           docker build \
-            -f robrowser/Dockerfile \
+            -f images/robrowser/Dockerfile \
             --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
             --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
@@ -61,14 +61,14 @@ jobs:
       - name: Build rAthena image
         run: |
           set -a
-          . .github/dependencies.env
+          . build/dependencies.env
           set +a
           docker build \
             --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
             --build-arg RATHENA_REF="$RATHENA_REF" \
-            -t rathena:ci ./rathena
+            -t rathena:ci ./images/rathena
       - name: Build wsProxy image
-        run: docker build -t wsproxy:ci ./wsproxy
+        run: docker build -t wsproxy:ci ./images/wsproxy
       - name: Smoke-test wsProxy image
         shell: bash
         run: |

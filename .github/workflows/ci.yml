@@ -16,8 +16,11 @@ jobs:
       - name: Validate pinned source layouts
         run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
       - name: Validate Docker Compose configuration
+        # The runner needs a non-secret example env file for Compose interpolation.
         run: |
+          cp .env-tmpl .env
           set -a
+          . .env
           . .github/dependencies.env
           set +a
           docker compose -f docker-compose-common.yml -f docker-compose-rathena.yml config --quiet

@@ -1,4 +1,5 @@
-FROM alpine:3.23.5
+# alpine:3.23.5 pinned by immutable multi-architecture manifest digest.
+FROM alpine:3.23.5@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
@@ -37,13 +38,18 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
     sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 
-# Clone pinned client sources and install frontend dependencies.
+# The lockfile was generated for the pinned roBrowser source revision. Keep it in
+# this repository because the upstream commit does not contain one.
+COPY robrowser/package-lock.json /tmp/robrowser-package-lock.json
+
+# Clone pinned client sources and install reproducible frontend dependencies.
 # Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.
 RUN test -n "${ROBROWSER_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
     git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
+    cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
     git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client && \
-    npm install --prefix /var/www/localhost/htdocs && \
+    npm ci --prefix /var/www/localhost/htdocs && \
     npm cache clean --force
 
 # Adjust Vite dev server configuration for container environments

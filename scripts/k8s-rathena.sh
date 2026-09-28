@@ -20,6 +20,9 @@ export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export SET_NEW_ACCOUNT="${SET_NEW_ACCOUNT:-yes}"
 export SET_PINCODE_ENABLED="${SET_PINCODE_ENABLED:-no}"
 export SET_MOTD="${SET_MOTD:-SORCERY!!!}"
+# stable follows the newest successfully published main build. Set sha-<commit>
+# to deploy or roll back to an immutable image instead.
+export RATHENA_IMAGE_TAG="${RATHENA_IMAGE_TAG:-stable}"
 
 echo "==> 2. Ensuring target namespace '${NAMESPACE}' exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -

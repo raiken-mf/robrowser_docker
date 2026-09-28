@@ -1,4 +1,5 @@
-FROM alpine:3.23.5
+# alpine:3.23.5 pinned by immutable multi-architecture manifest digest.
+FROM alpine:3.23.5@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
 
 ARG PACKETVER=20211103
 ARG SET_PRERENEWAL=0

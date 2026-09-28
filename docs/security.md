@@ -1,116 +1,40 @@
-# Security Implementation Guide
+# Image security and software inventory
 
-## Overview
+## Vulnerability scan
 
-This document outlines the security measures implemented in the robrowser_docker project and best practices for maintaining a secure deployment.
+The **Container Security** workflow runs when an image-relevant roBrowser or rAthena file changes. It builds the same pinned source revisions as CI and scans the resulting images with [Trivy](https://github.com/aquasecurity/trivy).
 
-## Security Architecture
+The scan fails on **HIGH** or **CRITICAL** vulnerabilities that have a fix available. Findings without an available fix are reported by the scanner but do not block the build; otherwise Alpine base-image findings could make routine development impossible to ship.
 
-### Container Security
+Download the `trivy-robrowser` or `trivy-rathena` artifact from the workflow run to inspect the SARIF report.
 
-All containers in the robrowser_docker project follow security best practices:
+## SBOM
 
-1. **Non-Root Execution**: All containers run as non-root users (UID 1000) to minimize privilege escalation risks
-2. **Capability Restrictions**: Containers have `capabilities: drop: [ALL]` to prevent unauthorized system calls
-3. **Runtime Security**: Kubernetes deployments utilize `seccompProfile: type: RuntimeDefault` for enhanced security
-4. **File System Permissions**: Read-only file systems are used where appropriate to prevent unauthorized modifications
+An **SBOM** (Software Bill of Materials) is an inventory of the packages contained in an image. It is useful when a vulnerability is announced later: instead of guessing whether an image contains the affected library, the SBOM identifies it.
 
-### Image Security
+The workflow creates one SPDX JSON SBOM artifact per scanned image:
 
-- **Official Images**: Core services use official images from `ghcr.io/raiken-mf/` to ensure authenticity
-- **Minimal Base Images**: Alpine Linux base images are used to reduce attack surface
-- **Local Builds**: Server components are built locally with proper security configurations
+- `sbom-robrowser`
+- `sbom-rathena`
 
-### Network Security
+The SBOM and Trivy report are workflow artifacts, not public client data and not runtime secrets.
 
-- **Restricted Access**: Services only expose necessary ports
-- **Network Policies**: Kubernetes deployments include network policies to restrict inter-service communication
-- **No Host Network**: No containers use `hostNetwork: true` to prevent host-level access
+## Reproducibility controls
 
-## Security Configuration
+- Base images are pinned to immutable Alpine manifest digests.
+- roBrowserLegacy, rAthena, and ROenglishRE are pinned to Git commit SHAs.
+- roBrowser's upstream revision has no lockfile. The project-owned `robrowser/package-lock.json` was generated for the pinned upstream revision and is installed with `npm ci`.
+- Third-party GitHub Actions are pinned to complete commit SHAs rather than mutable version tags.
 
-### Environment Variables
+When updating `ROBROWSER_REF`, regenerate the lockfile before merging:
 
-All sensitive information is managed through environment variables:
+```bash
+workdir=$(mktemp -d)
+git clone https://github.com/raiken-mf/roBrowserLegacy.git "$workdir/robrowser"
+git -C "$workdir/robrowser" checkout --detach <new-ROBROWSER_REF>
+cd "$workdir/robrowser"
+npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+cp package-lock.json /path/to/robrowser_docker/robrowser/package-lock.json
+```
 
-1. **Database Credentials**: Stored in `.env` files and Kubernetes secrets
-2. **Server Configuration**: All server settings are configurable via environment variables
-3. **Security Keys**: Packet obfuscation keys and other security parameters are environment-controlled
-
-### Kubernetes Security Context
-
-The following security contexts are implemented in Kubernetes deployments:
-
-- `runAsNonRoot: true` - Ensures containers run as non-root users
-- `runAsUser: 1000` - Sets user ID to 1000 (non-root)
-- `fsGroup: 1000` - Sets file system group to 1000
-- `allowPrivilegeEscalation: false` - Prevents privilege escalation
-- `seccompProfile: type: RuntimeDefault` - Applies default seccomp profile
-
-## Security Best Practices
-
-### For Production Deployments
-
-1. **Never Commit Secrets**: Ensure `.env` files are never committed to version control
-2. **Use Kubernetes Secrets**: For production, use Kubernetes secrets instead of environment files
-3. **Regular Updates**: Keep container images updated with security patches
-4. **Network Segmentation**: Implement proper network policies to isolate services
-5. **Access Controls**: Use Kubernetes RBAC for granular access control
-
-### For Development Environments
-
-1. **Secure Default Values**: Use secure default values in `.env-tmpl` files
-2. **Environment Isolation**: Keep development and production configurations separate
-3. **Regular Audits**: Periodically audit security configurations
-4. **Monitoring**: Implement logging and monitoring for security events
-
-## Vulnerability Management
-
-### Reporting Security Issues
-
-If you discover a security vulnerability in this project, please:
-
-1. Report it privately to the maintainers
-2. Do not create public issues or pull requests
-3. Provide detailed reproduction steps
-4. Include affected versions and potential impact
-
-### Security Updates
-
-The project follows these security update practices:
-
-1. **Regular Monitoring**: Monitor for security advisories affecting dependencies
-2. **Prompt Patching**: Apply security patches promptly when available
-3. **Version Pinning**: Pin container image versions to known secure versions
-4. **Automated Scanning**: Integrate security scanning into CI/CD pipeline
-
-## Compliance
-
-This project adheres to the following security standards:
-
-- **Minimal Privilege Principle**: All containers operate with least privilege
-- **Defense in Depth**: Multiple layers of security controls
-- **Secure by Default**: Security configurations are enabled by default
-- **Audit Ready**: All security decisions are logged and auditable
-
-## Testing Security
-
-### Security Testing Checklist
-
-- [ ] All containers run as non-root users
-- [ ] Capabilities are restricted to minimal set
-- [ ] Seccomp profiles are applied in Kubernetes
-- [ ] Environment variables are properly secured
-- [ ] Network policies are configured appropriately
-- [ ] Secrets are managed securely
-- [ ] Images are from trusted sources
-- [ ] No unnecessary packages are installed in containers
-
-### Security Scanning
-
-Recommended security scanning tools:
-
-1. **Container Scanning**: Trivy, Clair, or Anchore for container image vulnerabilities
-2. **Infrastructure Scanning**: kube-bench for Kubernetes security benchmarks
-3. **Code Analysis**: SonarQube or CodeQL for code security issues
-4. **Network Scanning**: Nmap or Nessus for network security assessment
+Then commit the updated dependency reference and lockfile together. CI validates that `npm ci` can consume the lockfile during the image build.

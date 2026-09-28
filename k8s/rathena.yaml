@@ -54,7 +54,8 @@ spec:
           command: ['sh', '-c', 'until nc -z -v -w3 ${MARIADB_HOST} 3306; do echo "Waiting for Database..."; sleep 2; done;']
       containers:
         - name: login-server
-          image: ghcr.io/raiken-mf/rathena:1.0.2-20211103-re
+          image: ghcr.io/raiken-mf/rathena:${RATHENA_IMAGE_TAG}
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -130,7 +131,8 @@ spec:
           command: ['sh', '-c', 'until nc -z -v -w3 ragnarok-login 6900; do echo "Waiting for Login Server..."; sleep 2; done;']
       containers:
         - name: char-server
-          image: ghcr.io/raiken-mf/rathena:1.0.2-20211103-re
+          image: ghcr.io/raiken-mf/rathena:${RATHENA_IMAGE_TAG}
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -206,7 +208,8 @@ spec:
           command: ['sh', '-c', 'until nc -z -v -w3 ragnarok-char 6121; do echo "Waiting for Char Server..."; sleep 2; done;']
       containers:
         - name: map-server
-          image: ghcr.io/raiken-mf/rathena:1.0.2-20211103-re
+          image: ghcr.io/raiken-mf/rathena:${RATHENA_IMAGE_TAG}
+          imagePullPolicy: Always
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

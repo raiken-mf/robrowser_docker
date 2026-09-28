@@ -33,8 +33,10 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     echo 'Header always set Access-Control-Allow-Origin "*"' >> /etc/apache2/httpd.conf && \
     echo 'Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"' >> /etc/apache2/httpd.conf && \
     echo 'Header always set Access-Control-Allow-Headers "*"' >> /etc/apache2/httpd.conf && \
-    sed -i "s/memory_limit = .*/memory_limit = 1024M/g" /etc/php84/php.ini && \
-    sed -i "s/max_execution_time = .*/max_execution_time = 600/g" /etc/php84/php.ini && \
+    PHP_INI="$(php --ini | sed -n 's/^Loaded Configuration File: *//p')" && \
+    test -f "$PHP_INI" && \
+    sed -i "s/memory_limit = .*/memory_limit = 1024M/g" "$PHP_INI" && \
+    sed -i "s/max_execution_time = .*/max_execution_time = 600/g" "$PHP_INI" && \
     sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
     sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 

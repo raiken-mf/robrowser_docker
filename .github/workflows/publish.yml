@@ -26,6 +26,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   detect-changes:
@@ -207,14 +208,32 @@ jobs:
             kustomize edit set image ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${REF}
           fi
 
-      - name: Commit and push GitOps update
+      - name: Commit and open GitOps update PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF: ${{ needs.detect-changes.outputs.ref }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add deploy/overlays/flux/kustomization.yaml
           if git diff --staged --quiet; then
             echo "No image changes to commit."
-          else
-            git commit -m "chore(gitops): bump images to sha-${{ needs.detect-changes.outputs.ref }} [skip ci]"
-            git push origin main
+            exit 0
           fi
+
+          branch="gitops/image-bump-${REF}"
+          git switch -c "$branch"
+          git commit -m "chore(gitops): bump images to sha-${REF}"
+          git push --set-upstream origin "$branch"
+          gh pr create \
+            --repo "${{ github.repository }}" \
+            --base main \
+            --head "$branch" \
+            --title "chore(gitops): bump images to sha-${REF}" \
+            --body "Update Flux image references to the successfully published, security-validated images from ${REF}."
+          gh pr merge "$branch" \
+            --repo "${{ github.repository }}" \
+            --auto \
+            --squash \
+            --delete-branch

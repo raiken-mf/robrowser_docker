@@ -45,7 +45,7 @@ kubectl create configmap rathena-config \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 4. Applying rAthena Kubernetes manifests..."
-envsubst < deploy/k8s/rathena.yaml | kubectl apply -f -
+envsubst < deploy/k8s-templates/rathena.yaml | kubectl apply -f -
 
 echo "==> 5. Waiting for Login Server rollout..."
 kubectl rollout status deployment/ragnarok-login -n "${NAMESPACE}" --timeout=120s

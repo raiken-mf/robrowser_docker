@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ragnarok-login
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-login
 spec:
@@ -19,7 +19,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ragnarok-login
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-login
 spec:
@@ -51,7 +51,7 @@ spec:
             capabilities:
               drop:
                 - ALL
-          command: ['sh', '-c', 'until nc -z -v -w3 database 3306; do echo "Waiting for Database..."; sleep 2; done;']
+          command: ['sh', '-c', 'until nc -z -v -w3 ${MARIADB_HOST} 3306; do echo "Waiting for Database..."; sleep 2; done;']
       containers:
         - name: login-server
           image: ghcr.io/raiken-mf/rathena:stable
@@ -79,7 +79,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ragnarok-char
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-char
 spec:
@@ -96,7 +96,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ragnarok-char
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-char
 spec:
@@ -156,7 +156,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ragnarok-map
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-map
 spec:
@@ -173,7 +173,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ragnarok-map
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: ragnarok-map
 spec:

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wsproxy
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: wsproxy
 spec:
@@ -76,7 +76,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: wsproxy
-  namespace: ragnarok
+  namespace: ${NAMESPACE}
   labels:
     app.kubernetes.io/name: wsproxy
 spec:
@@ -87,4 +87,4 @@ spec:
     - name: wsproxy
       port: 5999
       targetPort: 5999
-      nodePort: 30599
+      nodePort: ${PORT_WSPROXY:-30599}

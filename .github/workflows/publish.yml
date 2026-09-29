@@ -27,7 +27,7 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -104,8 +104,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.11.1
-      - name: Load pinned source revisions
-        run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
+        - name: Load pinned source revisions
+          run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
       - name: Build and push roBrowser
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.18.0
         with:
@@ -177,3 +177,42 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${{ needs.detect-changes.outputs.ref }}
             ghcr.io/${{ github.repository_owner }}/wsproxy:stable
+
+  update-gitops:
+    needs: [detect-changes, publish-robrowser, publish-rathena, publish-wsproxy]
+    if: always() && !cancelled() && (needs.publish-robrowser.result == 'success' || needs.publish-rathena.result == 'success' || needs.publish-wsproxy.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+        with:
+          ref: main
+
+      - name: Set up Kustomize
+        uses: imranismail/setup-kustomize@a749dff8ea689cbdae5287f311c13d800fc93049 # v2.1.0
+
+      - name: Update image tags in overlay
+        run: |
+          cd deploy/overlays/flux
+          REF="${{ needs.detect-changes.outputs.ref }}"
+          
+          if [ "${{ needs.publish-rathena.result }}" = "success" ]; then
+            kustomize edit set image ghcr.io/${{ github.repository_owner }}/rathena:sha-${REF}
+          fi
+          if [ "${{ needs.publish-robrowser.result }}" = "success" ]; then
+            kustomize edit set image ghcr.io/${{ github.repository_owner }}/robrowser:sha-${REF}
+          fi
+          if [ "${{ needs.publish-wsproxy.result }}" = "success" ]; then
+            kustomize edit set image ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${REF}
+          fi
+
+      - name: Commit and push GitOps update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/overlays/flux/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo "No image changes to commit."
+          else
+            git commit -m "chore(gitops): bump images to sha-${{ needs.detect-changes.outputs.ref }} [skip ci]"
+            git push origin main
+          fi

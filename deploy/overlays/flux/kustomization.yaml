@@ -93,8 +93,8 @@ patches:
 
 images:
   - name: ghcr.io/raiken-mf/rathena
-    newTag: stable # {"$imagepolicy": "flux-system:rathena:tag"}
+    newTag: stable
   - name: ghcr.io/raiken-mf/robrowser
-    newTag: stable # {"$imagepolicy": "flux-system:robrowser:tag"}
+    newTag: stable
   - name: ghcr.io/raiken-mf/wsproxy
-    newTag: stable # {"$imagepolicy": "flux-system:wsproxy:tag"}
+    newTag: stable

@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [main]
+    paths-ignore:
+      - 'clusters/**'
+      - 'deploy/**'
+      - 'scripts/**'
+      - '.gitignore'
+      - 'README.md'
+      - 'docs/**'
 
 permissions:
   contents: read

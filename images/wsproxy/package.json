@@ -6,7 +6,6 @@
     "wsproxy": "1.2.32"
   },
   "overrides": {
-    "ws": "8.21.0",
     "minimist": "1.2.6"
   }
 }

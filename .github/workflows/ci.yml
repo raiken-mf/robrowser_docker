@@ -2,6 +2,14 @@ name: CI
 
 on:
   pull_request:
+    paths:
+      - 'images/**'
+      - 'build/**'
+      - '.github/workflows/**'
+      - 'deploy/**'
+      - 'scripts/**'
+      - 'Dockerfile'
+      - '.dockerignore'
   push:
     branches: [main]
     paths-ignore:
@@ -11,6 +19,7 @@ on:
       - '.gitignore'
       - 'README.md'
       - 'docs/**'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
@@ -22,6 +31,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Validate pinned source layouts
         run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
+      - name: Validate Kustomize manifests
+        run: kubectl kustomize deploy/overlays/flux >/dev/null
       - name: Validate Docker Compose configuration
         # The runner needs a non-secret example env file for Compose interpolation.
         run: |
@@ -87,6 +98,13 @@ jobs:
             sleep 1
           done
           test -n "$(docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}')"
+          docker exec wsproxy-ci node - <<'NODE'
+          const WebSocket = require('/opt/wsproxy/node_modules/wsproxy/node_modules/ws');
+          const socket = new WebSocket('ws://127.0.0.1:5999');
+          const timeout = setTimeout(() => { console.error('WebSocket handshake timeout'); process.exit(1); }, 10000);
+          socket.on('open', () => { clearTimeout(timeout); socket.close(); });
+          socket.on('error', (error) => { clearTimeout(timeout); console.error(error); process.exit(1); });
+          NODE
       - name: Show wsProxy diagnostics
         if: always()
         run: |

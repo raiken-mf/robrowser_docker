@@ -36,7 +36,7 @@ spec:
   filterTags:
     pattern: '^sha-[a-f0-9]+'
   policy:
-    numerical:
+    alphabetical:
       order: asc
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
@@ -50,7 +50,7 @@ spec:
   filterTags:
     pattern: '^sha-[a-f0-9]+'
   policy:
-    numerical:
+    alphabetical:
       order: asc
 ---
 apiVersion: image.toolkit.fluxcd.io/v1
@@ -64,7 +64,7 @@ spec:
   filterTags:
     pattern: '^sha-[a-f0-9]+'
   policy:
-    numerical:
+    alphabetical:
       order: asc
 ---
 apiVersion: image.toolkit.fluxcd.io/v1

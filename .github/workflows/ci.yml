@@ -118,11 +118,15 @@ jobs:
             sleep 1
           done
           test -n "$(docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}')"
-          docker exec wsproxy-ci node - <<'NODE'
-          const WebSocket = require('/opt/wsproxy/node_modules/wsproxy/node_modules/ws');
-          const socket = new WebSocket('ws://127.0.0.1:5999');
+          docker exec -i wsproxy-ci node - <<'NODE'
+          const WebSocket = require('/opt/wsproxy/node_modules/ws');
+          const socket = new WebSocket('ws://127.0.0.1:5999/ragnarok-login:6900');
           const timeout = setTimeout(() => { console.error('WebSocket handshake timeout'); process.exit(1); }, 10000);
-          socket.on('open', () => { clearTimeout(timeout); socket.close(); });
+          socket.on('open', () => {
+            clearTimeout(timeout);
+            socket.close();
+            setTimeout(() => process.exit(0), 100);
+          });
           socket.on('error', (error) => { clearTimeout(timeout); console.error(error); process.exit(1); });
           NODE
       - name: Show wsProxy diagnostics

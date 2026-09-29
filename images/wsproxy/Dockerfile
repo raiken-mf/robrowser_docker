@@ -5,8 +5,9 @@ RUN apk add --no-cache nodejs npm
 
 # Install wsProxy as a project so vulnerable transitive dependencies can be
 # controlled with npm overrides instead of being hidden in a global install.
-COPY package.json package-lock.json /opt/wsproxy/
+COPY package.json package-lock.json compat.js /opt/wsproxy/
 RUN npm ci --prefix /opt/wsproxy --omit=dev --ignore-scripts && \
+    node /opt/wsproxy/compat.js && \
     npm cache clean --force
 
 RUN adduser -D -u 1000 node && \

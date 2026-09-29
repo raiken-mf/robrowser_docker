@@ -73,23 +73,6 @@ patches:
       - op: replace
         path: /spec/template/spec/initContainers/0/command/2
         value: 'until nc -z -v -w3 database 3306; do echo "Waiting for Database..."; sleep 2; done;'
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
-  - target:
-      kind: Deployment
-      name: ragnarok-char
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
-  - target:
-      kind: Deployment
-      name: ragnarok-map
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
   - target:
       kind: Service
       name: robrowser
@@ -101,23 +84,17 @@ patches:
         path: /spec/ports/1/nodePort
         value: 30080
   - target:
-      kind: Deployment
-      name: robrowser
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/robrowser:stable # {"$imagepolicy": "flux-system:robrowser:tag"}
-  - target:
       kind: Service
       name: wsproxy
     patch: |-
       - op: replace
         path: /spec/ports/0/nodePort
         value: 30599
-  - target:
-      kind: Deployment
-      name: wsproxy
-    patch: |-
-      - op: replace
-        path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/wsproxy:stable # {"$imagepolicy": "flux-system:wsproxy:tag"}
+
+images:
+  - name: ghcr.io/raiken-mf/rathena
+    newTag: stable # {"$imagepolicy": "flux-system:rathena:tag"}
+  - name: ghcr.io/raiken-mf/robrowser
+    newTag: stable # {"$imagepolicy": "flux-system:robrowser:tag"}
+  - name: ghcr.io/raiken-mf/wsproxy
+    newTag: stable # {"$imagepolicy": "flux-system:wsproxy:tag"}

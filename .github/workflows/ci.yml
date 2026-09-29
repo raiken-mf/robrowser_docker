@@ -2,14 +2,6 @@ name: CI
 
 on:
   pull_request:
-    paths:
-      - 'images/**'
-      - 'build/**'
-      - '.github/workflows/**'
-      - 'deploy/**'
-      - 'scripts/**'
-      - 'Dockerfile'
-      - '.dockerignore'
   push:
     branches: [main]
     paths-ignore:
@@ -29,11 +21,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Detect validation scope
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          printf 'Changed files:\n%s\n' "$changed"
+          if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'relevant=false' >> "$GITHUB_OUTPUT"
+          fi
       - name: Validate pinned source layouts
+        if: steps.scope.outputs.relevant == 'true'
         run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
       - name: Validate Kustomize manifests
+        if: steps.scope.outputs.relevant == 'true'
         run: kubectl kustomize deploy/overlays/flux >/dev/null
       - name: Validate Docker Compose configuration
+        if: steps.scope.outputs.relevant == 'true'
         # The runner needs a non-secret example env file for Compose interpolation.
         run: |
           cp .env-tmpl .env
@@ -44,6 +54,7 @@ jobs:
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
       - name: Build roBrowser image
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -a
           . build/dependencies.env
@@ -56,6 +67,7 @@ jobs:
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
             -t robrowser:ci .
       - name: Smoke-test roBrowser image
+        if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
           docker run -d --name robrowser-ci -p 8080:8080 -p 3000:3000 robrowser:ci
@@ -73,15 +85,16 @@ jobs:
           wait_for_http http://127.0.0.1:8080/
           wait_for_http http://127.0.0.1:3000/
       - name: Show roBrowser container diagnostics
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: |
           docker ps -a --filter name=robrowser-ci
           docker inspect robrowser-ci --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' || true
           docker logs robrowser-ci || true
       - name: Remove roBrowser smoke-test container
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: docker rm -f robrowser-ci || true
       - name: Build rAthena image
+        if: steps.scope.outputs.relevant == 'true'
         run: |
           set -a
           . build/dependencies.env
@@ -91,8 +104,10 @@ jobs:
             --build-arg RATHENA_REF="$RATHENA_REF" \
             -t rathena:ci ./images/rathena
       - name: Build wsProxy image
+        if: steps.scope.outputs.relevant == 'true'
         run: docker build -t wsproxy:ci ./images/wsproxy
       - name: Smoke-test wsProxy image
+        if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
           docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
@@ -111,10 +126,10 @@ jobs:
           socket.on('error', (error) => { clearTimeout(timeout); console.error(error); process.exit(1); });
           NODE
       - name: Show wsProxy diagnostics
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: |
           docker ps -a --filter name=wsproxy-ci
           docker logs wsproxy-ci || true
       - name: Remove wsProxy smoke-test container
-        if: always()
+        if: always() && steps.scope.outputs.relevant == 'true'
         run: docker rm -f wsproxy-ci || true

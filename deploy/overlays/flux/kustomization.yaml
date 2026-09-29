@@ -75,21 +75,21 @@ patches:
         value: 'until nc -z -v -w3 database 3306; do echo "Waiting for Database..."; sleep 2; done;'
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena"}
+        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
   - target:
       kind: Deployment
       name: ragnarok-char
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena"}
+        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
   - target:
       kind: Deployment
       name: ragnarok-map
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena"}
+        value: ghcr.io/raiken-mf/rathena:stable # {"$imagepolicy": "flux-system:rathena:tag"}
   - target:
       kind: Service
       name: robrowser
@@ -106,7 +106,7 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/robrowser:stable # {"$imagepolicy": "flux-system:robrowser"}
+        value: ghcr.io/raiken-mf/robrowser:stable # {"$imagepolicy": "flux-system:robrowser:tag"}
   - target:
       kind: Service
       name: wsproxy
@@ -120,4 +120,4 @@ patches:
     patch: |-
       - op: replace
         path: /spec/template/spec/containers/0/image
-        value: ghcr.io/raiken-mf/wsproxy:stable # {"$imagepolicy": "flux-system:wsproxy"}
+        value: ghcr.io/raiken-mf/wsproxy:stable # {"$imagepolicy": "flux-system:wsproxy:tag"}

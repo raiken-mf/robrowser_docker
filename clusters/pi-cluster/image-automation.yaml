@@ -89,5 +89,5 @@ spec:
     push:
       branch: main
   update:
-    path: ./deploy/overlays/flux
+    path: deploy/overlays/flux
     strategy: Setters

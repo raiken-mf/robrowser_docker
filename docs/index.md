@@ -102,6 +102,53 @@ All configuration is managed through the `.env` file:
 | `PORT_HTTP` | HTTP port for roBrowser | `30080` |
 | `PORT_WSPROXY` | WebSocket proxy port | `30599` |
 | `PORT_FRONTEND` | Frontend port for roBrowser | `30000` |
+| `RATHENA_IMAGE_TAG` | rAthena image tag for legacy Kubernetes scripts | `stable` |
+| `ROBROWSER_IMAGE_TAG` | roBrowser image tag for legacy Kubernetes scripts | `stable` |
+| `WSPROXY_IMAGE_TAG` | wsProxy image tag for legacy Kubernetes scripts | `stable` |
+
+### External host and ports
+
+`HOST` is embedded into the roBrowser client configuration and must be reachable from the browser used to play the game. It is used for the remote client files, the rAthena login address, and the WebSocket proxy.
+
+For local access from the same machine:
+
+```dotenv
+HOST=127.0.0.1
+```
+
+For access from another machine, use the server's LAN address or a resolvable DNS name:
+
+```dotenv
+HOST=192.168.2.210
+# or, for example: HOST=raspberrypi.local
+```
+
+Do not use internal service names such as `database` or `ragnarok-login` as `HOST`; those names are only resolvable inside the Compose or Kubernetes network.
+
+Docker Compose defaults are:
+
+- frontend: `3000`
+- client files over HTTP: `8080`
+- WebSocket proxy: `5999`
+
+The legacy Kubernetes scripts use these NodePorts by default:
+
+- frontend: `30000`
+- client files over HTTP: `30080`
+- WebSocket proxy: `30599`
+
+### Flux deployment on Kubernetes
+
+The Flux deployment uses the concrete Kustomize manifests under `deploy/k8s/` and the overlay under `deploy/overlays/flux/`. The legacy `scripts/k8s-*.sh` scripts use the configurable `deploy/k8s-templates/` files instead.
+
+For the Pi, use Flux for updates:
+
+```bash
+flux reconcile source git flux-system
+flux reconcile kustomization ragnarok-stack -n flux-system --with-source
+```
+
+Do not use `scripts/k8s-all.sh` as a routine update command: it deletes and recreates the target namespace before deploying the stack.
 
 ## Troubleshooting
 

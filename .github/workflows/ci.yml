@@ -59,14 +59,19 @@ jobs:
         shell: bash
         run: |
           docker run -d --name robrowser-ci -p 8080:8080 -p 3000:3000 robrowser:ci
-          for i in $(seq 1 30); do
-            if curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null; then
-              break
-            fi
-            sleep 2
-          done
-          curl --fail --silent --show-error http://127.0.0.1:8080/ >/dev/null
-          curl --fail --silent --show-error http://127.0.0.1:3000/ >/dev/null
+          wait_for_http() {
+            local url="$1"
+            for i in $(seq 1 30); do
+              if curl --fail --silent --show-error "$url" >/dev/null; then
+                return 0
+              fi
+              sleep 2
+            done
+            echo "Timed out waiting for $url"
+            return 1
+          }
+          wait_for_http http://127.0.0.1:8080/
+          wait_for_http http://127.0.0.1:3000/
       - name: Show roBrowser container diagnostics
         if: always()
         run: |

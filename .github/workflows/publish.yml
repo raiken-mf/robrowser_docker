@@ -190,7 +190,7 @@ jobs:
           ref: main
 
       - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@a749dff8ea689cbdae5287f311c13d800fc93049 # v2.1.0
+        uses: imranismail/setup-kustomize@2ba527d4d055ab63514ba50a99456fc35684947f # v2.1.0
 
       - name: Update image tags in overlay
         run: |

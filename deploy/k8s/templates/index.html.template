@@ -18,7 +18,7 @@
 					servers: [{
 						display:     "Demo Server",
 						desc:        "roBrowser's demo server",
-						address:     "ragnarok-login",
+						address:     "${HOST}",
 						port:        6900,
 						version:     25,
 						langtype:    12,

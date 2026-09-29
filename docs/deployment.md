@@ -115,6 +115,29 @@ The Kubernetes deployment consists of:
 
 ## Configuration Management
 
+### External host and ports
+
+`HOST` is embedded into the roBrowser client configuration. It must be reachable from the browser used to play the game. It controls the URL for the client files, the public rAthena login address, and the WebSocket proxy address.
+
+Use `HOST=127.0.0.1` only when the browser runs on the same machine as the deployment. For LAN access, set it to the server's reachable IP address or DNS name, for example `HOST=192.168.2.210` or `HOST=raspberrypi.local`.
+
+Compose defaults are frontend `3000`, HTTP/client files `8080`, and WebSocket proxy `5999`. The legacy Kubernetes scripts use NodePorts `30000`, `30080`, and `30599` respectively.
+
+Names such as `database` and `ragnarok-login` are internal Compose/Kubernetes service names and must not be used as the externally visible `HOST`.
+
+### Flux updates on the Pi
+
+The Flux deployment uses the concrete Kustomize base in `deploy/k8s/` and the overlay in `deploy/overlays/flux/`. The legacy `scripts/k8s-*.sh` scripts use the configurable templates in `deploy/k8s-templates/`.
+
+For routine Pi updates, reconcile Flux:
+
+```bash
+flux reconcile source git flux-system
+flux reconcile kustomization ragnarok-stack -n flux-system --with-source
+```
+
+Do not use `scripts/k8s-all.sh` for routine updates: it deletes and recreates the target namespace.
+
 ### Environment Variables
 
 All configuration is managed through the `.env` file:

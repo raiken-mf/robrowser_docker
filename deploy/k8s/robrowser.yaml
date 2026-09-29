@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: robrowser
-          image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG}
+          image: ghcr.io/raiken-mf/robrowser:stable
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
           securityContext:

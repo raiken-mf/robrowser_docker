@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: wsproxy
-          image: ghcr.io/raiken-mf/wsproxy:${WSPROXY_IMAGE_TAG}
+          image: ghcr.io/raiken-mf/wsproxy:stable
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
           securityContext:

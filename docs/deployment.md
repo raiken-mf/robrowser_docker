@@ -117,7 +117,7 @@ The Kubernetes deployment consists of:
 
 ### External host and ports
 
-`HOST` is embedded into the roBrowser client configuration. It must be reachable from the browser used to play the game. It controls the URL for the client files, the public rAthena login address, and the WebSocket proxy address.
+`HOST` is embedded into the roBrowser client configuration. It must be reachable from the browser used to play the game. It controls the URL for the client files and the WebSocket proxy address. The login server address in the client is the internal service name `ragnarok-login`; wsProxy routes that connection inside the Compose/Kubernetes network. The rAthena login, character, and map ports are internal services and are not exposed as Kubernetes NodePorts.
 
 Use `HOST=127.0.0.1` only when the browser runs on the same machine as the deployment. For LAN access, set it to the server's reachable IP address or DNS name, for example `HOST=192.168.2.210` or `HOST=raspberrypi.local`.
 

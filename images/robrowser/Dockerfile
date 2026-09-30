@@ -3,6 +3,8 @@ FROM alpine:3.23.6@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
+ARG REMOTECLIENT_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git
+ARG REMOTECLIENT_REF
 ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
 ARG ROENGLISH_REF
 
@@ -47,12 +49,13 @@ COPY images/robrowser/package-lock.json /tmp/robrowser-package-lock.json
 
 # Clone pinned client sources and install reproducible frontend dependencies.
 # Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.
-RUN test -n "${ROBROWSER_REF}" && test -n "${ROENGLISH_REF}" && \
+RUN test -n "${ROBROWSER_REF}" && test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
     git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
     cp /tmp/robrowser-package.json /var/www/localhost/htdocs/package.json && \
     cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
-    git clone --depth=1 https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git /var/www/localhost/htdocs/client && \
+    git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/client && \
+    git -C /var/www/localhost/htdocs/client checkout --detach "${REMOTECLIENT_REF}" && \
     npm ci --prefix /var/www/localhost/htdocs && \
     npm cache clean --force
 

@@ -49,9 +49,11 @@ services:
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
-        ROBROWSER_REF: ${ROBROWSER_REF:-2f114a1f3dc0e9721e45c4731420ee2417e00fe4}
+        ROBROWSER_REF: ${ROBROWSER_REF:-58759ab22d1d56da7f6719ee45cb475f7e851227}
+        REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
+        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-00f78d4147324b7a8773e5d59f7df4f772f08928}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
-        ROENGLISH_REF: ${ROENGLISH_REF:-fc674823d7830d0ff75b73c79c99caf640af5a0e}
+        ROENGLISH_REF: ${ROENGLISH_REF:-85f216a230bf9180451fa29a37505baeb676c559}
     tty: true
     depends_on:
       - wsproxy

@@ -3,42 +3,110 @@ name: Check Fork Updates
 on:
   workflow_dispatch:
   schedule:
-    - cron: '23 6 * * 1'
+    - cron: '23 */6 * * *'
 
 permissions:
   contents: read
-  issues: write
+
+concurrency:
+  group: upstream-dependency-update
+  cancel-in-progress: false
 
 jobs:
-  check:
+  update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Check whether pinned revisions still exist
-        run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
-      - name: Report newer fork heads
+      - name: Require PR token
         env:
-          GH_TOKEN: ${{ github.token }}
+          TOKEN: ${{ secrets.UPSTREAM_PR_TOKEN }}
         run: |
-          set -a
-          . build/dependencies.env
-          set +a
-          changed=""
-          for dependency in ROBROWSER RATHENA ROENGLISH; do
-            eval "repo=\${${dependency}_REPOSITORY}"
-            eval "pinned=\${${dependency}_REF}"
-            head=$(git ls-remote "$repo" HEAD | awk '{print $1}')
-            if [ "$head" != "$pinned" ]; then
-              changed="$changed\n- $dependency: pinned \`$pinned\`, fork head \`$head\`"
+          if [ -z "$TOKEN" ]; then
+            echo "Missing repository secret UPSTREAM_PR_TOKEN. Add a fine-grained token with Contents: Read and write, Pull requests: Read and write." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          token: ${{ secrets.UPSTREAM_PR_TOKEN }}
+          fetch-depth: 0
+
+      - name: Find newer fork heads and update pins
+        id: update
+        shell: bash
+        run: |
+          set -euo pipefail
+          source build/dependencies.env
+          changed=()
+          update_pin() {
+            local name="$1" repo="$2" old="$3"
+            local head
+            head=$(git ls-remote "$repo" HEAD | awk 'NR == 1 {print $1}')
+            if [[ ! "$head" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Could not resolve HEAD for $name ($repo)" >&2
+              exit 1
             fi
-          done
-          if [ -n "$changed" ]; then
-            title='Fork updates are available'
-            body="Do not sync blindly. Create a PR that updates the relevant pinned SHA in build/dependencies.env; CI validates required layouts and builds the images.\n$changed"
-            existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number')
-            if [ -n "$existing" ]; then
-              gh issue comment "$existing" --body "$body"
-            else
-              gh issue create --title "$title" --body "$body"
+            if [ "$head" != "$old" ]; then
+              python3 - "$name" "$head" build/dependencies.env <<'PY'
+          import pathlib, re, sys
+          key, value, filename = sys.argv[1], sys.argv[2], sys.argv[3]
+          path = pathlib.Path(filename)
+          text = path.read_text()
+          updated, count = re.subn(rf'(?m)^{re.escape(key)}_REF=.*$', f'{key}_REF={value}', text)
+          if count != 1:
+              raise SystemExit(f'Expected one {key}_REF entry, found {count}')
+          path.write_text(updated)
+          PY
+              changed+=("$name: $old -> $head")
             fi
+          }
+
+          update_pin ROBROWSER "$ROBROWSER_REPOSITORY" "$ROBROWSER_REF"
+          update_pin REMOTECLIENT "$REMOTECLIENT_REPOSITORY" "$REMOTECLIENT_REF"
+          update_pin RATHENA "$RATHENA_REPOSITORY" "$RATHENA_REF"
+          update_pin ROENGLISH "$ROENGLISH_REPOSITORY" "$ROENGLISH_REF"
+
+          if [ ${#changed[@]} -eq 0 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "All four forks are already pinned to their current default-branch heads."
+            exit 0
+          fi
+          {
+            echo "changed=true"
+            echo 'summary<<EOF'
+            printf '%s\n' "${changed[@]}"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
+          printf 'Detected upstream updates:\n%s\n' "${changed[@]}"
+
+      - name: Validate layouts at candidate revisions
+        if: steps.update.outputs.changed == 'true'
+        run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
+
+      - name: Create or update dependency update PR
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.UPSTREAM_PR_TOKEN }}
+          SUMMARY: ${{ steps.update.outputs.summary }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          branch='automation/upstream-dependency-update'
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add build/dependencies.env
+          git commit -m 'chore(deps): update fork pins' || {
+            echo 'No pin changes to commit.'
+            exit 0
+          }
+          git push --force origin "HEAD:refs/heads/$branch"
+          if ! gh pr view "$branch" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh pr create \
+              --repo "$REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --title 'chore(deps): update fork pins' \
+              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
+          else
+            gh pr edit "$branch" --repo "$REPOSITORY" \
+              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
           fi

@@ -108,5 +108,10 @@ jobs:
               --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
           else
             gh pr edit "$branch" --repo "$REPOSITORY" \
-              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
+              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images. After CI passes, this PR auto-merges; the existing security, publish, and Flux workflows then control image rollout.\n\nDetected updates:\n$SUMMARY"
           fi
+          gh pr merge "$branch" \
+            --repo "$REPOSITORY" \
+            --auto \
+            --squash \
+            --delete-branch

@@ -117,6 +117,8 @@ jobs:
           build-args: |
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
+            REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
+            REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}
             ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}
             ROENGLISH_REF=${{ env.ROENGLISH_REF }}
 

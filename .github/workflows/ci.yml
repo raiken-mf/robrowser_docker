@@ -63,6 +63,8 @@ jobs:
             -f images/robrowser/Dockerfile \
             --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
+            --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
+            --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
             --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
             -t robrowser:ci .

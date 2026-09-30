@@ -26,6 +26,8 @@ spec:
           image: ghcr.io/raiken-mf/wsproxy:stable
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
+          # Match the Compose allow-list: only proxy to this stack's internal game services.
+          args: ["-a", "ragnarok-login:6900,ragnarok-char:6121,ragnarok-map:5121"]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -35,18 +37,6 @@ spec:
           env:
             - name: PORT
               value: "5999"
-            - name: RAG_LOGIN_HOST
-              value: "ragnarok-login"
-            - name: RAG_LOGIN_PORT
-              value: "6900"
-            - name: RAG_CHAR_HOST
-              value: "ragnarok-char"
-            - name: RAG_CHAR_PORT
-              value: "6121"
-            - name: RAG_MAP_HOST
-              value: "ragnarok-map"
-            - name: RAG_MAP_PORT
-              value: "5121"
           ports:
             - containerPort: 5999
               name: wsproxy

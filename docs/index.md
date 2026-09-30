@@ -108,7 +108,7 @@ All configuration is managed through the `.env` file:
 
 ### External host and ports
 
-`HOST` is embedded into the roBrowser client configuration and must be reachable from the browser used to play the game. It is used for the remote client files, the rAthena login address, and the WebSocket proxy.
+`HOST` is embedded into the roBrowser client configuration and must be reachable from the browser used to play the game. It is used for the remote client files and the WebSocket proxy. The rAthena login address is the internal service name `ragnarok-login`, which wsProxy resolves inside the Compose/Kubernetes network; the login, character, and map ports are not exposed as Kubernetes NodePorts.
 
 For local access from the same machine:
 

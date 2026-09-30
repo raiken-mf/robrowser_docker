@@ -72,7 +72,11 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
-          docker run -d --name robrowser-ci -p 8080:8080 -p 3000:3000 robrowser:ci
+          docker run -d --name robrowser-ci \
+            -e HOST=ro.example.test \
+            -e PORT_HTTP=30080 \
+            -e PORT_WSPROXY=30599 \
+            -p 8080:8080 -p 3000:3000 robrowser:ci
           wait_for_http() {
             local url="$1"
             for i in $(seq 1 30); do
@@ -86,6 +90,10 @@ jobs:
           }
           wait_for_http http://127.0.0.1:8080/
           wait_for_http http://127.0.0.1:3000/
+          curl --fail --silent --show-error http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
+          grep -Fq 'remoteClient:  "http://ro.example.test:30080/client/"' /tmp/robrowser-index.html
+          grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
+          grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/robrowser-index.html
           module_url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
           for i in $(seq 1 30); do
             module_status=$(curl --silent --output /tmp/gr2-module.js --write-out '%{http_code}' "$module_url" || true)

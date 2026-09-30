@@ -18,7 +18,8 @@
 					servers: [{
 						display:     "Demo Server",
 						desc:        "roBrowser's demo server",
-						address:     "${HOST}",
+						// wsProxy resolves this service name inside the Compose/Kubernetes network.
+						address:     "ragnarok-login",
 						port:        6900,
 						version:     25,
 						langtype:    12,

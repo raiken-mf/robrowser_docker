@@ -86,6 +86,23 @@ jobs:
           }
           wait_for_http http://127.0.0.1:8080/
           wait_for_http http://127.0.0.1:3000/
+          module_url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
+          for i in $(seq 1 30); do
+            module_status=$(curl --silent --output /tmp/gr2-module.js --write-out '%{http_code}' "$module_url" || true)
+            if [ "$module_status" = '200' ] && grep -q 'granny-ro-js_wasm' /tmp/gr2-module.js; then
+              break
+            fi
+            sleep 2
+          done
+          test "$module_status" = '200' || { echo "GR2 module request returned HTTP $module_status" >&2; cat /tmp/gr2-module.js; exit 1; }
+          module=$(cat /tmp/gr2-module.js)
+          grep -q 'granny-ro-js_wasm' <<< "$module"
+          grep -q 'parseAnimated' <<< "$module"
+          grep -q 'poseAt' <<< "$module"
+          if grep -q 'Failed to resolve import' <<< "$module"; then
+            echo 'Vite returned an unresolved-import overlay for the GR2 renderer.' >&2
+            exit 1
+          fi
       - name: Show roBrowser container diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
         run: |

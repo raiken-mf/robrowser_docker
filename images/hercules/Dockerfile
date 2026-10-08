@@ -11,11 +11,14 @@ ARG PACKET_OBFUSCATION_KEY3=0x0A3D5C0D
 ENV PACKETVER=$PACKETVER
 ENV SET_PRERENEWAL=$SET_PRERENEWAL
 
+# zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
+# drop this once alpine:3.24.2 ships zlib >= 1.3.2-r1 by default.
 RUN addgroup -S ragnarok && adduser -S ragnarok -G ragnarok && \
     apk add --no-cache \
       patch git make gcc g++ \
       mariadb-dev mariadb-connector-c mariadb-client \
-      zlib-dev pcre-dev pcre libstdc++ linux-headers
+      zlib-dev pcre-dev pcre libstdc++ linux-headers && \
+    apk upgrade --no-cache zlib
 
 # Build from an explicit revision so a fork sync cannot silently change an image.
 RUN test -n "${HERCULES_REF}" && \

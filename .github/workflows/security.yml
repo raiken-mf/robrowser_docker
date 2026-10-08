@@ -65,6 +65,9 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+          # With SARIF output, trivy-action otherwise ignores the severity
+          # filter and the gate would also fail on MEDIUM/LOW findings.
+          limit-severities-for-sarif: true
       - name: Upload ${{ matrix.name }} scan report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

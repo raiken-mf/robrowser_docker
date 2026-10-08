@@ -9,6 +9,8 @@ ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
 ARG ROENGLISH_REF
 
 # Install runtime/build packages from the pinned Alpine release.
+# zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
+# drop this once alpine:3.23.6 ships zlib >= 1.3.2-r1 by default.
 RUN apk add --no-cache \
     apache2 \
     php \
@@ -21,6 +23,7 @@ RUN apk add --no-cache \
     npm \
     git \
     gettext \
+    && apk upgrade --no-cache zlib \
     && rm -rf /var/www/localhost/htdocs/*
 
 # Configure Apache to unprivileged port 8080 & PHP runtime settings

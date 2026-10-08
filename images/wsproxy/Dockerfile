@@ -1,7 +1,10 @@
 # alpine:3.24.2 pinned by immutable multi-architecture manifest digest.
 FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
-RUN apk add --no-cache nodejs npm
+# zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
+# drop this once alpine:3.24.2 ships zlib >= 1.3.2-r1 by default.
+RUN apk add --no-cache nodejs npm \
+    && apk upgrade --no-cache zlib
 
 # Install wsProxy as a project so vulnerable transitive dependencies can be
 # controlled with npm overrides instead of being hidden in a global install.

@@ -8,8 +8,8 @@ resources:
 
 images:
 - name: ghcr.io/raiken-mf/rathena
-  newTag: sha-19804a29267c60d59c2a712abef283c9ae418723
+  newTag: sha-17224bf9be08d42014ad2844007e5feb7a271d23
 - name: ghcr.io/raiken-mf/robrowser
-  newTag: sha-0ffadc544b2ed3ee7f1ab28299b887c7a15eca97
+  newTag: sha-17224bf9be08d42014ad2844007e5feb7a271d23
 - name: ghcr.io/raiken-mf/wsproxy
-  newTag: sha-95d9c10247fa7fe64cf8ba37ca455b2648e748d1
+  newTag: sha-17224bf9be08d42014ad2844007e5feb7a271d23

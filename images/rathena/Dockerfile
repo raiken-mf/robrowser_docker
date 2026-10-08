@@ -1,4 +1,4 @@
-# alpine:3.23.6 pinned by immutable multi-architecture manifest digest.
+# alpine:3.24.2 pinned by immutable multi-architecture manifest digest.
 FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
 
 ARG PACKETVER=20211103
@@ -15,10 +15,13 @@ ENV SET_PRERENEWAL=$SET_PRERENEWAL
 RUN addgroup -g 1000 ragnarok && adduser -u 1000 -G ragnarok -D ragnarok
 
 # Install build/runtime packages from the pinned Alpine release.
+# zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
+# drop this once alpine:3.24.2 ships zlib >= 1.3.2-r1 by default.
 RUN apk add --no-cache \
     patch git make gcc g++ \
     mariadb-dev mariadb-connector-c mariadb-client \
-    zlib-dev pcre-dev pcre libstdc++ linux-headers
+    zlib-dev pcre-dev pcre libstdc++ linux-headers \
+    && apk upgrade --no-cache zlib
 
 # Build from an explicit revision so a fork sync cannot silently change an image.
 RUN test -n "${RATHENA_REF}" && \

@@ -33,3 +33,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+
+  # The project-owned manifest/lockfile overlay for the wsproxy install.
+  - package-ecosystem: npm
+    directory: /images/wsproxy
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

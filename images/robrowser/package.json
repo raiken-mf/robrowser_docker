@@ -51,7 +51,7 @@
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
-    "jsdom": "^29.0.1",
+    "jsdom": "^30.1.2",
     "lodash": "^4.17.23",
     "prettier": "^3.8.1",
     "sharp": "^0.35.4",

@@ -2,19 +2,26 @@
 
 dir="$(dirname "$0")"
 
-# Check if docker is available
+# Install Docker only when it is not already available.
+if ! command -v docker &> /dev/null; then
+    "$dir/scripts/install_docker.sh" || exit 1
+fi
+
+# Check if docker and docker compose are available after installation.
 if ! command -v docker &> /dev/null; then
     echo "Error: Docker is not installed or not in PATH"
     exit 1
 fi
-
-# Check if docker compose is available
-if ! command -v docker &> /dev/null || ! docker compose version &> /dev/null; then
+if ! docker compose version &> /dev/null; then
     echo "Error: Docker Compose is not installed or not in PATH"
     exit 1
 fi
 
-"$dir/scripts/install_docker.sh"
+# Verify the Docker daemon is actually reachable (CLI presence alone is not enough).
+if ! docker info &> /dev/null; then
+    echo "Error: Docker daemon is not reachable. Is the Docker service running (and do you have permission to access it)?"
+    exit 1
+fi
 
 EMULATOR=${1:-rathena}
 EMULATOR=$(echo "$EMULATOR" | tr '[:upper:]' '[:lower:]')

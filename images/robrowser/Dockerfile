@@ -13,18 +13,26 @@ ARG ROENGLISH_REF
 # drop this once alpine:3.23.6 ships zlib >= 1.3.2-r1 by default.
 RUN apk add --no-cache \
     apache2 \
-    php \
-    php-apache2 \
-    php-mbstring \
-    php-iconv \
-    php-gd \
-    php-zlib \
+    'php84>=8.4.27' \
+    php84-apache2 \
+    php84-mbstring \
+    php84-iconv \
+    php84-gd \
+    php84-zlib \
     nodejs \
     npm \
     git \
     gettext \
     && apk upgrade --no-cache zlib \
     && rm -rf /var/www/localhost/htdocs/*
+
+# Stay on PHP 8.4 while accepting patched releases from Alpine. Reject old
+# packages even if the package selection or repository configuration changes.
+RUN php -r 'if (PHP_VERSION_ID < 80427 || PHP_VERSION_ID >= 80500) { fwrite(STDERR, "PHP 8.4.27 or newer in the 8.4 branch is required\n"); exit(1); }'
+COPY images/robrowser/security.ini /etc/php84/conf.d/99-robrowser-security.ini
+# Alpine packages the session extension separately; also check the configured
+# value when the extension is absent so installing it later remains safe.
+RUN php -r 'if (get_cfg_var("session.upload_progress.enabled") !== "0" || (extension_loaded("session") && ini_get("session.upload_progress.enabled") !== "0")) { fwrite(STDERR, "Session upload progress must be disabled\n"); exit(1); }'
 
 # Configure Apache to unprivileged port 8080 & PHP runtime settings
 RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \

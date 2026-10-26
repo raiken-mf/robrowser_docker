@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.name }}" = robrowser ]; then
-            docker build -f "${{ matrix.file }}" \
+            docker build --no-cache -f "${{ matrix.file }}" \
               --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
               --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
               --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \

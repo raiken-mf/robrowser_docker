@@ -7,11 +7,9 @@ on:
     paths-ignore:
       - 'clusters/**'
       - 'deploy/**'
-      - 'scripts/**'
       - '.gitignore'
       - 'README.md'
       - 'docs/**'
-      - '.github/workflows/**'
 
 permissions:
   contents: read
@@ -26,10 +24,19 @@ jobs:
       - name: Detect validation scope
         id: scope
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            echo 'No valid comparison base; running full validation.'
+            echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            changed=$(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          else
+            changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          fi
           printf 'Changed files:\n%s\n' "$changed"
           if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
@@ -59,7 +66,7 @@ jobs:
           set -a
           . build/dependencies.env
           set +a
-          docker build \
+          docker build --no-cache \
             -f images/robrowser/Dockerfile \
             --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
@@ -90,6 +97,10 @@ jobs:
           }
           wait_for_http http://127.0.0.1:8080/
           wait_for_http http://127.0.0.1:3000/
+          docker cp scripts/check-php.php robrowser-ci:/var/www/localhost/htdocs/ci-php-check.php
+          curl --fail --silent --show-error http://127.0.0.1:8080/ci-php-check.php | \
+            grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
+          docker exec robrowser-ci rm /var/www/localhost/htdocs/ci-php-check.php
           curl --fail --silent --show-error http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
           grep -Fq 'remoteClient:  "http://ro.example.test:30080/client/"' /tmp/robrowser-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
@@ -138,24 +149,7 @@ jobs:
         shell: bash
         run: |
           docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
-          for i in $(seq 1 15); do
-            if docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}' | grep -q .; then
-              break
-            fi
-            sleep 1
-          done
-          test -n "$(docker ps --filter name=wsproxy-ci --filter status=running --format '{{.ID}}')"
-          docker exec -i wsproxy-ci node - <<'NODE'
-          const WebSocket = require('/opt/wsproxy/node_modules/ws');
-          const socket = new WebSocket('ws://127.0.0.1:5999/ragnarok-login:6900');
-          const timeout = setTimeout(() => { console.error('WebSocket handshake timeout'); process.exit(1); }, 10000);
-          socket.on('open', () => {
-            clearTimeout(timeout);
-            socket.close();
-            setTimeout(() => process.exit(0), 100);
-          });
-          socket.on('error', (error) => { clearTimeout(timeout); console.error(error); process.exit(1); });
-          NODE
+          docker exec -i wsproxy-ci node - < scripts/check-wsproxy.cjs
       - name: Show wsProxy diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
         run: |

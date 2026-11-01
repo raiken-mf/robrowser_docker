@@ -69,6 +69,7 @@ RUN test -n "${ROBROWSER_REF}" && test -n "${REMOTECLIENT_REF}" && test -n "${RO
     cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
     git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/client && \
     git -C /var/www/localhost/htdocs/client checkout --detach "${REMOTECLIENT_REF}" && \
+    rm -f /var/www/localhost/htdocs/client/.htaccess && \
     npm ci --prefix /var/www/localhost/htdocs && \
     npm cache clean --force
 
@@ -80,22 +81,25 @@ ARG SET_PRERENEWAL
 RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
     git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
     test -d /opt/translation/Translation && \
-    mkdir -p /var/www/localhost/htdocs/client/data /var/www/localhost/htdocs/client/System && \
+    mkdir -p /var/www/localhost/htdocs/client/data /var/www/localhost/htdocs/client/system && \
     if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
         if [ -d "/opt/translation/Translation/Pre-Renewal/data" ]; then \
             cp -rf /opt/translation/Translation/Pre-Renewal/data/* /var/www/localhost/htdocs/client/data/; \
         fi; \
         if [ -d "/opt/translation/Translation/Pre-Renewal/SystemEN" ]; then \
-            cp -rf /opt/translation/Translation/Pre-Renewal/SystemEN/* /var/www/localhost/htdocs/client/System/; \
+            cp -rf /opt/translation/Translation/Pre-Renewal/SystemEN/* /var/www/localhost/htdocs/client/system/; \
+        elif [ -d "/opt/translation/Translation/Pre-Renewal/system" ]; then \
+            cp -rf /opt/translation/Translation/Pre-Renewal/system/* /var/www/localhost/htdocs/client/system/; \
         fi; \
     else \
         if [ -d "/opt/translation/Translation/Renewal/data" ]; then \
             cp -rf /opt/translation/Translation/Renewal/data/* /var/www/localhost/htdocs/client/data/; \
         fi; \
         if [ -d "/opt/translation/Translation/Renewal/SystemEN" ]; then \
-            cp -rf /opt/translation/Translation/Renewal/SystemEN/* /var/www/localhost/htdocs/client/System/; \
+            cp -rf /opt/translation/Translation/Renewal/SystemEN/* /var/www/localhost/htdocs/client/system/; \
+        elif [ -d "/opt/translation/Translation/Renewal/system" ]; then \
+            cp -rf /opt/translation/Translation/Renewal/system/* /var/www/localhost/htdocs/client/system/; \
         fi; \
-        sed -i 's/itemInfo.lub/itemInfo_EN.lua/g' /var/www/localhost/htdocs/src/DB/DBManager.js; \
     fi && \
     rm -rf /opt/translation
 

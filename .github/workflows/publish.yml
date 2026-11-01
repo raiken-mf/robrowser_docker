@@ -1,27 +1,8 @@
 name: Publish Images
 
+# Only reusable invocation from CI is permitted. No manual security bypass.
 on:
-  workflow_run:
-    workflows: [Container Security]
-    branches: [main]
-    types: [completed]
-  workflow_dispatch:
-    inputs:
-      publish_robrowser:
-        description: Publish roBrowser regardless of changed files
-        required: true
-        default: true
-        type: boolean
-      publish_rathena:
-        description: Publish rAthena regardless of changed files
-        required: true
-        default: true
-        type: boolean
-      publish_wsproxy:
-        description: Publish wsProxy regardless of changed files
-        required: true
-        default: true
-        type: boolean
+  workflow_call:
 
 permissions:
   actions: read
@@ -29,409 +10,111 @@ permissions:
   packages: write
   pull-requests: write
 
-concurrency:
-  group: publish-images-main
-  cancel-in-progress: false
-
 jobs:
-  detect-changes:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+  promote-and-update-gitops:
     runs-on: ubuntu-latest
-
-    outputs:
-      robrowser: ${{ steps.filter.outputs.robrowser }}
-      rathena: ${{ steps.filter.outputs.rathena }}
-      wsproxy: ${{ steps.filter.outputs.wsproxy }}
-      ref: ${{ steps.ref.outputs.ref }}
-
-    steps:
-      - name: Resolve security-validated revision
-        id: ref
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          SECURITY_SHA: ${{ github.event.workflow_run.head_sha }}
-          DISPATCH_SHA: ${{ github.sha }}
-        run: |
-          if [ "$EVENT_NAME" = workflow_run ]; then
-            echo "ref=$SECURITY_SHA" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=$DISPATCH_SHA" >> "$GITHUB_OUTPUT"
-          fi
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
-        with:
-          ref: ${{ steps.ref.outputs.ref }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Verify validated revision
-        if: github.event_name == 'workflow_run'
-        env:
-          VALIDATED_SHA: ${{ steps.ref.outputs.ref }}
-        run: |
-          set -euo pipefail
-
-          git fetch origin main
-          CURRENT_SHA=$(git rev-parse origin/main)
-
-          if [ "$VALIDATED_SHA" != "$CURRENT_SHA" ]; then
-            echo "::error::Validated commit is no longer main HEAD"
-            exit 1
-          fi
-
-      - name: Detect image-relevant changes
-        id: filter
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          EVENT_NAME: ${{ github.event_name }}
-          FORCE_ROBROWSER: ${{ inputs.publish_robrowser || false }}
-          FORCE_RATHENA: ${{ inputs.publish_rathena || false }}
-          FORCE_WSPROXY: ${{ inputs.publish_wsproxy || false }}
-        run: |
-          set -euo pipefail
-
-          if [ "$EVENT_NAME" = workflow_dispatch ]; then
-            {
-              echo "robrowser=$FORCE_ROBROWSER"
-              echo "rathena=$FORCE_RATHENA"
-              echo "wsproxy=$FORCE_WSPROXY"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Find the last published commit recorded for this image.
-          # Never use the publish workflow's head_sha as proof.
-          last_published_sha() {
-            local image="$1"
-            local id artifact_count base record
-            local tmpdir
-            tmpdir=$(mktemp -d)
-
-            while IFS= read -r id; do
-              [ -n "$id" ] || continue
-
-              artifact_count=$(gh api \
-                "repos/$GH_REPO/actions/runs/$id/artifacts?per_page=100" \
-                --jq "[.artifacts[] | select(.name == \"published-$image\" and .expired == false)] | length") || {
-                  rm -rf "$tmpdir"
-                  return 1
-                }
-
-              if [ "$artifact_count" != "1" ]; then
-                continue
-              fi
-
-              mkdir -p "$tmpdir/$id"
-
-              if ! gh run download "$id" \
-                --repo "$GH_REPO" \
-                --name "published-$image" \
-                --dir "$tmpdir/$id"; then
-                rm -rf "$tmpdir"
-                return 1
-              fi
-
-              record="$tmpdir/$id/published.txt"
-              if [ ! -f "$record" ]; then
-                rm -rf "$tmpdir"
-                return 1
-              fi
-
-              base=$(sed -n 's/^commit=//p' "$record" | head -n 1)
-
-              if [[ "$base" =~ ^[0-9a-f]{40}$ ]] &&
-                 git cat-file -e "$base^{commit}" 2>/dev/null &&
-                 git merge-base --is-ancestor "$base" HEAD; then
-                echo "$base"
-                rm -rf "$tmpdir"
-                return 0
-              fi
-
-              rm -rf "$tmpdir"
-              return 1
-
-            done < <(
-              gh api \
-                "repos/$GH_REPO/actions/workflows/publish.yml/runs?branch=main&status=success&per_page=100" \
-                --jq '.workflow_runs[].id'
-            )
-
-            rm -rf "$tmpdir"
-            return 1
-          }
-
-          check_image() {
-            local image="$1"
-            shift
-            local base
-
-            base=$(last_published_sha "$image") || base=""
-
-            if [ -z "$base" ]; then
-              echo "$image=true" >> "$GITHUB_OUTPUT"
-              echo "$image: No publish record found, rebuilding."
-              return 0
-            fi
-
-            if git diff --quiet "$base" HEAD -- "$@"; then
-              echo "$image=false" >> "$GITHUB_OUTPUT"
-              echo "$image: Unchanged, skipping."
-            else
-              echo "$image=true" >> "$GITHUB_OUTPUT"
-              echo "$image: Changes detected, rebuilding."
-            fi
-          }
-
-          check_image robrowser \
-            images/robrowser/ \
-            .dockerignore \
-            build/dependencies.env
-
-          check_image rathena \
-            images/rathena/ \
-            build/dependencies.env
-
-          check_image wsproxy \
-            images/wsproxy/ \
-            .dockerignore
-
-  publish-robrowser:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.robrowser == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
-        with:
-          ref: ${{ needs.detect-changes.outputs.ref }}
-
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3.5.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
-
-      - name: Load pinned source revisions
-        run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
-
-      - name: Build and push roBrowser
-        id: build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
-        with:
-          context: .
-          file: images/robrowser/Dockerfile
-          no-cache: true
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/robrowser:sha-${{ needs.detect-changes.outputs.ref }}
-            ghcr.io/${{ github.repository_owner }}/robrowser:stable
-          build-args: |
-            ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
-            ROBROWSER_REF=${{ env.ROBROWSER_REF }}
-            REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
-            REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}
-            ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}
-            ROENGLISH_REF=${{ env.ROENGLISH_REF }}
-
-      - name: Record published roBrowser
-        env:
-          REF: ${{ needs.detect-changes.outputs.ref }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          test -n "$DIGEST"
-          printf 'commit=%s\ndigest=%s\n' \
-            "$REF" "$DIGEST" > published.txt
-
-      - name: Upload roBrowser publish record
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: published-robrowser
-          path: published.txt
-          retention-days: 90
-          if-no-files-found: error
-
-  publish-rathena:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.rathena == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
-        with:
-          ref: ${{ needs.detect-changes.outputs.ref }}
-
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3.5.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
-
-      - name: Load pinned source revisions
-        run: grep -E '^RATHENA_(REPOSITORY|REF)=' build/dependencies.env >> "$GITHUB_ENV"
-
-      - name: Build and push rAthena
-        id: build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
-        with:
-          context: ./images/rathena
-          platforms: linux/amd64,linux/arm64
-          push: true
-          cache-from: type=gha,scope=rathena
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/rathena:sha-${{ needs.detect-changes.outputs.ref }}
-            ghcr.io/${{ github.repository_owner }}/rathena:stable
-          build-args: |
-            RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
-            RATHENA_REF=${{ env.RATHENA_REF }}
-
-      - name: Record published rAthena
-        env:
-          REF: ${{ needs.detect-changes.outputs.ref }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          test -n "$DIGEST"
-          printf 'commit=%s\ndigest=%s\n' \
-            "$REF" "$DIGEST" > published.txt
-
-      - name: Upload rAthena publish record
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: published-rathena
-          path: published.txt
-          retention-days: 90
-          if-no-files-found: error
-
-  publish-wsproxy:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.wsproxy == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
-        with:
-          ref: ${{ needs.detect-changes.outputs.ref }}
-
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3.5.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
-
-      - name: Build and push wsProxy
-        id: build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
-        with:
-          context: ./images/wsproxy
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${{ needs.detect-changes.outputs.ref }}
-            ghcr.io/${{ github.repository_owner }}/wsproxy:stable
-
-      - name: Record published wsProxy
-        env:
-          REF: ${{ needs.detect-changes.outputs.ref }}
-          DIGEST: ${{ steps.build.outputs.digest }}
-        run: |
-          test -n "$DIGEST"
-          printf 'commit=%s\ndigest=%s\n' \
-            "$REF" "$DIGEST" > published.txt
-
-      - name: Upload wsProxy publish record
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: published-wsproxy
-          path: published.txt
-          retention-days: 90
-          if-no-files-found: error
-
-  update-gitops:
-    needs:
-      - detect-changes
-      - publish-robrowser
-      - publish-rathena
-      - publish-wsproxy
-    if: >-
-      always() && !cancelled() &&
-      (needs.publish-robrowser.result == 'success' ||
-       needs.publish-rathena.result == 'success' ||
-       needs.publish-wsproxy.result == 'success')
-    runs-on: ubuntu-latest
-
+    concurrency:
+      group: promote-main
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           ref: main
 
-      - name: Set up Kustomize
-        uses: imranismail/setup-kustomize@53f941b41dca13ed61874bbc6b4b6e1562877530 # v3.0.0
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update image tags in overlay
-        run: |
-          cd deploy/overlays/flux
-          REF="${{ needs.detect-changes.outputs.ref }}"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
 
-          if [ "${{ needs.publish-rathena.result }}" = "success" ]; then
-            kustomize edit set image ghcr.io/${{ github.repository_owner }}/rathena:sha-${REF}
-          fi
+      - name: Retrieve only security-approved release records
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: ready-*
+          path: ready
+          merge-multiple: true
 
-          if [ "${{ needs.publish-robrowser.result }}" = "success" ]; then
-            kustomize edit set image ghcr.io/${{ github.repository_owner }}/robrowser:sha-${REF}
-          fi
-
-          if [ "${{ needs.publish-wsproxy.result }}" = "success" ]; then
-            kustomize edit set image ghcr.io/${{ github.repository_owner }}/wsproxy:sha-${REF}
-          fi
-
-      - name: Commit and open GitOps update PR
+      - name: Promote exact scanned digests
+        id: promote
+        shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REF: ${{ needs.detect-changes.outputs.ref }}
+          OWNER: ${{ github.repository_owner }}
+          EXPECTED_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add deploy/overlays/flux/kustomization.yaml
-
-          if git diff --staged --quiet; then
-            echo "No image changes to commit."
+          shopt -s nullglob
+          files=(ready/*.txt)
+          if (( ${#files[@]} == 0 )); then
+            echo 'No changed images; nothing to publish.'
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          git fetch origin main
+          [ "$(git rev-parse origin/main)" = "$EXPECTED_SHA" ] || {
+            echo 'main moved during security scan; refusing stale publication' >&2
+            exit 1
+          }
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          for file in "${files[@]}"; do
+            mapfile -t values < "$file"
+            image="${values[0]:-}"
+            digest="${values[1]:-}"
+            source_sha="${values[2]:-}"
+            [[ "$image" =~ ^(robrowser|rathena|wsproxy)$ ]]
+            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+            [ "$source_sha" = "$EXPECTED_SHA" ]
+            ref="ghcr.io/${OWNER,,}/$image"
+            # Verify staging tag still points to the exact scanned digest.
+            candidate="$ref:candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+            current=$(docker buildx imagetools inspect "$candidate" --format '{{json .Manifest}}' | jq -r '.digest')
+            [ "$current" = "$digest" ] || { echo "Candidate digest mismatch for $image" >&2; exit 1; }
+            docker buildx imagetools create \
+              -t "$ref:sha-$EXPECTED_SHA" \
+              -t "$ref:stable" \
+              "$ref@$digest"
+            echo "Published $ref@$digest"
+          done
 
-          branch="gitops/image-bump-${REF}"
+      - name: Set up Kustomize
+        if: steps.promote.outputs.changed == 'true'
+        uses: imranismail/setup-kustomize@53f941b41dca13ed61874bbc6b4b6e1562877530 # v3.0.0
 
+      - name: Update Flux image references
+        if: steps.promote.outputs.changed == 'true'
+        shell: bash
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          cd deploy/overlays/flux
+          for file in "$GITHUB_WORKSPACE"/ready/*.txt; do
+            [ -f "$file" ] || continue
+            image=$(head -n 1 "$file")
+            kustomize edit set image "ghcr.io/${OWNER,,}/$image:sha-$GITHUB_SHA"
+          done
+
+      - name: Create GitOps PR
+        if: steps.promote.outputs.changed == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add deploy/overlays/flux/kustomization.yaml
+          if git diff --staged --quiet; then
+            echo 'No GitOps changes.'
+            exit 0
+          fi
+          branch="gitops/image-bump-$GITHUB_SHA"
           git switch -c "$branch"
-          git commit -m "chore(gitops): bump images to sha-${REF}"
+          git commit -m "chore(gitops): bump images to sha-$GITHUB_SHA"
           git push --set-upstream origin "$branch"
-
-          gh pr create \
-            --repo "${{ github.repository }}" \
-            --base main \
-            --head "$branch" \
-            --title "chore(gitops): bump images to sha-${REF}" \
-            --body "Update Flux image references to the successfully published, security-validated images from ${REF}."
-
-          gh pr merge "$branch" \
-            --repo "${{ github.repository }}" \
-            --auto \
-            --squash \
-            --delete-branch
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+            --title "chore(gitops): bump images to sha-$GITHUB_SHA" \
+            --body "Update Flux image references to the scanned and promoted images for $GITHUB_SHA."
+          gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" \
+            --auto --squash --delete-branch

@@ -1,92 +1,177 @@
 name: Container Security
 
-# Security scans run only after the build-and-smoke-test CI workflow passed.
+# Called only by CI after validation succeeds on main.
 on:
-  workflow_run:
-    workflows: [CI]
-    branches: [main]
-    types: [completed]
-  workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
-  scan:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+  build-and-scan:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: robrowser
-            context: .
-            file: images/robrowser/Dockerfile
-          - name: rathena
-            context: ./images/rathena
-            file: images/rathena/Dockerfile
-          - name: wsproxy
-            context: ./images/wsproxy
-            file: images/wsproxy/Dockerfile
+        image: [robrowser, rathena, wsproxy]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Load pinned source revisions
         run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
-      - name: Build ${{ matrix.name }} image for scanning
+
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v3.5.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
+
+      - name: Check changes since last published revision
+        id: changes
         shell: bash
+        env:
+          IMAGE: ${{ matrix.image }}
+          OWNER: ${{ github.repository_owner }}
         run: |
-          if [ "${{ matrix.name }}" = robrowser ]; then
-            docker build --no-cache -f "${{ matrix.file }}" \
-              --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
-              --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
-              --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
-              --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
-              --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
-              --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
-              -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
-          elif [ "${{ matrix.name }}" = wsproxy ]; then
-            docker build -f "${{ matrix.file }}" -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
+          set -euo pipefail
+          image="ghcr.io/${OWNER,,}/$IMAGE"
+          # Revision is stored on the multi-platform index, not on workflow_run metadata.
+          # Missing/invalid metadata is treated as changed, never as unchanged.
+          previous=$(docker buildx imagetools inspect --raw "$image:stable" 2>/dev/null | \
+            jq -r '.annotations["org.opencontainers.image.revision"] // empty' || true)
+          if [[ ! "$previous" =~ ^[0-9a-f]{40}$ ]] || \
+             ! git cat-file -e "$previous^{commit}" 2>/dev/null || \
+             ! git merge-base --is-ancestor "$previous" HEAD; then
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}: no reliable prior revision; build required"
+            exit 0
           fi
-      - name: Build rAthena for scanning
-        if: matrix.name == 'rathena'
+          case "$IMAGE" in
+            robrowser) paths=(images/robrowser .dockerignore build/dependencies.env) ;;
+            rathena)   paths=(images/rathena build/dependencies.env) ;;
+            wsproxy)   paths=(images/wsproxy .dockerignore) ;;
+          esac
+          if git diff --quiet "$previous" HEAD -- "${paths[@]}"; then
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}: unchanged since $previous"
+          else
+            echo 'changed=true' >> "$GITHUB_OUTPUT"
+            echo "${IMAGE}: changed since $previous"
+          fi
+
+      - name: Build candidate roBrowser image
+        if: matrix.image == 'robrowser' && steps.changes.outputs.changed == 'true'
+        id: robrowser
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: .
+          file: images/robrowser/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          no-cache: true
+          tags: ghcr.io/${{ github.repository_owner }}/robrowser:candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          annotations: |
+            index:org.opencontainers.image.revision=${{ github.sha }}
+          build-args: |
+            ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
+            ROBROWSER_REF=${{ env.ROBROWSER_REF }}
+            REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
+            REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}
+            ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}
+            ROENGLISH_REF=${{ env.ROENGLISH_REF }}
+
+      - name: Build candidate rAthena image
+        if: matrix.image == 'rathena' && steps.changes.outputs.changed == 'true'
+        id: rathena
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
         with:
           context: ./images/rathena
-          load: true
-          tags: rathena:scan
-          cache-from: type=gha,scope=rathena
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/rathena:candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          annotations: |
+            index:org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: |
+            type=gha,scope=rathena
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/rathena:buildcache
+          cache-to: |
+            type=registry,ref=ghcr.io/${{ github.repository_owner }}/rathena:buildcache,mode=max
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
-      - name: Scan ${{ matrix.name }} image with Trivy
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+
+      - name: Build candidate wsProxy image
+        if: matrix.image == 'wsproxy' && steps.changes.outputs.changed == 'true'
+        id: wsproxy
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
         with:
-          image-ref: ${{ matrix.name }}:scan
-          format: sarif
-          output: trivy-${{ matrix.name }}.sarif
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          # With SARIF output, trivy-action otherwise ignores the severity
-          # filter and the gate would also fail on MEDIUM/LOW findings.
-          limit-severities-for-sarif: true
-      - name: Upload ${{ matrix.name }} scan report
-        if: always()
+          context: ./images/wsproxy
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/wsproxy:candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          annotations: |
+            index:org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Scan both platforms and generate SBOMs
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        env:
+          IMAGE: ${{ matrix.image }}
+          OWNER: ${{ github.repository_owner }}
+          DIGEST: ${{ steps.robrowser.outputs.digest || steps.rathena.outputs.digest || steps.wsproxy.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          ref="ghcr.io/${OWNER,,}/$IMAGE@$DIGEST"
+          mkdir -p reports
+          for arch in amd64 arm64; do
+            echo "Scanning $ref on linux/$arch"
+            docker run --rm \
+              -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+              -v "$PWD/reports:/reports" \
+              aquasec/trivy:0.76.1 image \
+              --platform "linux/$arch" --scanners vuln \
+              --severity HIGH,CRITICAL --ignore-unfixed \
+              --exit-code 1 --format table "$ref"
+            docker run --rm \
+              -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" \
+              -v "$PWD/reports:/reports" \
+              aquasec/trivy:0.76.1 image \
+              --platform "linux/$arch" --scanners vuln \
+              --format spdx-json --output "/reports/sbom-$IMAGE-$arch.json" "$ref"
+          done
+
+      - name: Upload SBOMs
+        if: steps.changes.outputs.changed == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: trivy-${{ matrix.name }}
-          path: trivy-${{ matrix.name }}.sarif
-          if-no-files-found: warn
-      - name: Generate ${{ matrix.name }} SBOM
-        if: always()
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.17.12
+          name: sbom-${{ matrix.image }}
+          path: reports/sbom-*.json
+          if-no-files-found: error
+
+      - name: Create release record after scans pass
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+          DIGEST: ${{ steps.robrowser.outputs.digest || steps.rathena.outputs.digest || steps.wsproxy.outputs.digest }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          mkdir -p ready
+          printf '%s\n' "$IMAGE" "$DIGEST" "$GITHUB_SHA" > "ready/$IMAGE.txt"
+
+      - name: Mark scanned digest as releasable
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          image: ${{ matrix.name }}:scan
-          artifact-name: sbom-${{ matrix.name }}
-          format: spdx-json
+          name: ready-${{ matrix.image }}
+          path: ready/${{ matrix.image }}.txt
+          if-no-files-found: error

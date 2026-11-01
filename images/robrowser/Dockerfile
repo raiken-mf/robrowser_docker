@@ -64,6 +64,7 @@ COPY images/robrowser/package-lock.json /tmp/robrowser-package-lock.json
 RUN test -n "${ROBROWSER_REF}" && test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
     git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
+    rm -f /var/www/localhost/htdocs/client/.htaccess && \
     cp /tmp/robrowser-package.json /var/www/localhost/htdocs/package.json && \
     cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
     git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/client && \

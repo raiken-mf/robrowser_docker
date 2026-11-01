@@ -138,6 +138,8 @@ jobs:
           . build/dependencies.env
           set +a
           docker build \
+            --cache-from type=gha,scope=rathena \
+            --cache-to type=gha,scope=rathena,mode=max \
             --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
             --build-arg RATHENA_REF="$RATHENA_REF" \
             -t rathena:ci ./images/rathena

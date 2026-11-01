@@ -35,6 +35,7 @@ COPY images/robrowser/security.ini /etc/php84/conf.d/99-robrowser-security.ini
 RUN php -r 'if (get_cfg_var("session.upload_progress.enabled") !== "0" || (extension_loaded("session") && ini_get("session.upload_progress.enabled") !== "0")) { fwrite(STDERR, "Session upload progress must be disabled\n"); exit(1); }'
 
 # Configure Apache to unprivileged port 8080 & PHP runtime settings
+# Configure Apache to unprivileged port 8080 & PHP runtime settings
 RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/:80/:8080/g' /etc/apache2/httpd.conf && \
     echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf && \
@@ -42,10 +43,11 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf && \
     echo "TraceEnable Off" >> /etc/apache2/httpd.conf && \
     echo "ServerName localhost" >> /etc/apache2/httpd.conf && \
-    echo 'Header unset Access-Control-Allow-Origin' >> /etc/apache2/httpd.conf && \
-    echo 'Header always set Access-Control-Allow-Origin "*"' >> /etc/apache2/httpd.conf && \
-    echo 'Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS"' >> /etc/apache2/httpd.conf && \
-    echo 'Header always set Access-Control-Allow-Headers "*"' >> /etc/apache2/httpd.conf && \
+    echo 'Header onsuccess unset Access-Control-Allow-Origin' >> /etc/apache2/httpd.conf && \
+    echo 'Header always unset Access-Control-Allow-Origin' >> /etc/apache2/httpd.conf && \
+    echo 'Header set Access-Control-Allow-Origin "*"' >> /etc/apache2/httpd.conf && \
+    echo 'Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"' >> /etc/apache2/httpd.conf && \
+    echo 'Header set Access-Control-Allow-Headers "*"' >> /etc/apache2/httpd.conf && \
     PHP_INI="$(php --ini | sed -n 's/^Loaded Configuration File: *//p')" && \
     test -f "$PHP_INI" && \
     sed -i "s/memory_limit = .*/memory_limit = 1024M/g" "$PHP_INI" && \

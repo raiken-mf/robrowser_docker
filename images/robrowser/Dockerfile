@@ -35,7 +35,6 @@ COPY images/robrowser/security.ini /etc/php84/conf.d/99-robrowser-security.ini
 RUN php -r 'if (get_cfg_var("session.upload_progress.enabled") !== "0" || (extension_loaded("session") && ini_get("session.upload_progress.enabled") !== "0")) { fwrite(STDERR, "Session upload progress must be disabled\n"); exit(1); }'
 
 # Configure Apache to unprivileged port 8080 & PHP runtime settings
-# Configure Apache to unprivileged port 8080 & PHP runtime settings
 RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/:80/:8080/g' /etc/apache2/httpd.conf && \
     echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf && \

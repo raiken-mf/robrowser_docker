@@ -11,25 +11,36 @@ on:
       - 'README.md'
       - 'docs/**'
 
+# Called workflows inherit no more than these job-specific permissions.
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           fetch-depth: 0
-      - name: Detect validation scope
+          persist-credentials: false
+
+      - name: Determine scope
         id: scope
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
         run: |
+          set -euo pipefail
           if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            echo 'No valid comparison base; running full validation.'
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            echo 'rathena=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
@@ -37,37 +48,44 @@ jobs:
           else
             changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           fi
-          printf 'Changed files:\n%s\n' "$changed"
           if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
           else
             echo 'relevant=false' >> "$GITHUB_OUTPUT"
           fi
+          if grep -Eq '^(images/rathena/|build/dependencies\.env$)' <<< "$changed"; then
+            echo 'rathena=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'rathena=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Validate pinned source layouts
         if: steps.scope.outputs.relevant == 'true'
-        run: chmod +x scripts/check-upstream-layout.sh && scripts/check-upstream-layout.sh
+        run: bash scripts/check-upstream-layout.sh
+
       - name: Validate Kustomize manifests
         if: steps.scope.outputs.relevant == 'true'
         run: kubectl kustomize deploy/overlays/flux >/dev/null
-      - name: Validate Docker Compose configuration
+
+      - name: Validate Docker Compose
         if: steps.scope.outputs.relevant == 'true'
-        # The runner needs a non-secret example env file for Compose interpolation.
+        shell: bash
         run: |
           cp .env-tmpl .env
           set -a
-          . .env
-          . build/dependencies.env
+          source .env
+          source build/dependencies.env
           set +a
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
-      - name: Build roBrowser image
+
+      - name: Build roBrowser for smoke test
         if: steps.scope.outputs.relevant == 'true'
+        shell: bash
         run: |
-          set -a
-          . build/dependencies.env
-          set +a
-          docker build --no-cache \
-            -f images/robrowser/Dockerfile \
+          set -euo pipefail
+          set -a; source build/dependencies.env; set +a
+          docker build --no-cache -f images/robrowser/Dockerfile \
             --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
             --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
@@ -75,86 +93,104 @@ jobs:
             --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
             -t robrowser:ci .
-      - name: Smoke-test roBrowser image
+
+      - name: Smoke-test roBrowser
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
+          set -euo pipefail
           docker run -d --name robrowser-ci \
-            -e HOST=ro.example.test \
-            -e PORT_HTTP=30080 \
-            -e PORT_WSPROXY=30599 \
+            -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
             -p 8080:8080 -p 3000:3000 robrowser:ci
-          wait_for_http() {
-            local url="$1"
-            for i in $(seq 1 30); do
-              if curl --fail --silent --show-error "$url" >/dev/null; then
-                return 0
-              fi
+          wait_http() {
+            local url="$1" count
+            for count in $(seq 1 30); do
+              if curl -fsS "$url" >/dev/null 2>&1; then return 0; fi
               sleep 2
             done
-            echo "Timed out waiting for $url"
+            echo "Timed out: $url" >&2
             return 1
           }
-          wait_for_http http://127.0.0.1:8080/
-          wait_for_http http://127.0.0.1:3000/
+          wait_http http://127.0.0.1:8080/
+          wait_http http://127.0.0.1:3000/
           docker cp scripts/check-php.php robrowser-ci:/var/www/localhost/htdocs/ci-php-check.php
-          curl --fail --silent --show-error http://127.0.0.1:8080/ci-php-check.php | \
+          curl -fsS http://127.0.0.1:8080/ci-php-check.php | \
             grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
           docker exec robrowser-ci rm /var/www/localhost/htdocs/ci-php-check.php
-          curl --fail --silent --show-error http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
+          curl -fsS http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
           grep -Fq 'remoteClient:  "http://ro.example.test:30080/client/"' /tmp/robrowser-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
           grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/robrowser-index.html
-          module_url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
-          for i in $(seq 1 30); do
-            module_status=$(curl --silent --output /tmp/gr2-module.js --write-out '%{http_code}' "$module_url" || true)
-            if [ "$module_status" = '200' ] && grep -q 'granny-ro-js_wasm' /tmp/gr2-module.js; then
-              break
-            fi
+          url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
+          status=''
+          for count in $(seq 1 30); do
+            status=$(curl -sS -o /tmp/gr2-module.js -w '%{http_code}' "$url" || true)
+            if [ "$status" = '200' ] && grep -q 'granny-ro-js_wasm' /tmp/gr2-module.js; then break; fi
             sleep 2
           done
-          test "$module_status" = '200' || { echo "GR2 module request returned HTTP $module_status" >&2; cat /tmp/gr2-module.js; exit 1; }
-          module=$(cat /tmp/gr2-module.js)
-          grep -q 'granny-ro-js_wasm' <<< "$module"
-          grep -q 'parseAnimated' <<< "$module"
-          grep -q 'poseAt' <<< "$module"
-          if grep -q 'Failed to resolve import' <<< "$module"; then
-            echo 'Vite returned an unresolved-import overlay for the GR2 renderer.' >&2
-            exit 1
-          fi
-      - name: Show roBrowser container diagnostics
+          test "$status" = '200'
+          grep -q 'granny-ro-js_wasm' /tmp/gr2-module.js
+          grep -q 'parseAnimated' /tmp/gr2-module.js
+          grep -q 'poseAt' /tmp/gr2-module.js
+          ! grep -q 'Failed to resolve import' /tmp/gr2-module.js
+
+      - name: roBrowser diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
-        run: |
-          docker ps -a --filter name=robrowser-ci
-          docker inspect robrowser-ci --format 'status={{.State.Status}} exit={{.State.ExitCode}} error={{.State.Error}}' || true
-          docker logs robrowser-ci || true
-      - name: Remove roBrowser smoke-test container
+        run: docker logs robrowser-ci || true
+      - name: Remove roBrowser container
         if: always() && steps.scope.outputs.relevant == 'true'
         run: docker rm -f robrowser-ci || true
-      - name: Build rAthena image
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          set -a
-          . build/dependencies.env
-          set +a
-          docker build \
-            --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
-            --build-arg RATHENA_REF="$RATHENA_REF" \
-            -t rathena:ci ./images/rathena
-      - name: Build wsProxy image
+
+      - name: Set up Docker Buildx
+        if: steps.scope.outputs.rathena == 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
+
+      - name: Load rAthena source revisions
+        if: steps.scope.outputs.rathena == 'true'
+        run: grep -E '^RATHENA_(REPOSITORY|REF)=' build/dependencies.env >> "$GITHUB_ENV"
+
+      - name: Build rAthena on AMD64 (PR validation)
+        if: steps.scope.outputs.rathena == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: ./images/rathena
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha,scope=rathena
+          cache-to: type=gha,scope=rathena,mode=max,ignore-error=true
+          build-args: |
+            RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
+            RATHENA_REF=${{ env.RATHENA_REF }}
+
+      - name: Build wsProxy
         if: steps.scope.outputs.relevant == 'true'
         run: docker build -t wsproxy:ci ./images/wsproxy
-      - name: Smoke-test wsProxy image
+      - name: Smoke-test wsProxy
         if: steps.scope.outputs.relevant == 'true'
-        shell: bash
         run: |
           docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
           docker exec -i wsproxy-ci node - < scripts/check-wsproxy.cjs
-      - name: Show wsProxy diagnostics
+      - name: wsProxy diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
-        run: |
-          docker ps -a --filter name=wsproxy-ci
-          docker logs wsproxy-ci || true
-      - name: Remove wsProxy smoke-test container
+        run: docker logs wsproxy-ci || true
+      - name: Remove wsProxy container
         if: always() && steps.scope.outputs.relevant == 'true'
         run: docker rm -f wsproxy-ci || true
+
+  security:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/security.yml
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [validate, security]
+    permissions:
+      actions: read
+      contents: write
+      packages: write
+      pull-requests: write
+    uses: ./.github/workflows/publish.yml

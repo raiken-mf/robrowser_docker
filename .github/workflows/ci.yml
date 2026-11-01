@@ -21,6 +21,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
       - name: Detect validation scope
         id: scope
         env:
@@ -30,6 +32,7 @@ jobs:
           if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             echo 'No valid comparison base; running full validation.'
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
+            echo 'rathena=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
@@ -38,6 +41,11 @@ jobs:
             changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           fi
           printf 'Changed files:\n%s\n' "$changed"
+          if grep -Eq '^(images/rathena/|build/dependencies\.env$)' <<< "$changed"; then
+            echo 'rathena=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'rathena=false' >> "$GITHUB_OUTPUT"
+          fi
           if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
           else
@@ -131,18 +139,24 @@ jobs:
       - name: Remove roBrowser smoke-test container
         if: always() && steps.scope.outputs.relevant == 'true'
         run: docker rm -f robrowser-ci || true
+
+      - name: Load rAthena dependencies
+        if: steps.scope.outputs.rathena == 'true'
+        run: grep -E '^RATHENA_(REPOSITORY|REF)=' build/dependencies.env >> "$GITHUB_ENV"
+
       - name: Build rAthena image
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          set -a
-          . build/dependencies.env
-          set +a
-          docker build \
-            --cache-from type=gha,scope=rathena \
-            --cache-to type=gha,scope=rathena,mode=max \
-            --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
-            --build-arg RATHENA_REF="$RATHENA_REF" \
-            -t rathena:ci ./images/rathena
+        if: steps.scope.outputs.rathena == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: ./images/rathena
+          load: true
+          tags: rathena:ci
+          cache-from: type=gha,scope=rathena
+          cache-to: type=gha,scope=rathena,mode=max
+          build-args: |
+            RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
+            RATHENA_REF=${{ env.RATHENA_REF }}
+
       - name: Build wsProxy image
         if: steps.scope.outputs.relevant == 'true'
         run: docker build -t wsproxy:ci ./images/wsproxy

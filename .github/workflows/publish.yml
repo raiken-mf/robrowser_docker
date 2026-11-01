@@ -24,6 +24,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read
   contents: write
   packages: write
   pull-requests: write
@@ -46,7 +47,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           ref: ${{ steps.ref.outputs.ref }}
-          fetch-depth: 2
+          fetch-depth: 0
       - name: Detect image-relevant changes
         id: filter
         shell: bash
@@ -55,6 +56,8 @@ jobs:
           FORCE_ROBROWSER: ${{ inputs.publish_robrowser || false }}
           FORCE_RATHENA: ${{ inputs.publish_rathena || false }}
           FORCE_WSPROXY: ${{ inputs.publish_wsproxy || false }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = workflow_dispatch ]; then
@@ -64,25 +67,55 @@ jobs:
             exit 0
           fi
 
-          base=$(git rev-parse HEAD^)
-          changed=$(git diff --name-only "$base" HEAD)
-          printf 'Changed files:\n%s\n' "$changed"
+          last_published_sha() {
+            local image="$1"
+            local id sha conclusion
 
-          if grep -Eq '^(images/robrowser/|\.dockerignore$|build/dependencies\.env$)' <<< "$changed"; then
-            echo 'robrowser=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'robrowser=false' >> "$GITHUB_OUTPUT"
-          fi
-          if grep -Eq '^(images/rathena/|build/dependencies\.env$)' <<< "$changed"; then
-            echo 'rathena=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'rathena=false' >> "$GITHUB_OUTPUT"
-          fi
-          if grep -Eq '^(images/wsproxy/|\.dockerignore$)' <<< "$changed"; then
-            echo 'wsproxy=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'wsproxy=false' >> "$GITHUB_OUTPUT"
-          fi
+            while IFS=$'\t' read -r id sha; do
+              conclusion=$(gh api \
+                "repos/$GH_REPO/actions/runs/$id/jobs?per_page=100" \
+                --jq ".jobs[] | select(.name == \"publish-$image\") | .conclusion")
+
+              if [ "$conclusion" = "success" ]; then
+                echo "$sha"
+                return 0
+              fi
+            done < <(
+              gh api \
+                "repos/$GH_REPO/actions/workflows/publish.yml/runs?branch=main&status=success&per_page=100" \
+                --jq '.workflow_runs[] | [.id, .head_sha] | @tsv'
+            )
+
+            return 1
+          }
+
+          check_image() {
+            local image="$1"
+            shift
+            local base
+
+            base=$(last_published_sha "$image") || base=""
+
+            if [ -z "$base" ] ||
+               ! git cat-file -e "$base^{commit}" 2>/dev/null ||
+               ! git merge-base --is-ancestor "$base" HEAD; then
+              echo "$image=true" >> "$GITHUB_OUTPUT"
+              echo "$image: No valid previous publish, rebuilding."
+              return
+            fi
+
+            if git diff --quiet "$base" HEAD -- "$@"; then
+              echo "$image=false" >> "$GITHUB_OUTPUT"
+              echo "$image: Unchanged, skipping."
+            else
+              echo "$image=true" >> "$GITHUB_OUTPUT"
+              echo "$image: Changes detected, rebuilding."
+            fi
+          }
+
+          check_image robrowser images/robrowser/ .dockerignore build/dependencies.env
+          check_image rathena images/rathena/ build/dependencies.env
+          check_image wsproxy images/wsproxy/ .dockerignore
 
   publish-robrowser:
     needs: detect-changes

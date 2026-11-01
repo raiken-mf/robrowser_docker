@@ -150,6 +150,10 @@ jobs:
           context: ./images/rathena
           platforms: linux/amd64,linux/arm64
           push: true
+          # --- Hier den Cache aktivieren ---
+          cache-from: type=gha,scope=rathena
+          cache-to: type=gha,scope=rathena,mode=max
+          # ----------------------------------
           tags: |
             ghcr.io/${{ github.repository_owner }}/rathena:sha-${{ needs.detect-changes.outputs.ref }}
             ghcr.io/${{ github.repository_owner }}/rathena:stable

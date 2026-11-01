@@ -49,7 +49,10 @@ jobs:
               --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
               -t "${{ matrix.name }}:scan" "${{ matrix.context }}"
           elif [ "${{ matrix.name }}" = rathena ]; then
-            docker build -f "${{ matrix.file }}" \
+            docker build \
+              --cache-from type=gha,scope=rathena \
+              --cache-to type=gha,scope=rathena,mode=max \
+              -f "${{ matrix.file }}" \
               --build-arg RATHENA_REPOSITORY="$RATHENA_REPOSITORY" \
               --build-arg RATHENA_REF="$RATHENA_REF" \
               -t "${{ matrix.name }}:scan" "${{ matrix.context }}"

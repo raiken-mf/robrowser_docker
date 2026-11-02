@@ -34,8 +34,8 @@ RUN npm ci && npm cache clean --force
 RUN grep -q 'server: {' vite.config.js \
     && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js
 
-# Share the configuration template with the Apache image.
-COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template
+# The frontend configuration template belongs only to Vite.
+COPY --chown=vite:vite images/vite/index.html.template /app/index.html.template
 
 # Optional Vite-specific file overrides.
 COPY --chown=vite:vite images/vite/repository_override/ /app/

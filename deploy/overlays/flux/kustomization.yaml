@@ -13,3 +13,5 @@ images:
   newTag: sha-6cfa563fd1c0c2bf2842345c1499b5bc485847c9
 - name: ghcr.io/raiken-mf/wsproxy
   newTag: sha-17224bf9be08d42014ad2844007e5feb7a271d23
+- name: ghcr.io/raiken-mf/vite
+  newTag: stable

@@ -27,6 +27,9 @@ spec:
           image: ghcr.io/raiken-mf/robrowser:stable
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
+          env:
+            - name: ROBROWSER_ROLE
+              value: "web"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -36,8 +39,6 @@ spec:
             - configMapRef:
                 name: robrowser-config
           ports:
-            - containerPort: 3000
-              name: frontend
             - containerPort: 8080
               name: apache
           volumeMounts:
@@ -84,10 +85,6 @@ spec:
   selector:
     app.kubernetes.io/name: robrowser
   ports:
-    - name: frontend
-      port: 3000
-      targetPort: 3000
-      nodePort: 30000
     - name: apache
       port: 8080
       targetPort: 8080

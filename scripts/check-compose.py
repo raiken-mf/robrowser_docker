@@ -28,8 +28,8 @@ for name,port,image in [('remote',8080,sys.argv[1] if len(sys.argv)>1 else 'remo
  services[name]=service
 if os.environ.get('CLIENT_TEST_ROOT'):
  for volume in services['remote']['volumes']:
-  assert volume['type']=='bind' and volume['target'].startswith('/opt/client_files/')
-  volume['source']=str(pathlib.Path(os.environ['CLIENT_TEST_ROOT']).resolve()/pathlib.Path(volume['target']).name)
+  assert volume['type']=='bind' and volume['target']=='/opt/client_files'
+  volume['source']=str(pathlib.Path(os.environ['CLIENT_TEST_ROOT']).resolve())
 assert all(v.get('read_only') for v in services['remote']['volumes'])
 config['services']=services
 for network in config['networks'].values():
@@ -100,14 +100,14 @@ try:
  run(*base,'exec','-T','robrowser','sh','-c','test -d /app/src && ! command -v php && ! command -v httpd')
  print('PASS image boundaries: frontend only in Vite; Apache contains no frontend artifacts')
  run(*base,'exec','-T','remote','sh','-c',
-     'test -f /var/www/localhost/htdocs/remote/data/add-data-folder-files-here.txt && '
-     'test -f /var/www/localhost/htdocs/remote/System/add-system-folder-files-here.txt')
+     'test -f /opt/client_files/data/add-data-folder-files-here.txt && '
+     'test -f /opt/client_files/System/add-system-folder-files-here.txt')
  run(*base,'exec','-T','robrowser','node','--input-type=module','-e',
      "const r = await fetch('http://remote:8080/remote/System/add-system-folder-files-here.txt', "
      "{headers: {Origin: 'http://robrowser:3000'}}); "
      "if (r.status !== 200 || r.headers.get('access-control-allow-origin') !== '*') process.exit(1);")
- resources=next(v['source'] for v in services['remote']['volumes']
-                if v['target']=='/opt/client_files/resources')
+ resources=pathlib.Path(next(v['source'] for v in services['remote']['volumes']
+                           if v['target']=='/opt/client_files'))/'resources'
  if (pathlib.Path(resources)/'DATA.INI').is_file():
   run(*base,'exec','-T','remote','php','-r',
       "$m=json_decode(file_get_contents('/var/www/localhost/htdocs/remote/path-mapping.json'),true,512,JSON_THROW_ON_ERROR); "

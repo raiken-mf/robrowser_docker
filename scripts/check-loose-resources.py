@@ -17,7 +17,9 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
         (root / directory).mkdir(parents=True, exist_ok=True)
     fixtures = {'System/itemInfo.lua': b'original-system\n',
                 'SystemEN/itemInfo.lua': b'translation-systemen\n',
-                'SystemEN/LuaFiles514/itemInfo_f.lua': b'fixture-module\n',
+                'SystemEN/LuaFiles514/itemInfo_f.lua': b'return {value = 37}\n',
+                'SystemEN/LuaFiles514/probe-dofile.lua': b'return 5\n',
+                'SystemEN/probe-main.lua': b'local x = require("SystemEN/LuaFiles514/itemInfo_f"); return x.value + dofile("SystemEN/LuaFiles514/probe-dofile.lua")\n',
                 'data/nested/한글.lua': b'korean-bytes\n', 'AI/Util.lua': b'ai-content\n'}
     for path, data in fixtures.items(): (root / path).write_bytes(data)
     (root / 'data/escape.txt').symlink_to('/etc/passwd')
@@ -41,6 +43,9 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
         for path, expected in fixtures.items():
             status, body = request(urllib.parse.quote(path, safe='/'))
             assert (status, body) == (200, expected), (path, status, body[:80])
+        baked = subprocess.check_output(['docker', 'exec', name, 'cat',
+                                         '/var/www/localhost/htdocs/remote/SystemEN/LuaFiles514/itemInfo.lua'])
+        assert request('SystemEN/LuaFiles514/itemInfo.lua') == (200, baked)
         # System wins conflicts; absent System paths use SystemEN without copying.
         assert request('System/LuaFiles514/itemInfo_f.lua') == (200, fixtures['SystemEN/LuaFiles514/itemInfo_f.lua'])
         for path in ['data/escape.txt', 'data/missing.txt', 'data/../configs.php',
@@ -59,6 +64,14 @@ foreach (["data/nested/한글.lua" => true, "AI/Util.lua" => true,
 }'''
         subprocess.run(['docker', 'exec', name, 'php', '-r', php], check=True)
         print('PASS Apache/PHP and resolver: paths, precedence, Korean names, traversal and symlinks')
+        repo = pathlib.Path(__file__).resolve().parent
+        frontend = __import__('sys').argv[2] if len(__import__('sys').argv) > 2 else 'robrowser:ci'
+        subprocess.run(['docker', 'run', '--rm', '--network', 'host',
+                        '-e', f'LUA_HTTP_BASE=http://127.0.0.1:{port}/remote/',
+                        '-v', f'{repo / "check-lua-http.test.js"}:/app/tests/core/loose-resource-http.test.js:ro',
+                        '-v', f'{repo / "check-lua-vitest.config.mjs"}:/app/resource-vitest.config.mjs:ro',
+                        '--entrypoint', 'sh', frontend, '-c',
+                        'cd /app && ./node_modules/.bin/vitest run --config resource-vitest.config.mjs tests/core/loose-resource-http.test.js'], check=True)
     finally:
         subprocess.run(['docker', 'stop', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['docker', 'rm', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

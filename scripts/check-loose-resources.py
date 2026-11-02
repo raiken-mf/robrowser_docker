@@ -61,7 +61,19 @@ foreach (["data/nested/한글.lua" => true, "AI/Util.lua" => true,
           "data/escape.txt" => false, "data/../System/itemInfo.lua" => false,
           "data/%252e%252e/configs.php" => false, "/etc/passwd" => false] as $path => $expected) {
     if ((Client::getFile($path) !== false) !== $expected) { fwrite(STDERR, "FAIL $path\n"); exit(1); }
-}'''
+}
+class FixtureGrf {
+    public $loaded = true;
+    function getFile($path, &$out) {
+        if (strtolower(str_replace("\\", "/", $path)) === "system/luafiles514/iteminfo_f.lua") {
+            $out = "grf-original"; return true;
+        }
+        return false;
+    }
+}
+$property = new ReflectionProperty(Client::class, "grfs");
+$property->setValue(null, [new FixtureGrf()]);
+if (Client::getFile("System/LuaFiles514/itemInfo_f.lua") !== "grf-original") exit(1);'''
         subprocess.run(['docker', 'exec', name, 'php', '-r', php], check=True)
         print('PASS Apache/PHP and resolver: paths, precedence, Korean names, traversal and symlinks')
         repo = pathlib.Path(__file__).resolve().parent

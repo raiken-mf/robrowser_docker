@@ -3,8 +3,8 @@
 The proposed image keeps ROEnglishRE's `SystemEN` tree at its original path;
 no translation tree is copied to `System` or to the client-data PVC. For a
 request under `System`, the resolver checks the external PVC `System` first,
-then the image's `System`, and only then (when `SYSTEM_ALIAS_SYSTEMEN=true`)
-external and baked `SystemEN`. An explicit `SystemEN` request checks its own
+then the image's `System`, followed by an exact `System` GRF entry. Only after
+those miss does `SYSTEM_ALIAS_SYSTEMEN=true` try external and baked `SystemEN`. An explicit `SystemEN` request checks its own
 external directory and then the baked translation directory. Thus a real System
 file always wins a conflict. `data`, `AI`, and `BGM` likewise prefer their own
 external directory over the image; no directories are merged on disk. After

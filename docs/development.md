@@ -93,6 +93,42 @@ The [API iframe override](frontend-api-module.md) is bound to the pinned upstrea
 HTML. The layout gate detects changes needing a rebase. Other local override
 payloads stay ignored and are not supplied to clean GitHub Actions builds.
 
+## CI build caches and release boundaries
+
+The required `validate` job runs on every pull request, including documentation
+changes; documentation-only PRs skip Docker builds. Relevant changes exercise
+all web and proxy smoke tests because they validate cross-service integration.
+rAthena validation builds only when its inputs or dependency pins change.
+Hercules is Compose-config validated but is not built or published by CI.
+
+Buildx stores AMD64 test layers in separate GitHub Actions scopes
+`ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and
+`ci-rathena-amd64`. Renewal and Pre-Renewal remote builds share the same local
+Buildx builder in the validation job. GitHub isolates PR caches from main;
+never store credentials in layers or cache. BuildKit matches Dockerfile commands,
+base images, build arguments and copied inputs, so affected layers and subsequent
+layers rebuild when their inputs change. External package repositories are not
+cache keys: cached test images are not proof that the latest patches were fetched.
+
+Release candidates are built separately on main and scanned on **both** AMD64 and
+ARM64. The remote and robrowser release builds deliberately use `no-cache` to
+refresh mutable OS packages. wsproxy retains its uncached release build. rAthena
+imports the AMD64 CI scope and its multi-platform GHCR `buildcache` and exports
+only the latter; BuildKit matches platform-specific layers. The scoped CI cache
+has one writer per workflow/ref, while the release cache has one writer per image
+and main CI runs are serialized. Publish promotes the exact security-approved
+candidate digests; it never rebuilds from these caches. The scans, SBOMs, release
+tags and draft image-pin PR remain mandatory and unchanged.
+
+On a cold or evicted cache, BuildKit rebuilds normally; exports use
+`ignore-error=true` so an unavailable cache does not skip a test. Inspect the
+build action's import/export messages and `CACHED` lines, image scope, branch,
+platform and changed build arguments when diagnosing misses. GitHub cache eviction,
+limits and first-run warmup affect hit rates. To diagnose stale cache, compare a
+fresh no-cache test build and inspect its inputs; do not bypass release scans.
+BuildKit cache mounts are not exported by the GHA backend by default, so no
+cross-run npm cache-mount persistence is assumed.
+
 ## Documentation checks
 
 The existing documentation workflow installs mkdocs-material and publishes the

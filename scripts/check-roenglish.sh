@@ -11,7 +11,9 @@ cleanup() {
 trap cleanup EXIT
 git clone --quiet "$ROENGLISH_REPOSITORY" "$workdir/source"
 git -C "$workdir/source" checkout --quiet --detach "$ROENGLISH_REF"
-docker build -f images/remote/Dockerfile \
+build=(docker build)
+if [ "${ROENGLISH_BUILDX:-0}" = 1 ]; then build=(docker buildx build --load); fi
+"${build[@]}" -f images/remote/Dockerfile \
   --build-arg SET_PRERENEWAL=1 \
   --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
   --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \

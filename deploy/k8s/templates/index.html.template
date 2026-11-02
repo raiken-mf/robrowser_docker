@@ -15,6 +15,7 @@
 					height:        '100%',
 					development:   true,
 					loadLua:       true,
+					customItemInfo: ["SystemEN/itemInfo.lua"],
 					servers: [{
 						display:     "Demo Server",
 						desc:        "roBrowser's demo server",

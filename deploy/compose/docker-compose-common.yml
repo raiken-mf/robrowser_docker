@@ -45,7 +45,7 @@ services:
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
-        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-748c208b1b5a2f6f8881100b0a2e616afe576f7a}
+        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-9ab843cb4edad70adedac1cde8e49f66d728aaa9}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
         ROENGLISH_REF: ${ROENGLISH_REF:-680a2f2126c8eb5872bf06cf441685c408ed1358}
     tty: true

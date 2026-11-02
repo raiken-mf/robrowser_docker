@@ -234,3 +234,54 @@ RemoteClient PHP health API. Each image still accepts its own repository_overrid
 These are local correction results. GitHub PR CI must also pass. New registry
 security scans/publication and the controlled deployment migration remain gated;
 this correction does not authorize merging or deployment.
+
+## Refresh on current main and publishing assessment
+
+The correction is preserved on a new local branch,
+`fix/apache-remoteclient-current-main`, created from main commit
+`a8c96f6d06971eb0d97aa1b7bf6e197ae9b809ad`. Original correction commit
+`241b77428c6bed63b5aba835e0aaa661c32af2f5` remains in its ancestry; no work was
+rebased away or force-pushed. The existing separate correction PR #81 is reused
+through a normal fast-forward update, avoiding a duplicate PR.
+
+Local ARM64 builds and tests were repeated on this refreshed tree: both Apache
+translation variants, Vite, filesystem/build-history boundaries, isolated Compose
+with PHP/RemoteClient routing and GRF mapping, and independent built overrides.
+Translation checks again passed 625/684 SHA-256 comparisons and ten differing
+Pre-Renewal overrides. RemoteClient .htaccess stayed byte-identical. BuildKit cache
+was reused where inputs were unchanged. Live Kubernetes/Flux files remain equal
+to the checked main tree. PR #73 and live deployments were not modified.
+
+### Observed Dependabot behavior
+
+PR #77 merged automatically after its validate check succeeded. The active main
+ruleset requires validate, an up-to-date branch and zero human approvals; it has
+no bypass actors. The Dependabot workflow explicitly enables auto-merge. Security
+and publish are skipped on PR events, so passing PR validation does not imply that
+these dependency changes have had registry image scans before entering main.
+No Dependabot policy, pending auto-merge setting or branch protection was changed
+by this refresh.
+
+There is no main CI run recorded for the checked main SHA. The dependency merge
+was performed by github-actions using GITHUB_TOKEN. GitHub documents that pushes
+originating from GITHUB_TOKEN do not trigger another push workflow:
+[Workflow triggers](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
+This explains the observed missing post-merge run; it is not evidence that the
+required validate check was bypassed.
+
+### Current main cannot be published by replaying the old run
+
+The old failed release run 41366736177 belongs to commit
+`388fb5f43c2f58ad1fba7dc34f92dd603fced371`, not the checked current main SHA.
+GitHub reruns retain the original GITHUB_SHA/GITHUB_REF:
+[Workflow reruns](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs).
+The current CI workflow exposes no workflow_dispatch trigger; security and publish
+are reusable workflows called only from a successful main push chain. Therefore
+replaying the old run would not be a fresh validation/release of current main.
+
+No rerun, dispatch, release, main merge or stable-tag promotion was initiated.
+The source/digest and main-freshness checks remain intact. A separately reviewed
+full-chain trigger for the intended main revision is needed before publishing;
+validation, multiarch security scanning and promotion must remain connected.
+Updating stable tags can affect installations on a later pull/restart, so no
+release is authorized by this read-only assessment.

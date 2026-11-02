@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Smoke-test the two web images on disposable Compose networks and loopback ports."""
 import json
+import http.client
 import os
 import pathlib
 import subprocess
@@ -92,6 +93,19 @@ try:
   except urllib.error.HTTPError as error:
    assert error.code==403,(asset,error.code)
  print('PASS ROEnglishRE static paths and private-file access controls')
+ # A real loose AI utility wins. Otherwise Apache redirects to the stock GRF URL.
+ client_root=pathlib.Path(next(v['source'] for v in services['remote']['volumes'] if v['target']=='/opt/client_files'))
+ host,port=address.rsplit(':',1)
+ connection=http.client.HTTPConnection(host,int(port),timeout=5)
+ connection.request('GET','/remote/AI/Util.lua')
+ response=connection.getresponse()
+ if (client_root/'AI'/'Util.lua').is_file():
+  assert response.status==200, response.status
+ else:
+  assert response.status==302 and response.getheader('Location').endswith('/remote/data/ai/util.lua'), (response.status,response.getheader('Location'))
+ response.read()
+ connection.close()
+ print('PASS AI utility path and loose-file precedence')
  # This nonexistent filesystem path must route through remote/.htaccess to PHP.
  # Missing GRFs produce a semantic 503 in clean CI, not a routing/PHP failure.
  try:

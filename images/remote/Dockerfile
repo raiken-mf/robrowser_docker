@@ -92,7 +92,7 @@ COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI /opt/client_files/System && \
-    rm -rf /var/www/localhost/htdocs/remote/resources /var/www/localhost/htdocs/remote/BGM /var/www/localhost/htdocs/remote/System && \
+    rm -rf /var/www/localhost/htdocs/remote/resources /var/www/localhost/htdocs/remote/BGM /var/www/localhost/htdocs/remote/System /var/www/localhost/htdocs/remote/AI && \
     ln -s /opt/client_files/System /var/www/localhost/htdocs/remote/System && \
     ln -s /opt/client_files/resources /var/www/localhost/htdocs/remote/resources && \
     ln -s /opt/client_files/BGM /var/www/localhost/htdocs/remote/BGM && \

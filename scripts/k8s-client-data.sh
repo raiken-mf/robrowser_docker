@@ -29,12 +29,12 @@ kubectl wait --for=condition=Ready pod/client-data-loader -n "${NAMESPACE}" --ti
 
 # 3. Create directory layout inside the Longhorn PVC
 echo "==> [3/4] Preparing volume directory structure..."
-kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p /data/resources /data/BGM /data/AI /data/System /data/SystemEN /data/data
+kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p /data/resources /data/BGM /data/AI /data/System /data/data
 
 # 4. Ingest assets file-by-file with rate limiting
 echo "==> [4/4] Ingesting client assets file-by-file (25MB/s throttled)..."
 
-for cat_dir in resources BGM AI System SystemEN data; do
+for cat_dir in resources BGM AI System data; do
   src_path="${CLIENT_SOURCE_DIR:-$PWD/client}/${cat_dir}"
   
   if [ -d "${src_path}" ] && [ "$(ls -A "${src_path}" 2>/dev/null)" ]; then

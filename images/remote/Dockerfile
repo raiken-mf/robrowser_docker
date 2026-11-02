@@ -87,15 +87,8 @@ RUN set -eu; \
     done; \
     rm -rf /opt/translation
 
-# The shared policy blocks direct access and routes resources before Apache
-# normalizes requests. It does not depend on per-directory .htaccess rules.
-RUN cp /var/www/localhost/htdocs/remote/apache/remote-security.conf /etc/apache2/remote-security.conf \
-    && printf 'Define RC_BASE /remote/\nDefine RC_DIR /var/www/localhost/htdocs/remote\nInclude /etc/apache2/remote-security.conf\n' >> /etc/apache2/httpd.conf
-
-# A real System file wins; SystemEN is a virtual fallback for missing System files.
-ENV DATA_OVERRIDE_PATH=/opt/client_files/data SYSTEM_PATH=/opt/client_files/System \
-    SYSTEMEN_PATH=/opt/client_files/SystemEN AI_PATH=/opt/client_files/AI \
-    BGM_PATH=/opt/client_files/BGM SYSTEM_ALIAS_SYSTEMEN=true
+# Protect non-public application files and mounted archives with Apache.
+COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI && \

@@ -84,10 +84,6 @@ spec:
   selector:
     app.kubernetes.io/name: robrowser
   ports:
-    - name: frontend
-      port: 3000
-      targetPort: 3000
-      nodePort: 30000
     - name: apache
       port: 8080
       targetPort: 8080

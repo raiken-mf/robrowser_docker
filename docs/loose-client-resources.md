@@ -13,7 +13,7 @@ path. Apache can serve existing static `SystemEN/` files directly. The existing
 roBrowser `customItemInfo` option selects `SystemEN/itemInfo.lua`, which loads
 its original nested `SystemEN` files. `System/` is a separate symlink to the
 read-only client-data mount, so real original System files remain accessible. Missing `SystemEN/`, `System/` and `AI/` files are not resolved from GRFs
-by the PHP fallback. One Apache rewrite maps a missing `AI/Util.lua` request
+by the PHP fallback. One Apache redirect maps a missing `AI/Util.lua` request
 to the existing `data/ai/util.lua` GRF path; a loose `AI/Util.lua` takes priority. A `System/` request is not automatically mapped to `SystemEN/`.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
 The image does not copy external PVC `data/` files into its own tree at

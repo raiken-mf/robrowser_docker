@@ -17,6 +17,7 @@
 !/client/data/add-data-folder-files-here.txt
 /client/resources/*
 !/client/resources/.htaccess
+!/client/resources/add-resources-folder-files-here.txt
 /client/System/*
 !/client/System/add-system-folder-files-here.txt
 /database/conf.d/*
@@ -30,6 +31,11 @@
 *.key
 *.pem
 credentials.json
+.env-*
+!.env-tmpl
+/.aws/
+/.codex/
+/.agents/
 
 # ==========================================
 # Python & Virtual Environments
@@ -78,3 +84,16 @@ ENV/
 # ==========================================
 .DS_Store
 Thumbs.db
+# Vite overrides are local customization, like the Apache overrides.
+/images/vite/repository_override/*
+!/images/vite/repository_override/.gitkeep
+*.bak
+*.backup
+*.orig
+*~
+*.swp
+*.swo
+node_modules/
+/reports/
+/ready/
+/deploy/client/

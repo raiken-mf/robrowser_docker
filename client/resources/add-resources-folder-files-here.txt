@@ -1,0 +1,2 @@
+Place DATA.INI and the GRF files referenced by it in this directory.
+Keep the filename DATA.INI uppercase. Client resources remain local and are not committed.

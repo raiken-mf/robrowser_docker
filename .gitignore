@@ -100,3 +100,11 @@ node_modules/
 
 # Private offline Kubernetes bootstrap output must never enter Git.
 **/bootstrap-private/
+
+# Versioned frontend fix; all other local application overrides stay ignored.
+!/images/robrowser/repository_override/applications/
+/images/robrowser/repository_override/applications/*
+!/images/robrowser/repository_override/applications/api/
+/images/robrowser/repository_override/applications/api/*
+!/images/robrowser/repository_override/applications/api/api.html
+!/images/robrowser/repository_override/applications/api/api-bootstrap.js

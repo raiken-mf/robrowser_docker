@@ -1,54 +1,64 @@
-# Historical pre-rename image verification
+# Image references and provenance
 
-Before the final naming change, PR #73 used the following published releases. Registry SHA tags, stable tags,
-OCI source annotations and both linux/amd64 and linux/arm64 manifests were
-verified after the successful main release of
-`4e94f3a373936e95d17322970c26be09af1c7c7c`. Each selected digest matched stable
-at verification. Stable remains mutable; this table records the verified snapshot.
+The authoritative desired selection is
+[deploy/overlays/flux/kustomization.yaml](https://github.com/raiken-mf/robrowser_docker/blob/main/deploy/overlays/flux/kustomization.yaml),
+not whichever local test image or stable tag happens to exist.
 
-| Image | Source tag | Verified multiarch digest |
+## Verified installation selection
+
+The following source tags were selected at the confirmed `109430d1` operating
+baseline (2026-11-02). This table is a dated reference; future approved image PRs
+can update the overlay independently per component.
+
+| Image | Role | Selected source tag |
 | --- | --- | --- |
-| rathena | `sha-a9c11e46784f25a75cd85cb91cc7fe97e41533f9` | `sha256:5c9b92fa605fb913fb69912d59eed60bb399e9fff1f5407eeea4f4db3b51d751` |
-| robrowser | `sha-4e94f3a373936e95d17322970c26be09af1c7c7c` | `sha256:594dbf03bb6ec3cd660e7c919edac80103aabf77fa63d35de73af76d05a9712a` |
-| vite | `sha-a9c11e46784f25a75cd85cb91cc7fe97e41533f9` | `sha256:8cd41ea55b546e9301d3b80084297f718d1468934804bd0a0d3efeb07401e40d` |
-| wsproxy | `sha-ddc424509d376dc1e77f4b6925f3df37fc4caf27` | `sha256:d08424c38b0690d047082f7ecec230ee3f6054e39a4429f1bd67e42c1741d7d0` |
+| robrowser | Node.js/Vite frontend, including the iframe module fix | sha-d32fa0e2a793eac80274fcc8d1206a871f4a1376 |
+| remote | Apache/PHP/RemoteClient/ROEnglishRE | sha-6c00eb847d9f65c9b0f4c941140b790177c37470 |
+| rathena | Login/char/map servers | sha-a9c11e46784f25a75cd85cb91cc7fe97e41533f9 |
+| wsproxy | Game WebSocket proxy | sha-ddc424509d376dc1e77f4b6925f3df37fc4caf27 |
 
-## Validation and provenance
+The final-name releases support AMD64 and ARM64. The frontend d32fa0e release
+passed main CI/security/SBOM/promotion in
+[run 41448256973](https://github.com/raiken-mf/robrowser_docker/actions/runs/41448256973).
+The initial final-name web release passed
+[run 41435931124](https://github.com/raiken-mf/robrowser_docker/actions/runs/41435931124).
+Those are evidence for those releases, not a claim that later unchanged images
+were rescanned on every documentation/image-pin commit.
 
-- Apache: [main validation/security/publication](https://github.com/raiken-mf/robrowser_docker/actions/runs/41430841225)
-  passed for the exact source above. Both architectures passed the unchanged
-  HIGH/CRITICAL scan gate; the workflow retained its existing ignore-unfixed policy.
-  The published digest equals the security-approved promoted digest. Artifacts
-  include `sbom-robrowser` and `ready-robrowser`.
-- Vite/rAthena retain the already released a9c11e4 images; wsProxy retains ddc4245.
-  Their build inputs have not changed. Main security jobs correctly skip rebuilds
-  for unchanged images; this is not a claim of fresh scans on this main run.
-- Earlier successful release evidence:
-  [ddc4245](https://github.com/raiken-mf/robrowser_docker/actions/runs/41372141533),
-  [a9c11e4](https://github.com/raiken-mf/robrowser_docker/actions/runs/41375144869).
-- Image source SHA tags refer to this infrastructure repository. Upstream pins
-  in `build/dependencies.env` identify different source repositories. Only Vite
-  fetches the pinned roBrowserLegacy frontend; Apache does not clone it.
-- Never compare SHA strings alphabetically or assign main HEAD to unchanged
-  images. A candidate tag is not a released image.
+## Source SHA versus registry digest
 
-## Final naming cutover and installation hold
+- build/dependencies.env pins **upstream** source repositories. Their commit
+  hashes are not infrastructure release tags.
+- sha-infrastructure-commit tags identify the source build revision for each
+  released image. Components can legitimately have different tags when their
+  build inputs did not change.
+- The OCI org.opencontainers.image.revision annotation records the build source.
+- sha256:… is the exact registry manifest/index digest. A SHA-named tag is still
+  a tag; verify its digest/platform/provenance rather than treating its spelling
+  as cryptographic immutability. stable is explicitly mutable.
+- Newest main can be a documentation/manifest-only commit with no image release.
+  Do not substitute main HEAD into all tags or compare SHA strings alphabetically.
 
-The final source trees, services, workflow matrices and registry targets now use
-`remote` for Apache/PHP and `robrowser` for the Node.js/Vite frontend. The table
-above is HISTORICAL pre-rename evidence, not an installation selection for the
-new names. In particular its robrowser digest contains Apache, not the frontend.
+With Docker/buildx available, inspect the actual selected registry reference;
+this does not deploy it:
 
-PR #85 is closed without merging. The namespace has been removed by the operator;
-both Flux Kustomizations are suspended and must stay paused until separate
-installation approval. No two-stage port handover remains necessary.
+```bash
+docker buildx imagetools inspect ghcr.io/raiken-mf/robrowser:sha-d32fa0e2a793eac80274fcc8d1206a871f4a1376
+```
 
-The reviewed final-name source must pass CI and then the security-gated main
-release. Only its actually promoted registry digests may supply final web image
-pins. The publication workflow produces a draft GitOps PR with those source
-SHA tags. Verify that remote contains PHP/Apache and robrowser contains Node/Vite
-before closing the repository release work. Neither code/image-pin merges nor
-registry publication authorize Flux resume or installation.
+Check the exact digest, source annotation, both architectures and corresponding
+successful security/promotion artifacts. Runtime inspection should match the
+intended role: frontend has Node/Vite, remote has Apache/PHP and client files.
 
-See [Fresh namespace installation](flux-split-migration.md). Existing ConfigMap
-values, source pins, port variables and security restrictions are retained.
+## Adoption and rollback
+
+The generated draft GitOps PR supplies reviewed tags only for changed images.
+With active Flux, **merging the approved pin change** deploys it automatically;
+publishing a registry tag does not update an already SHA-pinned Deployment.
+Do not infer automatic merge approval from installed Flux image controllers.
+
+Record the prior component reference before a rollout. Roll back to its verified
+tag/digest through a narrow Git change, retaining the other image pins. Follow
+[operations](operations.md#rollback-and-failure-handling) for explicitly approved
+emergency imperative changes. No old pre-rename Apache image should be mistaken
+for today's frontend robrowser image.

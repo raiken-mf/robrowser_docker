@@ -49,7 +49,7 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
         # System wins conflicts; absent System paths use SystemEN without copying.
         assert request('System/LuaFiles514/itemInfo_f.lua') == (200, fixtures['SystemEN/LuaFiles514/itemInfo_f.lua'])
         for path in ['data/escape.txt', 'data/missing.txt', 'data/../configs.php',
-                     'data/%2e%2e/configs.php', 'data/%252e%252e/configs.php',
+                     'data/%2e%2e/configs.php', 'data/%252e%252e/configs.php', 'data/%2e%2e', 'data/..',
                      'data/%2e%2e/%2e%2e/index.html']:
             status, _ = request(path)
             assert status in (403, 404), (path, status)

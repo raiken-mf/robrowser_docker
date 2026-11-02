@@ -1,8 +1,6 @@
 # alpine:3.23.6 pinned by immutable multi-architecture manifest digest.
 FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
-ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
-ARG ROBROWSER_REF
 ARG REMOTECLIENT_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git
 ARG REMOTECLIENT_REF
 ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
@@ -20,7 +18,6 @@ RUN apk add --no-cache \
     php84-gd \
     php84-zlib \
     git \
-    gettext \
     && apk upgrade --no-cache zlib \
     && rm -rf /var/www/localhost/htdocs/*
 
@@ -52,11 +49,8 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
     sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 
-# Fetch pinned upstream sources.
-# Keep the original roBrowser files during the container split.
-RUN test -n "${ROBROWSER_REF}" && test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
-    git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
-    git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
+# The Apache image has no dependency on roBrowserLegacy frontend sources.
+RUN test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/remote && \
     git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}"
 
@@ -98,8 +92,8 @@ RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files
     ln -s /opt/client_files/AI /var/www/localhost/htdocs/remote/AI
 
 
-# Copy templates, custom overrides, and startup entrypoint
-COPY images/robrowser/index.html.template /var/www/localhost/htdocs/index.html.template
+# Static service status, custom overrides, and startup entrypoint
+COPY images/robrowser/index.html /var/www/localhost/htdocs/index.html
 COPY images/robrowser/repository_override/ /var/www/localhost/htdocs/
 COPY images/robrowser/entrypoint.sh /entrypoint.sh
 
@@ -109,9 +103,6 @@ RUN addgroup -g 1000 robrowser && \
     mkdir -p /run/apache2 /var/log/apache2 && \
     chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /run/apache2 /var/log/apache2 && \
     chmod 755 /entrypoint.sh
-
-# Add security hardening
-RUN chmod 755 /var/www/localhost/htdocs/index.html.template
 
 RUN rm -rf /var/www/localhost/htdocs/.git /var/www/localhost/htdocs/remote/.git \
     && echo 'RedirectMatch 404 /\.git' >> /etc/apache2/httpd.conf

@@ -13,8 +13,6 @@ git clone --quiet "$ROENGLISH_REPOSITORY" "$workdir/source"
 git -C "$workdir/source" checkout --quiet --detach "$ROENGLISH_REF"
 docker build -f images/robrowser/Dockerfile \
   --build-arg SET_PRERENEWAL=1 \
-  --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
-  --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
   --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
   --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
   --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \

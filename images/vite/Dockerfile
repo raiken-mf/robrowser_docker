@@ -1,5 +1,5 @@
 # Pinned Alpine base, matching the roBrowser image.
-FROM alpine:3.23.6@sha256:85fe1e81d6758c208f3e1eed4338a1997e19d4be002d4dd32d3100c9a8c010a0
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
@@ -34,8 +34,8 @@ RUN npm ci && npm cache clean --force
 RUN grep -q 'server: {' vite.config.js \
     && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js
 
-# Share the configuration template with the Apache image.
-COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template
+# The frontend configuration template belongs only to Vite.
+COPY --chown=vite:vite images/vite/index.html.template /app/index.html.template
 
 # Optional Vite-specific file overrides.
 COPY --chown=vite:vite images/vite/repository_override/ /app/

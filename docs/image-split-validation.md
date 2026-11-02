@@ -1,7 +1,9 @@
 # Image split validation — 2026-11-02
 
 Branch: `fix/roBrowserLegacyUpdate`. Local builds and runtime tests ran on ARM64.
-No commits, pushes, PRs, publication or cluster reconciliation were performed.
+Initial local validation preceded publication of the branch. The reviewed
+snapshot was subsequently committed and opened as draft PR #72 with authorization.
+No cluster reconciliation or deployment was performed.
 
 ## Changes
 
@@ -127,9 +129,10 @@ Git whitespace checks, Git exclusions and Actions validation. Earlier ARM64
 runtime/translation results above remain applicable; this pre-PR pass does not
 claim new registry scans, AMD64 builds, server-side validation or gameplay tests.
 
-### Files intended for the commit
+### Files in the initially approved 35-file snapshot
 
-Only the following reviewed files belong to this change. Do not use force-add
+The initial approved snapshot contained the following files. The current PR
+defers its live Kubernetes/Flux changes; use the actual PR diff for its final scope. Do not use force-add
 for ignored resources, credentials, override payloads or test output.
 
 ```text
@@ -169,3 +172,20 @@ scripts/check-upstream-layout.sh
 scripts/k8s-robrowser.sh
 scripts/render-web-manifests.sh
 ```
+
+## Merge-safe scope of PR #72
+
+The live `deploy/k8s/` and `deploy/overlays/flux/` trees are restored to main.
+Consequently this PR neither transfers NodePort 30000, manages/overwrites the live
+ConfigMap, nor selects split images for existing Kubernetes Deployments. The new
+split-image templates and rendering tools are offline preparation only.
+
+The publication workflow now opens only draft GitOps image-bump PRs and does not
+request auto-merge. All existing image scanning and digest-promotion gates remain.
+The tested roBrowser source pin is retained for both images, rather than adopting
+an unrelated concurrent main pin update without validation.
+
+The original five deployment blockers are isolated from this PR's live manifests;
+the actual migration remains pending in a separately controlled follow-up. See
+`docs/flux-split-migration.md` for the required stages. Main's configured automatic
+Flux reconciliation continues, but its rendered application resources are unchanged.

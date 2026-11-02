@@ -129,12 +129,18 @@ Names such as `database` and `ragnarok-login` are internal Compose/Kubernetes se
 
 ### Flux updates on the Pi
 
+The live Flux manifests deliberately retain the existing combined-container
+architecture in this PR. The split-image migration is deferred; see
+[Controlled Flux migration](flux-split-migration.md). The new templates and
+renderer are preparation for that separately approved migration.
+
 The Flux deployment uses the concrete Kustomize base in `deploy/k8s/` and the overlay in `deploy/overlays/flux/`. The legacy `scripts/k8s-*.sh` scripts use the configurable templates in `deploy/k8s-templates/`.
 
 Flux does not read the local `.env`, and the concrete manifests are not automatically
 generated from the templates. To prepare the web manifests using `.env`, run
 `bash scripts/render-web-manifests.sh /tmp/ragnarok-web` and review the output.
-Copy the reviewed `robrowser.yaml`, `vite.yaml`, `wsproxy.yaml` and
+For the separately approved migration only, copy the reviewed
+`robrowser.yaml`, `vite.yaml`, `wsproxy.yaml` and
 `robrowser-config.yaml` into `deploy/k8s/`, and include `robrowser-config.yaml` in
 its `kustomization.yaml` if it is not already listed. Review the Flux overlay with
 `kubectl kustomize deploy/overlays/flux` before submitting the Git change.
@@ -171,9 +177,9 @@ running `flux reconcile` is not required. The application Kustomization has no
 suspend flag and no dependency on completion of GitHub Actions. Therefore the
 image security/publish workflow does not gate application of these manifests.
 
-Do not merge this migration as a single unattended rollout. The current change
+Do not apply the deferred migration as a single unattended rollout. The deferred migration snapshot
 contains both sides of the NodePort handover and a newly managed ConfigMap with
-example `HOST=127.0.0.1`. Flux can overwrite existing ConfigMap values, while
+example `HOST=127.0.0.1`. The current PR excludes these live-manifest changes. Flux can overwrite existing ConfigMap values, while
 already-running pods keep their old environment until recreated. Also, the Flux
 roBrowser override still selects `sha-6cfa563fd1c0c2bf2842345c1499b5bc485847c9`,
 whose source Dockerfile builds the former combined image. That old Apache image
@@ -183,8 +189,8 @@ Before merging, agree an operator-controlled rollout gate or prepare separate
 migration changes, review the real ConfigMap values, and ensure both matching
 new images are scanned and available. Preserve the existing ConfigMap keys that
 the deployment needs when taking it under Git management. The publish workflow
-also creates a GitOps image-bump PR and requests auto-merge; review that automation
-as part of the migration plan. Repository code does not establish the live Flux
+creates a draft GitOps image-bump PR without requesting auto-merge. Keep it in
+draft until the separate migration plan and image pairing have been reviewed. Repository code does not establish the live Flux
 state, branch protections or whether GitHub auto-merge is enabled. No live state
 was changed during local validation.
 

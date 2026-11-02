@@ -7,7 +7,5 @@ resources:
   - pvc-client-data.yaml
   - mariadb.yaml
   - rathena.yaml
-  - robrowser-config.yaml
   - robrowser.yaml
-  - vite.yaml
   - wsproxy.yaml

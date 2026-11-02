@@ -10,7 +10,7 @@ assert mode in ("0", "1"), "Expected SET_PRERENEWAL=0 or 1"
 expected = {}
 overwrites = changed = 0
 for layer in (["Renewal"] if mode == "0" else ["Renewal", "Pre-Renewal"]):
-    for directory, destination in (("data", "data"), ("SystemEN", "System")):
+    for directory, destination in (("data", "data"), ("SystemEN", "SystemEN")):
         root = source / "Translation" / layer / directory
         assert root.is_dir(), f"Missing layer: {root}"
         files = [p for p in root.rglob("*") if p.is_file()]

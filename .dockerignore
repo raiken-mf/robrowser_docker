@@ -5,6 +5,7 @@ client/BGM
 client/data
 client/resources
 client/System
+client/SystemEN
 
 # Local configuration, credentials and generated artifacts never enter build context.
 .env

@@ -19,6 +19,7 @@
 !/client/resources/.htaccess
 !/client/resources/add-resources-folder-files-here.txt
 /client/System/*
+/client/SystemEN/
 !/client/System/add-system-folder-files-here.txt
 /database/conf.d/*
 !/database/conf.d/mariadb.cnf

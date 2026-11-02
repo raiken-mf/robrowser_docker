@@ -47,11 +47,14 @@ promote any images.
   entry and older wsProxy pin are removed by the conflict resolution. It remains
   draft, without auto-merge, until the deployment stages and real ConfigMap are
   reviewed. Conflict-free YAML is not approval for a rollout.
-- #75 is deliberately excluded from this work and needs its own PHP/base-image
-  investigation.
+- #75 keeps the Apache base-image/PHP CLI correction in its own PR. It does not
+  change the deployment image pins selected here.
 
 Main currently selects the split Apache image but still lacks the separate Vite
 Deployment. If Flux is active, that desired combination can leave the old frontend
-Service targeting an unserved port. No live cluster state was inspected or changed
-here. The fix requires the controlled migration in `flux-split-migration.md`, not
-merging an older image-bump PR or applying the example ConfigMap blindly.
+Service targeting an unserved port. A read-only cluster check confirmed that Vite
+has no Deployment/Service yet and the old Apache Service still owns NodePort
+30000. No live resources were changed. The prepared ConfigMap now uses the
+operator-rendered HOST=pi and reviewed ports. The fix still requires the controlled
+migration in `flux-split-migration.md`, rather than merging an older image-bump PR
+or applying all migration resources together.

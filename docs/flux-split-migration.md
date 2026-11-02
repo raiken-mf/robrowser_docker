@@ -63,7 +63,6 @@ frontend expecting `/remote/`. Keep generated image-update PRs in draft until th
 intended image pairing and current migration stage are verified. Independent
 scheduled dependency automation is not approval for a deployment stage.
 
-
 The prepared ConfigMap in PR #73 now uses the operator-generated preview:
 HOST=pi, PORT_HTTP=30080, PORT_FRONTEND=30000 and PORT_WSPROXY=30599.
 These agree with the reviewed .env/live web settings; PORT_FRONTEND is added

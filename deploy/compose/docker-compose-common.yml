@@ -9,7 +9,7 @@ services:
     volumes:
       # Uncomment line below to use on volume
       #- ./database/data:/var/lib/mysql
-      - ../.../../database/conf.d:/etc/mariadb.conf.d:ro
+      - ../../database/conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
       test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
       start_period: 10s
@@ -38,30 +38,51 @@ services:
     restart: always
     env_file: ../../.env
     volumes:
-      - ../.../../client/AI:/opt/client_files/AI:ro
-      - ../.../../client/BGM:/opt/client_files/BGM:ro
-      - ../.../../client/data:/opt/client_files/data:ro
-      - ../.../../client/System:/opt/client_files/System:ro
-      - ../.../../client/resources:/opt/client_files/resources:ro
+      - ../../client/AI:/opt/client_files/AI:ro
+      - ../../client/BGM:/opt/client_files/BGM:ro
+      - ../../client/data:/opt/client_files/data:ro
+      - ../../client/System:/opt/client_files/System:ro
+      - ../../client/resources:/opt/client_files/resources:ro
     build:
       context: ../..
       dockerfile: images/robrowser/Dockerfile
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
-        ROBROWSER_REF: ${ROBROWSER_REF:-58759ab22d1d56da7f6719ee45cb475f7e851227}
+        ROBROWSER_REF: ${ROBROWSER_REF:-7181f0f54f9785829839bb15459822ac511c58ab}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
-        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-00f78d4147324b7a8773e5d59f7df4f772f08928}
+        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-fe7c14dceb62a761f4319abe9738b70b52559078}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
-        ROENGLISH_REF: ${ROENGLISH_REF:-85f216a230bf9180451fa29a37505baeb676c559}
+        ROENGLISH_REF: ${ROENGLISH_REF:-680a2f2126c8eb5872bf06cf441685c408ed1358}
     tty: true
     depends_on:
       - wsproxy
+    environment:
+      ROBROWSER_ROLE: web
     ports:
       - "${PORT_HTTP:-8080}:8080"
-      - "${PORT_FRONTEND:-3000}:3000"
     networks:
       - backend
+      - frontend
+
+  vite:
+    container_name: "vite"
+    image: ghcr.io/raiken-mf/vite:${VITE_IMAGE_TAG:-stable}
+    pull_policy: always
+    build:
+      context: ../..
+      dockerfile: images/vite/Dockerfile
+      args:
+        ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
+        ROBROWSER_REF: ${ROBROWSER_REF:-7181f0f54f9785829839bb15459822ac511c58ab}
+    restart: always
+    env_file: ../../.env
+    environment:
+      ROBROWSER_ROLE: vite
+      PORT_FRONTEND: ${PORT_FRONTEND:-3000}
+    ports:
+      - "${PORT_FRONTEND:-3000}:3000"
+    networks:
       - frontend
 
 networks:

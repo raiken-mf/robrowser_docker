@@ -326,3 +326,8 @@ All contributors are expected to follow the project's code of conduct:
 - Provide constructive feedback
 - Focus on technical merit
 - Maintain professional standards
+
+The standalone frontend image lives in `images/vite/`; its package manifest and
+lockfile are the active npm dependency overlay. `images/robrowser/` builds only
+Apache/PHP and the RemoteClient/translation content. The historical npm manifests
+under `images/robrowser/` are no longer consumed by either Dockerfile.

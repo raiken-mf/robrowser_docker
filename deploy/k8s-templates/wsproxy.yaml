@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: wsproxy
-          image: ghcr.io/raiken-mf/wsproxy:stable
+          image: ghcr.io/raiken-mf/wsproxy:${WSPROXY_IMAGE_TAG}
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
           # Match the Compose allow-list: only proxy to this stack's internal game services.
@@ -77,4 +77,4 @@ spec:
     - name: wsproxy
       port: 5999
       targetPort: 5999
-      nodePort: ${PORT_WSPROXY:-30599}
+      nodePort: ${PORT_WSPROXY}

@@ -19,8 +19,6 @@ RUN apk add --no-cache \
     php84-iconv \
     php84-gd \
     php84-zlib \
-    nodejs \
-    npm \
     git \
     gettext \
     && apk upgrade --no-cache zlib \
@@ -54,72 +52,51 @@ RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
     sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
     sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
 
-# The package manifest and lockfile were generated for the pinned roBrowser
-# source revision. Keep them here because the upstream commit has no lockfile.
-COPY images/robrowser/package.json /tmp/robrowser-package.json
-COPY images/robrowser/package-lock.json /tmp/robrowser-package-lock.json
-
-# Clone pinned client sources and install reproducible frontend dependencies.
-# Revisions are supplied by CI or docker compose; never build implicitly from a moving branch.
+# Fetch pinned upstream sources.
+# Keep the original roBrowser files during the container split.
 RUN test -n "${ROBROWSER_REF}" && test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${ROBROWSER_REPOSITORY}" /var/www/localhost/htdocs && \
     git -C /var/www/localhost/htdocs checkout --detach "${ROBROWSER_REF}" && \
-    rm -f /var/www/localhost/htdocs/client/.htaccess && \
-    cp /tmp/robrowser-package.json /var/www/localhost/htdocs/package.json && \
-    cp /tmp/robrowser-package-lock.json /var/www/localhost/htdocs/package-lock.json && \
-    git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/client && \
-    git -C /var/www/localhost/htdocs/client checkout --detach "${REMOTECLIENT_REF}" && \
-    rm -f /var/www/localhost/htdocs/client/.htaccess && \
-    npm ci --prefix /var/www/localhost/htdocs && \
-    npm cache clean --force
+    git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/remote && \
+    git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}"
 
-# Adjust Vite dev server configuration for container environments
-RUN sed -i '/server: {/a \ \ \ \ host: "0.0.0.0",\n    allowedHosts: true,' /var/www/localhost/htdocs/vite.config.js
-
-# Fetch translation files and extract client data/System folders
-ARG SET_PRERENEWAL
-RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
-    git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
-    test -d /opt/translation/Translation && \
-    mkdir -p /var/www/localhost/htdocs/client/data /var/www/localhost/htdocs/client/system && \
-    if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
-        if [ -d "/opt/translation/Translation/Pre-Renewal/data" ]; then \
-            cp -rf /opt/translation/Translation/Pre-Renewal/data/* /var/www/localhost/htdocs/client/data/; \
+# Fetch ROEnglishRE translations.
+# Renewal is the base; Pre-Renewal overrides it when enabled.
+ARG SET_PRERENEWAL=0
+RUN set -eu; \
+    git clone "${ROENGLISH_REPOSITORY}" /opt/translation; \
+    git -C /opt/translation checkout --detach "${ROENGLISH_REF}"; \
+    test -d /opt/translation/Translation; \
+    mkdir -p /var/www/localhost/htdocs/remote/data \
+             /var/www/localhost/htdocs/remote/System; \
+    case "${SET_PRERENEWAL}" in 0|1) ;; *) echo "SET_PRERENEWAL must be 0 or 1" >&2; exit 1 ;; esac; \
+    layers="Renewal"; \
+    if [ "${SET_PRERENEWAL}" = "1" ]; then \
+        layers="$layers Pre-Renewal"; \
+    fi; \
+    for layer in $layers; do \
+        src="/opt/translation/Translation/$layer"; \
+        test -d "$src/data"; \
+        test -d "$src/SystemEN"; \
+        if [ -d "$src/data" ]; then \
+            cp -a "$src/data/." /var/www/localhost/htdocs/remote/data/; \
         fi; \
-        if [ -d "/opt/translation/Translation/Pre-Renewal/SystemEN" ]; then \
-            cp -rf /opt/translation/Translation/Pre-Renewal/SystemEN/* /var/www/localhost/htdocs/client/system/; \
-        elif [ -d "/opt/translation/Translation/Pre-Renewal/system" ]; then \
-            cp -rf /opt/translation/Translation/Pre-Renewal/system/* /var/www/localhost/htdocs/client/system/; \
+        if [ -d "$src/SystemEN" ]; then \
+            cp -a "$src/SystemEN/." /var/www/localhost/htdocs/remote/System/; \
+        elif [ -d "$src/system" ]; then \
+            cp -a "$src/system/." /var/www/localhost/htdocs/remote/System/; \
         fi; \
-    else \
-        if [ -d "/opt/translation/Translation/Renewal/data" ]; then \
-            cp -rf /opt/translation/Translation/Renewal/data/* /var/www/localhost/htdocs/client/data/; \
-        fi; \
-        if [ -d "/opt/translation/Translation/Renewal/SystemEN" ]; then \
-            cp -rf /opt/translation/Translation/Renewal/SystemEN/* /var/www/localhost/htdocs/client/system/; \
-        elif [ -d "/opt/translation/Translation/Renewal/system" ]; then \
-            cp -rf /opt/translation/Translation/Renewal/system/* /var/www/localhost/htdocs/client/system/; \
-        fi; \
-    fi && \
+    done; \
     rm -rf /opt/translation
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI && \
-    rm -rf /var/www/localhost/htdocs/client/resources /var/www/localhost/htdocs/client/BGM && \
-    ln -s /opt/client_files/resources /var/www/localhost/htdocs/client/resources && \
-    ln -s /opt/client_files/BGM /var/www/localhost/htdocs/client/BGM && \
-    ln -s /opt/client_files/AI /var/www/localhost/htdocs/AI
+    rm -rf /var/www/localhost/htdocs/remote/resources /var/www/localhost/htdocs/remote/BGM && \
+    ln -s /opt/client_files/resources /var/www/localhost/htdocs/remote/resources && \
+    ln -s /opt/client_files/BGM /var/www/localhost/htdocs/remote/BGM && \
+    ln -s /opt/client_files/AI /var/www/localhost/htdocs/AI && \
+    ln -s /opt/client_files/AI /var/www/localhost/htdocs/remote/AI
 
-# Create Apache routing configuration
-RUN cat <<EOT > /var/www/localhost/htdocs/.htaccess
-ErrorDocument 404 /client/index.php
-RedirectMatch 404 /\.git
-<IfModule mod_rewrite.c>
-    RewriteEngine On
-    RewriteCond %{REQUEST_METHOD} ^TRACE
-    RewriteRule .* - [F]
-</IfModule>
-EOT
 
 # Copy templates, custom overrides, and startup entrypoint
 COPY images/robrowser/index.html.template /var/www/localhost/htdocs/index.html.template
@@ -136,9 +113,12 @@ RUN addgroup -g 1000 robrowser && \
 # Add security hardening
 RUN chmod 755 /var/www/localhost/htdocs/index.html.template
 
+RUN rm -rf /var/www/localhost/htdocs/.git /var/www/localhost/htdocs/remote/.git \
+    && echo 'RedirectMatch 404 /\.git' >> /etc/apache2/httpd.conf
+
 USER robrowser
 WORKDIR /var/www/localhost/htdocs
 
-EXPOSE 8080 3000
+EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]

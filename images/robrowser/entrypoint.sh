@@ -1,36 +1,48 @@
 #!/bin/sh
-set -e
+set -eu
 
-# Security hardening
 umask 077
 
-export HOST=${HOST:-"127.0.0.1"}
-export PORT_HTTP=${PORT_HTTP:-"8080"}
-export PORT_WSPROXY=${PORT_WSPROXY:-"5999"}
-export PACKETVER=${PACKETVER:-"20211103"}
-export PACKET_OBFUSCATION_KEY1=${PACKET_OBFUSCATION_KEY1:-"0x6DED6DEE"}
-export PACKET_OBFUSCATION_KEY2=${PACKET_OBFUSCATION_KEY2:-"0x3DFD6AED"}
-export PACKET_OBFUSCATION_KEY3=${PACKET_OBFUSCATION_KEY3:-"0x0A3D5C0D"}
+case "${ROBROWSER_ROLE:-web}" in
+  web) ;;
+  *)
+    echo "Unsupported ROBROWSER_ROLE for Apache image" >&2
+    exit 1
+    ;;
+esac
 
+ROOT="/var/www/localhost/htdocs"
+
+export HOST="${HOST:-127.0.0.1}"
+export PORT_HTTP="${PORT_HTTP:-8080}"
+export PORT_WSPROXY="${PORT_WSPROXY:-5999}"
+export PACKETVER="${PACKETVER:-20211103}"
+export PACKET_OBFUSCATION_KEY1="${PACKET_OBFUSCATION_KEY1:-0x6DED6DEE}"
+export PACKET_OBFUSCATION_KEY2="${PACKET_OBFUSCATION_KEY2:-0x3DFD6AED}"
+export PACKET_OBFUSCATION_KEY3="${PACKET_OBFUSCATION_KEY3:-0x0A3D5C0D}"
+
+# Generate configuration for existing Apache compatibility.
 envsubst '${HOST} ${PORT_HTTP} ${PORT_WSPROXY} ${PACKETVER} ${PACKET_OBFUSCATION_KEY1} ${PACKET_OBFUSCATION_KEY2} ${PACKET_OBFUSCATION_KEY3}' \
-  < /var/www/localhost/htdocs/index.html.template \
-  > /var/www/localhost/htdocs/index.html
+  < "$ROOT/index.html.template" \
+  > "$ROOT/index.html"
 
-# Encoding mapping requires a mounted client DATA.INI and GRF files. These are
-# intentionally absent from the immutable image and CI smoke-test container.
-if [ -f "/var/www/localhost/htdocs/client/tools/convert-encoding.php" ] && \
+chmod 644 "$ROOT/index.html"
+
+# Merge optional loose-file mounts after the baked translations. Empty mounts
+# preserve the translated base; user files take precedence without hiding it.
+for directory in data System; do
+  if [ -d "/opt/client_files/$directory" ]; then
+    cp -R "/opt/client_files/$directory/." "$ROOT/remote/$directory/"
+  fi
+done
+
+# Generate encoding mappings when client resources are mounted.
+if [ -f "$ROOT/remote/tools/convert-encoding.php" ] && \
    [ -f "/opt/client_files/resources/DATA.INI" ]; then
-    php /var/www/localhost/htdocs/client/tools/convert-encoding.php
+  (cd "$ROOT/remote" && php tools/convert-encoding.php)
 else
-    echo "Skipping encoding mapping: client resources/DATA.INI is not mounted."
+  echo "Skipping encoding mapping: DATA.INI not mounted."
 fi
 
-# Security: Ensure proper permissions on generated files
-chmod 644 /var/www/localhost/htdocs/index.html
-
-# Apache writes its pid file under /run/apache2, which is owned by robrowser.
-# Vite remains the foreground process.
-httpd -D FOREGROUND &
-
-cd /var/www/localhost/htdocs
-exec npx vite --host 0.0.0.0 --port 3000 --cors --no-open
+echo "Starting Apache on port 8080..."
+exec httpd -D FOREGROUND

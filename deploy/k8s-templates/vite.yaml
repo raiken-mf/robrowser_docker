@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vite
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: vite
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vite
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vite
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vite
+          image: ghcr.io/raiken-mf/vite:${VITE_IMAGE_TAG}
+          # stable intentionally follows the current main image on each rollout.
+          imagePullPolicy: Always
+          env:
+            - name: ROBROWSER_ROLE
+              value: "vite"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: robrowser-config
+          ports:
+            - containerPort: 3000
+              name: frontend
+          readinessProbe:
+            httpGet:
+              path: /
+              port: frontend
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: frontend
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vite
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: vite
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: vite
+  ports:
+    - name: frontend
+      port: 3000
+      targetPort: 3000
+      nodePort: ${PORT_FRONTEND}

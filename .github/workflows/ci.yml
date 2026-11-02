@@ -151,6 +151,8 @@ jobs:
 
       - name: Verify independent image overrides
         if: steps.scope.outputs.relevant == 'true'
+        env:
+          OVERRIDE_BUILDX: "1"
         run: python3 scripts/check-image-overrides.py
 
       - name: Smoke-test roBrowser

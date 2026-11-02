@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build real per-image override fixtures without editing local override payloads."""
+import os
 import pathlib
 import shutil
 import subprocess
@@ -31,7 +32,8 @@ with tempfile.TemporaryDirectory(prefix="remote-override-") as directory:
             content += "<p>${HOST}:${PORT_HTTP}</p>"
         (fixture / page).write_text(content)
         image = "remote-override-test:" + component
-        command = ["docker", "build", "-f", f"images/{component}/Dockerfile", "-t", image]
+        command = ["docker", "buildx", "build", "--load"] if os.environ.get("OVERRIDE_BUILDX") == "1" else ["docker", "build"]
+        command.extend(["-f", f"images/{component}/Dockerfile", "-t", image])
         for key in keys:
             for suffix in ("REPOSITORY", "REF"):
                 variable = f"{key}_{suffix}"

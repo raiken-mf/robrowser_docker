@@ -104,7 +104,7 @@ Hercules is Compose-config validated but is not built or published by CI.
 Buildx stores AMD64 test layers in separate GitHub Actions scopes
 `ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and
 `ci-rathena-amd64`. Renewal and Pre-Renewal remote builds share the same local
-Buildx builder in the validation job. GitHub isolates PR caches from main;
+Buildx builder in the validation job, as do the isolated override fixtures. GitHub isolates PR caches from main;
 never store credentials in layers or cache. BuildKit matches Dockerfile commands,
 base images, build arguments and copied inputs, so affected layers and subsequent
 layers rebuild when their inputs change. External package repositories are not

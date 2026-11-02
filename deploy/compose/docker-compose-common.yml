@@ -48,8 +48,6 @@ services:
       dockerfile: images/robrowser/Dockerfile
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
-        ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
-        ROBROWSER_REF: ${ROBROWSER_REF:-7181f0f54f9785829839bb15459822ac511c58ab}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
         REMOTECLIENT_REF: ${REMOTECLIENT_REF:-fe7c14dceb62a761f4319abe9738b70b52559078}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}

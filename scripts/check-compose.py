@@ -50,7 +50,11 @@ try:
    assert output(*base,'exec','-T',name,'printenv','PORT_FRONTEND').strip()==services[name]['environment']['PORT_FRONTEND']
   content,headers=request(name,port)
   assert b'/remote/' in content
-  print(f'PASS {name}: HTTP 200 and remote client configuration')
+  if name=='robrowser':
+   assert b'RemoteClient service' in content and b'<script' not in content.lower()
+  else:
+   assert b'applications/api/api.js' in content
+  print(f'PASS {name}: HTTP 200 and correct service page')
  content,_=request('vite',3000,'/src/Renderer/GR2/GR2ModelRenderer.js')
  assert b'granny-ro-js_wasm' in content and b'parseAnimated' in content and b'poseAt' in content
  print('PASS Vite GR2 module transforms')
@@ -62,15 +66,31 @@ try:
  run(*base,'exec','-T','robrowser','sh','-c',
      'printf probe > /var/www/localhost/htdocs/.git-security-check')
  address=output(*base,'port','robrowser','8080').strip()
- for path,method,expected in [('/.git-security-check','GET',404),('/','TRACE',405)]:
+ for path,method,expected in [('/.git-security-check','GET',404),('/applications/api/api.js','GET',404),('/','TRACE',405)]:
   try:
    urllib.request.urlopen(urllib.request.Request('http://'+address+path,method=method),timeout=5)
    raise AssertionError(f'{method} {path} unexpectedly allowed')
   except urllib.error.HTTPError as error:
    assert error.code==expected,(method,error.code)
  print('PASS Git-path blocking and TRACE protection')
+ # This nonexistent filesystem path must route through remote/.htaccess to PHP.
+ # Missing GRFs produce a semantic 503 in clean CI, not a routing/PHP failure.
+ try:
+  response=urllib.request.urlopen('http://'+address+'/remote/api/health/simple',timeout=10)
+ except urllib.error.HTTPError as error:
+  response=error
+ with response:
+  assert response.code in (200,503), response.code
+  health=json.loads(response.read())
+ assert 'grfsLoaded' in health and health['status'] in ('ok','error')
+ print('PASS /remote/ .htaccess fallback executes RemoteClient PHP')
  run(*base,'exec','-T','robrowser','sh','-c','test -f /var/www/localhost/htdocs/put_files_to_override_here.txt && ! command -v node && ! command -v npm')
  run(*base,'exec','-T','vite','test','-f','/app/.gitkeep')
+ run(*base,'exec','-T','robrowser','sh','-c',
+     'for file in src applications vite.config.js package.json package-lock.json index.html.template; do '
+     'test ! -e "/var/www/localhost/htdocs/$file" || exit 1; done')
+ run(*base,'exec','-T','vite','sh','-c','test -d /app/src && ! command -v php && ! command -v httpd')
+ print('PASS image boundaries: frontend only in Vite; Apache contains no frontend artifacts')
  run(*base,'exec','-T','robrowser','sh','-c',
      'test -f /var/www/localhost/htdocs/remote/data/add-data-folder-files-here.txt && '
      'test -f /var/www/localhost/htdocs/remote/System/add-system-folder-files-here.txt')

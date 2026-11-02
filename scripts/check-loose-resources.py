@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the actual Apache/PHP image using isolated, synthetic client files."""
 import http.client
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -22,6 +23,10 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
                 'SystemEN/probe-main.lua': b'local x = require("SystemEN/LuaFiles514/itemInfo_f"); return x.value + dofile("SystemEN/LuaFiles514/probe-dofile.lua")\n',
                 'data/nested/한글.lua': b'korean-bytes\n', 'AI/Util.lua': b'ai-content\n'}
     for path, data in fixtures.items(): (root / path).write_bytes(data)
+    cpname = '한국어.lua'.encode('cp949')
+    with open(os.fsencode(root / 'data/nested') + b'/' + cpname, 'wb') as f:
+        f.write(b'cp949-filename\n')
+    (root / 'resources/private.txt').write_bytes(b'not-public\n')
     (root / 'data/escape.txt').symlink_to('/etc/passwd')
     command = ['docker', 'run', '-d', '--name', name, '-p', '127.0.0.1::8080',
                '-e', 'CLIENT_AUTOEXTRACT=false', '-v', f'{root}:/opt/client_files:ro', image]
@@ -43,12 +48,14 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
         for path, expected in fixtures.items():
             status, body = request(urllib.parse.quote(path, safe='/'))
             assert (status, body) == (200, expected), (path, status, body[:80])
+        for cp_path in (urllib.parse.quote('한국어.lua'), urllib.parse.quote_from_bytes(cpname)):
+            assert request('data/nested/' + cp_path) == (200, b'cp949-filename\n'), cp_path
         baked = subprocess.check_output(['docker', 'exec', name, 'cat',
                                          '/var/www/localhost/htdocs/remote/SystemEN/LuaFiles514/itemInfo.lua'])
         assert request('SystemEN/LuaFiles514/itemInfo.lua') == (200, baked)
         # System wins conflicts; absent System paths use SystemEN without copying.
         assert request('System/LuaFiles514/itemInfo_f.lua') == (200, fixtures['SystemEN/LuaFiles514/itemInfo_f.lua'])
-        for path in ['data/escape.txt', 'data/missing.txt', 'data/../configs.php',
+        for path in ['configs.php', 'Client.php', 'resources/DATA.INI', 'resources/private.txt', 'data/escape.txt', 'data/missing.txt', 'data/../configs.php',
                      'data/%2e%2e/configs.php', 'data/%252e%252e/configs.php', 'data/%2e%2e', 'data/..',
                      'data/%2e%2e/%2e%2e/index.html']:
             status, _ = request(path)

@@ -18,8 +18,16 @@ mounts the client directory read-only at the same path. `DATA.INI` and GRF
 locations remain under `resources`. Root environment overrides are
 `DATA_OVERRIDE_PATH`, `SYSTEM_PATH`, `SYSTEMEN_PATH`, `AI_PATH` and `BGM_PATH`.
 The image enables `SYSTEM_ALIAS_SYSTEMEN`; other PHP installations default it
-to false. The server rejects traversal before Apache URL normalization; PHP
+to false. The image installs the PHP project's server-level Apache policy: it rejects
+traversal before URL normalization, denies direct access to source and GRFs,
+and routes permitted resources through PHP with `AllowOverride None`. PHP
 validates path segments and canonical containment, including symlink targets.
+For standalone Apache deployments the same policy must be explicitly included
+at server or virtual-host scope; `.htaccess` alone cannot protect paths Apache
+normalizes first, and with `AllowOverride None` it is ignored. See the PHP
+repository's Apache security instructions before exposing a standalone server.
+UTF-8 and raw CP949 filenames are supported; an exact UTF-8 filename wins when
+both spellings exist.
 
 ## Observed baseline (2026-11-02)
 

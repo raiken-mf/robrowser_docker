@@ -11,6 +11,11 @@ The original split live-manifest snapshot is preserved on the local branch
 merge-ready migration. A follow-up must be based on the eventual merged main and
 must not apply that snapshot as a single unattended rollout.
 
+The current selected image revisions and their verified registry digests are
+listed in [Image revision guide](image-revisions.md). Keep the migration's image
+overrides aligned with main; do not reintroduce an old image-bump PR or a duplicate
+Vite stable override while resolving conflicts.
+
 ## Prerequisites
 
 - Confirm both new images passed AMD64/ARM64 vulnerability scans and have SBOMs.

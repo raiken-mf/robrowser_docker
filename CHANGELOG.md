@@ -2,7 +2,26 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 2026-11-02 — completed split-stack installation and documentation
+
+- Final runtime names: robrowser is Node.js/Vite frontend; remote is Apache/PHP,
+  RemoteClient, ROEnglishRE and client resources. Compose/Kubernetes/Flux/CI use
+  the separate images and preserved port variables.
+- Completed the fresh empty-MariaDB bootstrap, private .env-based Secrets/ConfigMaps,
+  client-data upload and controlled Flux adoption (PRs #87–#90).
+- Fixed Vite cache-busted API iframe module resolution through a project-owned
+  external bootstrap override; added HTTP/module/source-parity/protocol tests.
+- Operator confirmed both Flux objects active/Ready at revision 109430d1, seven
+  ready pods and successful browser login. Graphics/Lua/GRF-content issues remain
+  separate follow-up work.
+- Consolidated obsolete intermediate migration/validation notes into current
+  cluster setup, fresh application installation, GitOps, operations and validation
+  guides. Infrastructure scripts in custom-scripts were inspected, not modified.
+- Current k8s-all.sh defaults to read-only --check; approved --apply installs the
+  complete stack and --reconcile allows an approved retry. It never deletes a
+  namespace or resumes Flux and is not the routine active-cluster update path.
+
+## Earlier implementation changes (historical)
 
 ### Security
 
@@ -22,4 +41,4 @@ All notable changes to this project are documented in this file.
 - Retry actual wsProxy WebSocket handshakes until ready instead of treating Docker's running state as readiness.
 - Compare the correct base/head revisions on both pull requests and pushes, fall back to full CI validation when no valid base exists, and validate workflow/script-only pushes.
 - `start.sh`: Install Docker only when it is missing, then verify Docker Compose and daemon availability before starting services.
-- `scripts/k8s-all.sh`: Require confirmation before resetting an existing namespace; fail safely on namespace lookup or deletion errors, and wait for deletion to complete before deploying.
+- Historical bootstrap work added namespace lookup/reset safeguards; the current replacement has no namespace-deletion path and uses explicit --check/--apply/--reconcile modes.

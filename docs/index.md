@@ -1,191 +1,40 @@
-# robrowser_docker Documentation
+# roBrowser stack documentation
 
-## Overview
+The stack has a Node.js/Vite frontend (`robrowser`) and an independent Apache/PHP
+RemoteClient (`remote`). MariaDB, rAthena login/character/map and wsProxy provide
+the game services. See the [repository README](https://github.com/raiken-mf/robrowser_docker/blob/main/README.md) for architecture
+and local client-file layout.
 
-**robrowser_docker** is a complete setup for Ragnarok Online server (rathena/Hercules) with web browser client (roBrowser), deployable with both Docker Compose and Kubernetes.
+## Installation versus operation
 
-## Features
+| Situation | Procedure |
+| --- | --- |
+| New Pi/cluster, no K3s or Longhorn | [Cluster installation](cluster-installation.md) |
+| Cluster exists, Ragnarok stack is new | [Fresh Ragnarok installation](fresh-install-runbook.md) |
+| Stack already runs under Flux | [Operations and rollback](operations.md) |
+| Local Docker/rAthena or Hercules | [Deployment and configuration](deployment.md) |
 
-- **Dual Orchestration**: Supports both Docker Compose and Kubernetes deployment
-- **Flexible Server Options**: Choose between rathena or Hercules server implementations
-- **Dynamic Configuration**: All ports configurable via `.env` file
-- **Consistent Architecture**: Same configuration patterns for both deployment methods
-- **Easy Setup**: Simple one-command deployment for both environments
+Do not use infrastructure setup, namespace resets or `k8s-all.sh --apply` for
+routine GitOps updates. `k8s-all.sh --check` is a **bootstrap** check and rejects
+active Flux reconcilers; use the read-only checks in the operations guide on an
+already active cluster.
 
-## Prerequisites
+## Current validation record
 
-- **Docker Compose** (for Docker deployment)
-- **Kubernetes cluster** with `kubectl` access (for Kubernetes deployment)
-- **Client files** (DATA.INI and GRF files) in the `client/` directory
+As confirmed by the operator on 2026-11-02: K3s and Longhorn work; `flux-system`
+and `ragnarok-stack` are active/Ready, last confirmed application revision
+`109430d1`; seven Ragnarok pods are Running and ready, and browser login works.
+PRs #87, #88, #89 and #90 are merged. Historical instructions to keep this
+namespace deleted or Flux permanently suspended no longer describe operation.
 
-## Quick Start
+[Validation coverage](validation.md) distinguishes executed checks from future
+installation examples. Graphical/Lua/GRF-content issues remain separate work.
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/raiken-mf/robrowser_docker.git
-cd robrowser_docker
-```
+## Reference
 
-### 2. Prepare Client Files
-Put your client files in the `client/` folder:
-- Make sure `DATA.INI` is all caps
-- Add required GRF files to the appropriate subdirectories
-
-### 3. Configure Environment Variables
-Copy the template and customize:
-```bash
-cp .env-tmpl .env
-# Edit .env to set your preferences
-```
-
-### 4. Choose Your Deployment Method
-
-#### Docker Compose Deployment
-```bash
-# Run with rathena (default)
-./start.sh
-
-# Run with Hercules
-./start.sh hercules
-
-# Run detached with rathena
-./start.sh detached
-
-# Run detached with Hercules
-./start.sh hercules detached
-```
-
-#### Kubernetes Deployment
-```bash
-# Deploy all components to Kubernetes
-./scripts/k8s-all.sh
-
-# Deploy only MariaDB
-./scripts/k8s-mariadb.sh
-
-# Deploy only rathena server
-./scripts/k8s-rathena.sh
-
-# Deploy only roBrowser
-./scripts/k8s-robrowser.sh
-
-# Deploy only client data
-./scripts/k8s-client-data.sh
-```
-
-## Security Features
-
-- **Minimal Privilege Execution**: All containers run as non-root users (UID 1000)
-- **Capability Restrictions**: Containers have restricted capabilities with `drop: [ALL]`
-- **Runtime Security**: Kubernetes uses `seccompProfile: type: RuntimeDefault`
-- **Secure Image Management**: Official images from `ghcr.io/raiken-mf/` for core services
-- **Environment Variable Protection**: Sensitive data handled through Kubernetes secrets
-
-## Configuration Options
-
-All configuration is managed through the `.env` file:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `MARIADB_ROOT_USER` | MariaDB root user | `root` |
-| `MARIADB_ROOT_PASSWORD` | MariaDB root password | `SomeRootPassword` |
-| `MARIADB_HOST` | MariaDB hostname | `database` |
-| `MARIADB_DATABASE` | Database name | `ragnarok` |
-| `MARIADB_USER` | Database user | `ragnarok` |
-| `MARIADB_PASSWORD` | Database password | `SomePassword` |
-| `SET_INTERSRV_USER` | Inter-server user | `u1` |
-| `SET_INTERSRV_PASSWORD` | Inter-server password | `p1` |
-| `SET_MOTD` | Message of the day | `SORCERY!!!` |
-| `PACKETVER` | Packet version | `20211103` |
-| `SET_PRERENEWAL` | Enable pre-renewal mode | `0` |
-| `HOST` | Host address | `127.0.0.1` |
-| `PORT_HTTP` | HTTP port for roBrowser | `30080` |
-| `PORT_WSPROXY` | WebSocket proxy port | `30599` |
-| `PORT_FRONTEND` | Frontend port for roBrowser | `30000` |
-| `RATHENA_IMAGE_TAG` | rAthena image tag for legacy Kubernetes scripts | `stable` |
-| `ROBROWSER_IMAGE_TAG` | Legacy Apache/remote image tag fallback | `stable` |
-| `REMOTE_IMAGE_TAG` | Explicit Apache/remote image tag | legacy fallback |
-| `VITE_IMAGE_TAG` | roBrowser frontend image tag (compatible variable name) | `stable` |
-| `WSPROXY_IMAGE_TAG` | wsProxy image tag for legacy Kubernetes scripts | `stable` |
-
-### External host and ports
-
-`HOST` is embedded into the roBrowser client configuration and must be reachable from the browser used to play the game. It is used for the remote client files and the WebSocket proxy. The rAthena login address is the internal service name `ragnarok-login`, which wsProxy resolves inside the Compose/Kubernetes network; the login, character, and map ports are not exposed as Kubernetes NodePorts.
-
-For local access from the same machine:
-
-```dotenv
-HOST=127.0.0.1
-```
-
-For access from another machine, use the server's LAN address or a resolvable DNS name:
-
-```dotenv
-HOST=192.168.2.210
-# or, for example: HOST=raspberrypi.local
-```
-
-Do not use internal service names such as `database` or `ragnarok-login` as `HOST`; those names are only resolvable inside the Compose or Kubernetes network.
-
-Docker Compose defaults are:
-
-- frontend: `3000`
-- client files over HTTP: `8080`
-- WebSocket proxy: `5999`
-
-The legacy Kubernetes scripts use these NodePorts by default:
-
-- frontend: `30000`
-- client files over HTTP: `30080`
-- WebSocket proxy: `30599`
-
-### Flux deployment on Kubernetes
-
-The Flux deployment uses the concrete Kustomize manifests under `deploy/k8s/` and the overlay under `deploy/overlays/flux/`. The legacy `scripts/k8s-*.sh` scripts use the configurable `deploy/k8s-templates/` files instead.
-
-For the Pi, use Flux for updates:
-
-```bash
-flux reconcile source git flux-system
-flux reconcile kustomization ragnarok-stack -n flux-system --with-source
-```
-
-Do not use `scripts/k8s-all.sh` as a routine update command: it deletes and recreates the target namespace before deploying the stack.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Permission Denied**: Make sure you have proper permissions for Docker/Kubernetes
-2. **Port Conflicts**: Change ports in `.env` if needed
-3. **Missing Client Files**: Ensure all required client files are present in `client/` directory
-4. **Kubernetes Not Available**: Verify your Kubernetes cluster is accessible
-
-### Security Troubleshooting
-
-1. **Container Running as Root**: Verify that all containers are running as non-root users
-2. **Unexpected Capabilities**: Check that containers have restricted capabilities
-3. **Secret Access Issues**: Ensure Kubernetes secrets are properly configured
-
-### Debugging Tips
-
-- Check container logs: `docker logs <container-name>` or `kubectl logs <pod-name>`
-- Verify network connectivity between services
-- Confirm `.env` file has correct values
-- Ensure sufficient system resources for all containers/services
-
-## Security Best Practices
-
-1. **Never Commit Sensitive Data**: Ensure `.env` files are never committed to version control
-2. **Change Default Passwords**: Always update default passwords before deployment
-3. **Regular Updates**: Keep container images updated with security patches
-4. **Network Security**: Restrict network access to only necessary services
-5. **Access Control**: Use Kubernetes RBAC for proper access control
-
-## Contributing
-
-Contributions are welcome! Please submit issues and pull requests to the repository.
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](../LICENSE) file for details.
+- [GitOps lifecycle and release approval](gitops.md)
+- [Image tags, digests and source revisions](image-revisions.md)
+- [Upstream updates](upstream-updates.md)
+- [Security and private configuration](security.md)
+- [Development and offline tests](development.md)
+- [Vite iframe regression](frontend-api-module.md)

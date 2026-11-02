@@ -1,10 +1,19 @@
 site_name: roBrowser Docker Stack
-site_description: Documentation for roBrowser, rAthena and Kubernetes Deployment
+site_description: Deployment, GitOps operation and validation for the roBrowser stack
 repo_url: https://github.com/raiken-mf/robrowser_docker
 nav:
   - Home: index.md
-  - Fork updates and releases: upstream-updates.md
-  - Image and repository security: security.md
+  - New K3s and Flux cluster: cluster-installation.md
+  - Fresh Ragnarok installation: fresh-install-runbook.md
+  - Docker and configuration: deployment.md
+  - GitOps lifecycle: gitops.md
+  - Operations and rollback: operations.md
+  - Image revisions: image-revisions.md
+  - Upstream updates: upstream-updates.md
+  - Development: development.md
+  - Validation: validation.md
+  - Security: security.md
+  - Frontend iframe regression: frontend-api-module.md
 theme:
   name: material
   palette:

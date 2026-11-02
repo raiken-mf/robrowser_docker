@@ -1,142 +1,142 @@
-# Approved fresh installation: runbook and current preparation
+# Fresh Ragnarok stack on an existing cluster
 
-No commands in the installation sections have been executed. Namespace `ragnarok`
-is absent; both `flux-system` and `ragnarok-stack` stay suspended. The operator
-explicitly selected an empty new `ragnarok` database, with no backup restoration.
-All credentials and variables come from the operator's local `.env`; it is never
-committed. In particular preserve HOST=pi and PORT_FRONTEND=30000.
+This runbook is for an **empty application installation** on an already prepared
+cluster. It is not the maintenance procedure for the running GitOps stack. The
+Pi installation has completed: both Flux Kustomizations are active/Ready and
+browser login succeeded. Nothing here says to suspend that working installation.
 
-## Prepared inputs
+## Prerequisites and approval gate
 
-- #87 selects the published/scanned `remote` and `robrowser` releases from source
-  `6c00eb847d9f65c9b0f4c941140b790177c37470`. rAthena and wsProxy keep their
-  independently verified existing releases. All four images allow anonymous
-  registry access, support ARM64/AMD64 and need no imagePullSecret on this cluster.
-- `robrowser-config` contains the reviewed non-secret web settings. New
-  `rathena-config` supplies the previously missing game-server/DB configuration,
-  excluding passwords/interserver credentials.
-- `render-k8s-bootstrap.py` renders `mariadb-root-secret`, `mariadb-user-secret`
-  and the `.env`-derived rathena-config locally. The user Secret supplies BOTH
-  `password` (MariaDB operator) and `MARIADB_PASSWORD` (rAthena), plus the configured
-  interserver user/password. No defaults/generated passwords replace `.env`.
-  Secret output is owner-only (directory 0700/file 0600), never printed or pushed;
-  an existing output file is not overwritten. It does not contact Kubernetes.
-- Longhorn, the MariaDB operator/webhook and their CRDs are already available.
-  The DB network policy keeps existing application restrictions and additionally
-  permits only the labeled MariaDB controller in namespace mariadb-operator on
-  port 3306. This is required by the installed operator
-  [SQL reconciler](https://github.com/mariadb-operator/mariadb-operator/blob/v26.6.0/pkg/controller/sql/controller.go),
-  which creates the Database/User/Grant over SQL.
-  Client PVC: 15Gi RWX; database: new 5Gi Longhorn storage. Old ragnarok PVs are
-  gone; no old data is needed. Local client AI/BGM/data/System/resources and the
-  three DATA.INI-referenced GRFs are available for the new client volume.
-- The reviewed NodePorts are free: remote 30080 -> 8080, frontend 30000 -> 3000,
-  wsProxy 30599 -> 5999. Existing variable names/fallbacks are preserved.
+K3s/node access, Longhorn, a ready MariaDB operator/webhook and its CRDs must
+already exist. The [cluster guide](cluster-installation.md) explains the separate
+infrastructure scripts and their side effects. k8s-all.sh checks these prerequisites;
+it does not install/upgrade them.
 
-## Read-only preparation — permitted before approval
+For a genuinely new stack, obtain installation approval, review storage and image
+pins, and ensure the target namespace is absent. Do not delete a working namespace
+or reuse this procedure as a backup restore. The verified installation deliberately
+used a new empty `ragnarok` database; no old data required recovery.
 
-Use the CURRENT main scripts, not an older checkout's old destructive k8s-all.sh.
-The original working checkout/ignored client files do not need to be moved:
+The manual bootstrap requires both existing Flux Kustomizations paused. The
+Git state used for activation must hold ragnarok-stack at suspend:true until its
+release is approved. See [controlled activation](gitops.md#controlled-first-activation).
+The current operational main has suspend:false; it is not an installation hold.
+Establish a reviewed hold for the target installation before bootstrap, rather
+than assuming a one-off pause survives parent reconciliation.
+
+## Local configuration and context
+
+Use a reviewed current checkout without overwriting local `.env`, client files
+or ignored override payloads. A separate worktree can use the originals by
+absolute path. For example, after choosing the intended checkout:
 
 ```bash
-git fetch origin main
-git worktree add --detach /tmp/ragnarok-approved-install origin/main
-cd /tmp/ragnarok-approved-install
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 export ENV_FILE=/home/pi/git/robrowser_docker/.env
 export CLIENT_SOURCE_DIR=/home/pi/git/robrowser_docker/client
-bash scripts/k8s-all.sh --check
-kubectl kustomize deploy/overlays/flux > /tmp/ragnarok-reviewed-manifests.yaml
+kubectl config current-context
+kubectl get nodes -o wide
+flux get kustomizations -n flux-system
 ```
 
-`--check` (also the no-argument default) loads `.env`, renders private temporary
-bootstrap data, checks API errors, operators/storage, Flux suspension, port
-ownership and client-source completeness, then removes its temporary files.
-It never applies resources, deletes namespaces, restarts workloads or resumes
-Flux. Inspect the reviewed non-secret rendering before approving installation.
+These are environment/read-only checks. Never print kubeconfig, `.env`, Secret
+data or registry credentials. On another host use its authorized kubeconfig;
+copying a Pi file with a localhost server address is not sufficient.
 
-## Installation — DO NOT EXECUTE before separate operator approval
+The verified Pi uses HOST=pi, PORT_FRONTEND=30000, PORT_HTTP=30080 and
+PORT_WSPROXY=30599. Keep the existing variable names and fallbacks. All database
+and interserver credentials are read from local `.env` exactly as configured;
+bootstrap does not invent passwords or restore backups.
 
-From the reviewed worktree and environment above:
+Expected local layout:
+
+```text
+client/
+  resources/DATA.INI   # case-sensitive, references the available GRFs
+  resources/*.grf
+  AI/
+  BGM/
+  data/
+  System/
+```
+
+Before installation, verify source files fit the 15Gi client PVC. MariaDB uses
+new 5Gi Longhorn storage. A previous namespace's Bound PVC status does not
+establish a recovery path after deletion; this runbook assumes an empty new DB.
+
+## Read-only bootstrap check
+
+```bash
+bash scripts/k8s-all.sh --check
+```
+
+No argument also defaults to --check. It loads the local configuration, renders
+private temporary Secrets/ConfigMaps, checks API errors, operator/storage
+availability, image tag selection, paused Flux, port ownership and DATA.INI/GRF
+source completeness. It performs no cluster writes and removes its private
+temporary files. It intentionally rejects **active** Flux even though this mode
+is read-only; it is a bootstrap preflight, not a general operations health check.
+
+The web renderer can emit non-secret review files separately, but its standalone
+image defaults may be stable. The full bootstrap chooses reviewed SHA tags from
+the Flux overlay unless compatible image-tag overrides were explicitly supplied.
+Review those overrides; never treat an invented old-name SHA or stable as release
+provenance. See [configuration sources](deployment.md#configuration-sources).
+
+## Full installation — changes the cluster
+
+Only after the installation approval and a successful preflight:
 
 ```bash
 bash scripts/k8s-all.sh --apply
 ```
 
-This is the full automatic application bootstrap; it does not install/upgrade
-cluster infrastructure operators, which are checked as prerequisites. It:
+The script runs the complete application sequence:
 
-1. Rechecks prerequisites with Flux still paused. Existing namespaces require
-   `--apply --reconcile` for an expressly approved retry; the script never deletes
-   a namespace. API/auth failures abort rather than being treated as NotFound.
-2. Applies the hardened namespace, restrictive DB network policy, Secrets and
-   both `.env`-derived ConfigMaps. Secret values stay out of local CLI arguments
-   and logs. Existing passwords from `.env` are used exactly as configured.
-3. Creates MariaDB/Database/User/Grant resources and waits for their Ready
-   conditions. The database is new and empty; there is no backup import.
-4. Creates/populates the client PVC using the non-root loader. Client paths are
-   relative to CLIENT_SOURCE_DIR, not the caller's working directory. Every
-   streamed file's byte count is checked; failures stop before web deployments.
-5. Starts rAthena in login/char/map dependency order. The login entrypoint with
-   INIT_DB=true automatically imports the fresh schema, Renewal/Pre-Renewal data
-   according to SET_PRERENEWAL, and the configured interserver account. Char/map
-   use INIT_DB=false. The script verifies the initialized interserver DB row
-   without exposing credentials or putting passwords in local command arguments.
-6. Deploys/waits for wsProxy, remote and robrowser using the selected release tags.
-   It checks a real wsProxy WebSocket handshake and parses the mounted first GRF
-   through RemoteClient's PHP implementation. Both Flux objects remain paused.
+1. Recheck paused Flux/prerequisites. An existing namespace requires an expressly
+   approved --reconcile retry. API/auth failures abort, not masquerade as NotFound.
+   The script never deletes a namespace or resumes Flux.
+2. Apply the labeled/hardened namespace and restrictive DB network policy, then
+   private mariadb-root-secret/mariadb-user-secret and rathena-config, followed
+   by the `.env`-derived robrowser-config.
+3. Apply MariaDB, Database, User and Grant CRs and wait for their Ready conditions.
+   The user Secret contains both password (operator) and MARIADB_PASSWORD
+   (rAthena), plus the configured interserver user/password. No password goes in
+   a Git-managed ConfigMap or local command argument.
+4. Create the client PVC/non-root loader, upload CLIENT_SOURCE_DIR folders and
+   check streamed file sizes. Stop on failure before starting the web services.
+5. Start login, char and map in dependency order. Login's INIT_DB=true entrypoint
+   imports the empty schema and Renewal/Pre-Renewal SQL according to
+   SET_PRERENEWAL, then configures the interserver account. Char/map do not
+   initialize the DB. A private in-pod SQL check verifies the account row.
+6. Deploy/wait for wsProxy, remote and robrowser. Check an actual wsProxy
+   WebSocket handshake and parse the mounted first GRF using RemoteClient PHP.
+   List pods/services/PVCs; Flux remains paused for the separate adoption gate.
 
-An error aborts the next steps; no namespace/PVC reset is attempted. Inspect the
-failure and approve a `--reconcile` retry if needed. No SQL errors are suppressed.
+Secret output is an owner-only temporary file (directory 0700, file 0600), not
+logged or committed. The offline renderer rejects overwriting an existing output
+file. A failure aborts; it does not reset data or suppress SQL failures. Diagnose
+it before approving `--apply --reconcile` for a partial-install retry.
 
-## Application acceptance checks
+## Acceptance and GitOps adoption
 
-Use the same kubeconfig/context; do not infer health solely from Flux Ready:
+Use the [read-only operations checks](operations.md#health-checks), then test the
+frontend in a real browser: rendered host/ports, iframe startup, RemoteClient
+requests/CORS, external WebSocket connection, login and map loading. Keep client
+content errors distinct from Kubernetes readiness.
 
-```bash
-kubectl -n ragnarok get pods,deployments,services,endpointslices,pvc
-kubectl -n ragnarok get events --field-selector type=Warning
-kubectl -n ragnarok rollout status deployment/remote --timeout=180s
-kubectl -n ragnarok rollout status deployment/robrowser --timeout=180s
-curl -fsS http://pi:30080/ >/dev/null
-curl -fsS http://pi:30080/remote/System/add-system-folder-files-here.txt >/dev/null
-curl -fsS http://pi:30000/ >/dev/null
-curl -fsS http://pi:30000/applications/api/api.js >/dev/null
-curl -fsS http://pi:30000/src/Renderer/GR2/GR2ModelRenderer.js >/dev/null
-kubectl -n ragnarok exec -i deployment/wsproxy -- node - < scripts/check-wsproxy.cjs
-```
+For first adoption, activate the parent while the child is explicitly held in
+Git; verify parent revision/Ready and the child pause, then separately review the
+Git change enabling the child. See [the precise sequence](gitops.md#controlled-first-activation).
+Git-managed configuration/pins must match the installed `.env`-derived settings.
+Secrets and populated client contents remain private/bootstrap managed; do not
+commit or recreate them to make GitOps adopt the stack.
 
-Expect all six deployments available (login, char, map, wsProxy, remote, frontend),
-PVCs Bound, populated endpoints, the exact released runtime images and no
-ImagePullBackOff/CrashLoopBackOff. Check rendered HOST/ports and CORS, the external
-WebSocket path through PORT_WSPROXY, then actual browser login/map loading.
-The quick RemoteClient health endpoint can report 503 for lazily loaded GRF
-indexes even when actual reads/parsing work; do not enable a large cache just to
-change that metric. See the existing health caveat in flux-split-migration.md.
+## What was actually verified
 
-## Controlled Flux adoption — also requires approval
-
-Never run manual bootstrap with an active reconciler for the same resources.
-`ragnarok-app.yaml` explicitly commits `suspend: true`, so resuming the parent
-cannot accidentally start the child. There is no cyclic dependsOn/health wait:
-parent readiness means its cluster configuration applied, not application health.
-
-After the operator approves Flux adoption of the healthy installation:
-
-1. Keep the child suspended. Confirm the GitRepository has fetched the reviewed
-   main revision and the existing `flux-system` SSH Secret is present. Resume
-   ONLY the parent `flux-system`; wait for its Ready condition and exact applied
-   revision, then verify ragnarok-stack is still suspended.
-2. Review that Git-managed ConfigMaps, image pins and resources agree with the
-   `.env`-rendered installed resources. Secrets and populated PVC contents remain
-   private/bootstrap-managed; do not commit them or wipe/recreate them.
-3. Submit/approve a separate Git change lifting the child `suspend: true` hold.
-   With the parent active, merging that approved change resumes the application
-   reconciler. Do not rely on a one-off CLI resume while Git still says suspend:
-   the parent would restore the hold on its next reconciliation.
-4. Confirm both exact Flux applied revisions, no reconciliation errors and repeat
-   application acceptance checks. ragnarok-stack uses wait:false, so Flux Ready
-   is not a substitute for pods, DB, GRFs, frontend and gameplay checks.
-
-No resumption, namespace creation or deployment is authorized by this runbook or
-by merging the image-pin/preparation PR. The operator gives that approval later.
+The completed Pi installation and login were confirmed by the operator on
+2026-11-02. The empty MariaDB 11.8.6 schema/bootstrap was also tested in disposable
+Docker containers against the published rAthena image. CI tests secret rendering,
+failure/ordering behavior through a fake kubectl, and the frontend/remote images.
+Those fake-API tests are not substitutes for live acceptance. Commands in this
+runbook are future procedures and were not re-executed during documentation cleanup.

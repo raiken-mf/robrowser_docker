@@ -51,10 +51,14 @@ Only engine execution is stubbed here: the real engine URL is independently
 requested through Vite. This is not a full graphical browser/gameplay test.
 The regression is required in PR/main CI and needs no added npm dependencies.
 
-Local ARM64 results: frontend image built; the pre-fix HTTP test failed as
-expected; fixed HTML/module/handshake tests passed. Isolated Compose with remote
-also passed frontend/GR2, PHP security, routing, real read-only mounted GRF
-mapping and CORS. Image filesystem/history separation stayed intact.
-Kubernetes was not changed and both Flux Kustomizations remained suspended.
-The fixed image still needs the normal security-gated main publication and a
-separately approved deployment before the operator repeats the browser test.
+## Verification and current deployment
+
+Local ARM64 tests reproduced the old 500 response and passed after extraction.
+CI includes the HTTP/module and handshake checks. The fix merged in PR #88;
+its published ARM64-capable frontend release was selected through PR #89.
+After the completed Kubernetes/GitOps adoption the operator confirmed successful
+browser login. Both Flux Kustomizations are now active/Ready; the former paused
+installation state is no longer an operating instruction.
+
+These tests do not close separate graphics, Lua, GRF-content or gameplay issues.
+See [validation coverage](validation.md) and [normal operations](operations.md).

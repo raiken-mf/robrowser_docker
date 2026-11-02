@@ -1,48 +1,49 @@
-# Fork updates and image releases
+# Upstream source updates and release automation
 
-Build inputs are pinned to full Git commit SHAs in [`build/dependencies.env`](../build/dependencies.env). The four monitored fork repositories are:
+[build/dependencies.env](https://github.com/raiken-mf/robrowser_docker/blob/main/build/dependencies.env)
+pins the roBrowserLegacy, RemoteClient-PHP, rAthena and ROEnglishRE forks. A fork
+sync does not itself change a deployed image. Check Fork Updates runs every six
+hours (and supports workflow_dispatch), compares the configured repository HEADs,
+updates changed pins and validates the candidate source layouts.
 
-- `roBrowserLegacy`
-- `roBrowserLegacy-RemoteClient-PHP`
-- `rAthena`
-- `ROenglishRE`
+## Distinct approval boundaries
 
-Syncing one of these GitHub forks does **not** immediately change a deployed image. The scheduled **Check Fork Updates** workflow checks their default-branch `HEAD`s every six hours (and can also be run manually from Actions). A sync is picked up on the next check, so there can be up to roughly six hours of detection delay.
+- The source updater uses UPSTREAM_PR_TOKEN to create/update
+  automation/upstream-dependency-update and explicitly requests squash auto-merge
+  after required checks. Its branch-update implementation currently force-pushes
+  that dedicated automation branch; operators should review that policy separately.
+- Dependabot checks actions, image bases and the project npm overlays. The
+  Dependabot Auto-Merge workflow enables auto-merge only for non-draft Dependabot
+  PRs targeting main. Required repository checks/protections still apply.
+- These are **source/dependency PR** behaviors. Publish opens a separate **draft
+  GitOps image-pin PR**, and does not request its auto-merge. It requires release
+  approval before an active Flux reconciler adopts it.
 
-## Automated update path
+One source-PR body text currently says no automatic merge, but the executable
+workflow ends in gh pr merge --auto; this guide describes that actual behavior.
+This documentation cleanup does not change automation policy or enable merges.
 
-When one or more fork heads differ from their pins, the workflow updates only those SHAs in `build/dependencies.env`, validates the candidate source layouts, and creates or updates a single PR on `automation/upstream-dependency-update`.
+The updater requires a repository-scoped UPSTREAM_PR_TOKEN with Contents and Pull
+requests write access. Keep it in Actions Secrets, never Git or chat. A workflow
+rerun retains its original source SHA; do not replay an old publishing run to
+release newer main or bypass the publication freshness/security gates.
 
-If the PR's required `validate` check passes, auto-merge merges it. No per-update human approval is intended for this dependency PR. The rest of the release path is:
+## Validation and publication
 
-1. CI builds the images and runs smoke tests.
-2. After CI passes on `main`, Container Security scans the images for **HIGH/CRITICAL** findings (unfixed findings are reported but do not block).
-3. Only after the security workflow succeeds does Publish Images publish the affected image(s) to GHCR, using immutable `sha-<robrowser_docker commit>` tags as well as `stable`.
-4. Publish opens a GitOps PR that updates Flux's immutable image references. The GitOps PR stays draft without auto-merge; deployment requires operator approval. Currently both Flux Kustomizations are suspended for the separately approved fresh installation.
+CI validates the pinned Dockerfile-required source layout, API override parity,
+Compose/templates, translations, runtime isolation and frontend modules. Changed
+main candidates pass both platform scans and SBOM generation before exact-digest
+promotion. The workflow refuses a stale publication when main moved during scans.
+Unchanged image components retain their existing release tags.
 
-rAthena is published separately. roBrowserLegacy changes affect the robrowser frontend image; RemoteClient-PHP and ROenglishRE changes affect remote. Unaffected images are not rebuilt by selective publishing.
+roBrowserLegacy changes affect the frontend robrowser image. RemoteClient and
+ROEnglishRE changes affect remote. rAthena and wsProxy are separate images.
+The project-owned frontend package/lockfile supplies dependencies required by the
+pinned source, including granny-ro-js; update it deliberately when necessary.
+The API HTML/module override must be reviewed if upstream initialization changes.
 
-### One-time setup
-
-The scheduled updater needs the repository secret `UPSTREAM_PR_TOKEN` in **Settings → Secrets and variables → Actions**. Use a fine-grained token restricted to this repository with **Contents: Read and write** and **Pull requests: Read and write**. Do not put the token in source files or paste it into chat. Rotate it if it expires or is revoked.
-
-GitHub can put workflow runs from PRs created by `github-actions[bot]` into `action_required`. If that happens for a GitOps PR, a repository writer must approve that run before its required CI check can execute; auto-merge waits for the check. Dependency-update PRs created with `UPSTREAM_PR_TOKEN` are authenticated as the token owner and normally run CI without that bot approval gate.
-
-## What CI validates
-
-The layout check verifies the paths required by the Dockerfiles:
-
-- **roBrowserLegacy:** `package.json`, `vite.config.js`, and `src/DB/DBManager.js`
-- **RemoteClient-PHP:** `index.php`, `Client.php`, `configs.php`, `data/`, and `System/`
-- **rAthena:** `configure`, `src/custom/defines_pre.hpp`, and `conf/`
-- **ROenglishRE:** Renewal and Pre-Renewal `Translation/.../data` and `SystemEN` directories
-
-The remote image pins RemoteClient-PHP and ROenglishRE separately from the robrowser frontend. Its project-owned npm manifest and lockfile also pin `granny-ro-js@1.5.0`, required by the fork's `granny-ro-js/wasm` import. CI's roBrowser smoke test requests Vite's transformed `GR2ModelRenderer.js` and verifies the WASM module exports resolve; a basic HTTP readiness probe alone would not catch this class of frontend module-resolution error.
-
-These checks prove the expected paths exist, the images build, services start, and the tested frontend module resolves. They do **not** prove full gameplay compatibility or exercise a complete login/map/effect session. The update process currently auto-merges after CI, so a compatible layout and passing smoke test can still precede a runtime issue. Monitor the post-merge Security → Publish → GitOps/Flux pipeline and test gameplay after an update.
-
-## Manual update or recovery
-
-You can still run **Actions → Check Fork Updates → Run workflow** to check immediately. If no fork head is newer than its pin, the run succeeds without opening a PR or building images.
-
-If an update is incompatible, deploy a preceding immutable `sha-...` image tag or revert the dependency-pin PR. Do not use the mutable `stable` tag as a rollback target.
+Only after approving/merging the generated image-pin PR does active Flux adopt
+the changed release. See [GitOps lifecycle](gitops.md) and [image provenance](image-revisions.md).
+Layout/module/CI checks do not prove all gameplay/content compatibility. The
+completed installation's successful login does not close unrelated graphics,
+Lua or GRF-content issues.

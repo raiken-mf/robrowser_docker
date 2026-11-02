@@ -1,151 +1,65 @@
-# robrowser_docker
+# roBrowser Docker and Kubernetes stack
 
-This project sets up a database, downloads and compiles the latest versions of [rathena](https://github.com/rathena/rathena)/[Hercules](https://github.com/HerculesWS/Hercules) and [roBrowserLegacy](https://github.com/MrAntares/roBrowserLegacy).
-The translation of the project is used from llchrisll's repository [ROEnglishRE](https://github.com/llchrisll/ROenglishRE).
-You can override files in `repository_override` if you feel like changing settings, npcs or source files.
+Ragnarok Online with separate `robrowser` frontend, `remote` client-file service,
+wsProxy, rAthena and MariaDB. Docker Compose and Kubernetes/FluxCD are supported;
+Hercules is available through the Compose overlay.
 
-## Features
+| Service | Role | Internal port | External setting |
+| --- | --- | --- | --- |
+| robrowser | Node.js/Vite + pinned roBrowserLegacy | 3000 | PORT_FRONTEND |
+| remote | Apache/PHP 8.4, RemoteClient, ROEnglishRE, GRF/BGM/AI | 8080 | PORT_HTTP |
+| wsproxy | WebSocket bridge to the game services | 5999 | PORT_WSPROXY |
+| ragnarok-login / char / map | rAthena game services | 6900 / 6121 / 5121 | Internal cluster services |
 
-- **Dual Orchestration**: Supports both Docker Compose and Kubernetes deployment
-- **Flexible Server Options**: Choose between rathena or Hercules server implementations
-- **Dynamic Configuration**: All ports configurable via `.env` file
-- **Consistent Architecture**: Same configuration patterns for both deployment methods
-- **Easy Setup**: Simple one-command deployment for both environments
+## Choose the correct procedure
 
-## Web architecture
+- **New cluster:** [K3s, Longhorn and Flux bootstrap](docs/cluster-installation.md).
+  Infrastructure scripts live in the separate `custom-scripts` repository.
+- **New Ragnarok stack on an existing cluster:** [Fresh-install runbook](docs/fresh-install-runbook.md).
+  `k8s-all.sh --check` is read-only; `--apply` needs installation approval and
+  requires existing Flux reconcilers to be paused. It never deletes a namespace.
+- **Existing GitOps cluster:** [Operations and recovery](docs/operations.md).
+  Use reviewed Git changes. Do not rerun cluster setup or the fresh installer.
+- **Local Docker:** [Compose deployment and configuration](docs/deployment.md).
 
-`robrowser` is the Node.js/Vite frontend (`images/robrowser`, PORT_FRONTEND).
-`remote` is Apache/PHP 8.4, RemoteClient, ROEnglishRE and client resources
-(`images/remote`, PORT_HTTP). Both retain independent `repository_override`
-folders. External ports still come from `.env`; internal ports stay 3000/8080.
+## Verified Pi baseline
 
-The Pi namespace has been removed and both Flux Kustomizations are suspended.
-Keep them suspended; do not run installation commands before separate approval.
-See [the fresh-install/release gates](docs/flux-split-migration.md) and
-[override folder compatibility](docs/deployment.md#override-folder-rename).
+On 2026-11-02 the operator confirmed K3s/Longhorn working, both Flux
+Kustomizations active and Ready at application revision `109430d1`, and all
+seven Ragnarok pods Running/ready. Browser login succeeded after PRs #87–#90.
+This is a dated validation record, not a permanent revision or pod-name target.
+Remaining graphics, Lua, GRF-content and client errors are separate follow-up
+work; they are not addressed by this documentation update.
 
-## Prerequisites
+## Local configuration and client assets
 
-- **Docker Compose** (for Docker deployment)
-- **Kubernetes cluster** with `kubectl` access (for Kubernetes deployment)
-- **Client files** (DATA.INI and GRF files) in the `client/` directory
+Prepare `.env` from `.env-tmpl` only when no local configuration exists:
 
-## How to Use the Project
-
-### 1. Clone the Repository
 ```bash
-git clone https://github.com/raiken-mf/robrowser_docker.git
-cd robrowser_docker
+test -f .env || cp .env-tmpl .env
 ```
 
-### 2. Prepare Client Files
-Put your client files in the `client/` folder:
-- Make sure `DATA.INI` is all caps
-- Add required GRF files to the appropriate subdirectories
+Edit it locally; never commit it or credentials. `client/resources/DATA.INI`
+(case-sensitive) must reference the available GRFs. Keep AI, BGM, data and System
+files in their corresponding `client/` folders. Existing local files and
+`repository_override` payloads must be preserved across checkouts.
 
-### 3. Configure Environment Variables
-Copy the template and customize:
+The reviewed Pi settings are HOST=pi, PORT_HTTP=30080, PORT_FRONTEND=30000 and
+PORT_WSPROXY=30599. [.env and port semantics](docs/deployment.md#configuration-sources)
+explains Compose fallbacks, Kubernetes NodePorts and internal listener ports.
+Flux reads committed manifests, **not** the machine's `.env`.
+
+For local Compose, from the repository root:
+
 ```bash
-cp .env-tmpl .env
-# Edit .env to set your preferences
+./start.sh rathena detached
+# Alternative: ./start.sh hercules detached
 ```
 
-### 4. Choose Your Deployment Method
+## Further documentation
 
-#### Docker Compose Deployment
-```bash
-# Run with rathena (default)
-./start.sh
+[GitOps and releases](docs/gitops.md) · [Image revisions](docs/image-revisions.md) ·
+[Security](docs/security.md) · [Development](docs/development.md) ·
+[Validation](docs/validation.md) · [Frontend module regression](docs/frontend-api-module.md)
 
-# Run with Hercules
-./start.sh hercules
-
-# Run detached with rathena
-./start.sh detached
-
-# Run detached with Hercules
-./start.sh hercules detached
-```
-
-#### Kubernetes Deployment
-```bash
-# Check prerequisites without deployment
-./scripts/k8s-all.sh --check
-# After separate installation approval only: ./scripts/k8s-all.sh --apply
-
-# Deploy only MariaDB
-./scripts/k8s-mariadb.sh
-
-# Deploy only rathena server
-./scripts/k8s-rathena.sh
-
-# Deploy only roBrowser
-./scripts/k8s-robrowser.sh
-
-# Deploy only client data
-./scripts/k8s-client-data.sh
-```
-
-## Configuration Options
-
-All configuration is managed through the `.env` file:
-
-Variable | Description | Default
----------|-------------|--------
-`MARIADB_ROOT_USER` | MariaDB root user | `root`
-`MARIADB_ROOT_PASSWORD` | MariaDB root password | `SomeRootPassword`
-`MARIADB_HOST` | MariaDB hostname | `database`
-`MARIADB_DATABASE` | Database name | `ragnarok`
-`MARIADB_USER` | Database user | `ragnarok`
-`MARIADB_PASSWORD` | Database password | `SomePassword`
-`SET_INTERSRV_USER` | Inter-server user | `u1`
-`SET_INTERSRV_PASSWORD` | Inter-server password | `p1`
-`SET_MOTD` | Message of the day | `SORCERY!!!`
-`PACKETVER` | Packet version | `20211103`
-`SET_PRERENEWAL` | Enable pre-renewal mode | `0`
-`HOST` | Host address | `127.0.0.1`
-`PORT_HTTP` | HTTP port for roBrowser | `30080`
-`PORT_WSPROXY` | WebSocket proxy port | `30599`
-`PORT_FRONTEND` | Frontend port for roBrowser | `30000`
-
-## Useful Commands
-
-### WSL (Run as Administrator):
-Replace `(wsl hostname -I)` with the 1st IP that's printed when running the command
-```bash
-netsh interface portproxy add v4tov4 listenport=80   listenaddress=0.0.0.0 connectport=80   connectaddress=(wsl hostname -I)
-netsh interface portproxy add v4tov4 listenport=5999 listenaddress=0.0.0.0 connectport=5999 connectaddress=(wsl hostname -I)
-```
-
-### Linux:
-```bash
-sudo apt-get install ufw
-sudo ufw allow 80
-sudo ufw allow 5999
-sudo ufw allow 22
-sudo ufw enable
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Permission Denied**: Make sure you have proper permissions for Docker/Kubernetes
-2. **Port Conflicts**: Change ports in `.env` if needed
-3. **Missing Client Files**: Ensure all required client files are present in `client/` directory
-4. **Kubernetes Not Available**: Verify your Kubernetes cluster is accessible
-
-### Debugging Tips
-
-- Check container logs: `docker logs <container-name>` or `kubectl logs <pod-name>`
-- Verify network connectivity between services
-- Confirm `.env` file has correct values
-- Ensure sufficient system resources for all containers/services
-
-## Contributing
-
-Contributions are welcome! Please submit issues and pull requests to the repository.
-
-## License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+See [LICENSE](LICENSE) for the project license.

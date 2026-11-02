@@ -1,342 +1,118 @@
-# Development Guide
+# Development and repository layout
 
-## Overview
+## Ownership
 
-This guide provides information for developers working with the robrowser_docker project, including setup, contribution guidelines, and development practices.
+- images/robrowser: Node.js/Vite frontend, package/lockfile overlay and client template.
+- images/remote: Apache/PHP, RemoteClient, translations and client-file configuration.
+- images/rathena and images/hercules: game-server images; images/wsproxy: proxy.
+- build/dependencies.env: exact upstream Git revision pins.
+- deploy/compose: local runtime; deploy/k8s: concrete GitOps base;
+  deploy/k8s-templates: `.env`-based bootstrap/preview templates;
+  deploy/overlays/flux: reviewed release selection.
+- clusters/pi-cluster: Flux parent/source and child application configuration.
+- scripts: bootstrap, renderers and isolated validation helpers.
+- docs: installation, operation, development, release and security guidance.
 
-## Project Structure
+The separate custom-scripts repository owns K3s/Longhorn/Flux bootstrap wrappers;
+it is not vendored here. Do not change its storage/bootstrap behavior as a side
+effect of an application or documentation fix.
 
+## Safe local work
+
+Use a feature branch or separate worktree based on current main. Keep existing
+`.env`, client assets and ignored overrides outside any cleanup/reset operation.
+Never run broad git clean, hard resets or image/volume pruning to make a checkout
+look tidy. Inspect the worktree's tracked, untracked AND ignored files before
+removing it; archive any configuration that must survive.
+
+A branch is not proved merged merely because its PR is closed: rebased/squashed
+history may need further review. Preserve ambiguous refs rather than force-delete
+them. Remote-branch deletion requires explicit permission.
+
+The full bootstrap can use absolute ENV_FILE and CLIENT_SOURCE_DIR paths from
+another worktree. Compose's bind paths/env_file remain rooted in its checkout;
+ENV_FILE is not a general Compose override. See [deployment](deployment.md).
+
+## Build the two web images
+
+These commands build **local test images**, not Kubernetes deployments or registry
+releases. Source the versioned dependency pins, not an arbitrary upstream HEAD:
+
+```bash
+set -a
+source build/dependencies.env
+set +a
+docker build -f images/remote/Dockerfile \
+  --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
+  --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
+  --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
+  --build-arg ROENGLISH_REF="$ROENGLISH_REF" -t remote:ci .
+docker build -f images/robrowser/Dockerfile \
+  --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
+  --build-arg ROBROWSER_REF="$ROBROWSER_REF" -t robrowser:ci .
 ```
-robrowser_docker/
-├── client/                 # Client files (DATA.INI, GRF files)
-├── database/               # Database configuration and data
-├── build/dependencies.env  # Pinned upstream revisions
-├── deploy/compose/         # Docker Compose configurations
-├── deploy/k8s/             # Kubernetes configurations
-├── images/hercules/        # Hercules image files
-│   ├── Dockerfile          # Hercules server Dockerfile
-│   ├── docker-entrypoint.sh # Hercules entrypoint script
-│   └── repository_override/ # Override files for Hercules
-├── images/rathena/         # Rathena image files
-│   ├── Dockerfile          # Rathena server Dockerfile
-│   ├── entrypoint.sh       # Rathena entrypoint script
-│   └── repository_override/ # Override files for Rathena
-├── images/remote/          # Apache/PHP/RemoteClient and resources
-├── images/robrowser/       # Node.js/Vite frontend
-│   ├── Dockerfile          # roBrowser Dockerfile
-│   ├── entrypoint.sh       # roBrowser entrypoint script
-│   ├── index.html.template # Template for HTML generation
-│   └── repository_override/ # Override files for roBrowser
-├── scripts/                # Deployment scripts
-├── start.sh                # Main deployment script
-└── docs/                   # Documentation files
+
+The remote build accepts SET_PRERENEWAL=1 for its additional translation layer.
+The frontend alone fetches roBrowserLegacy; do not add that source tree to remote.
+Project-owned npm manifest/lockfile are installed with npm ci. Update the lockfile
+and source pin together when the new upstream revision needs a dependency change.
+
+## Validation without Kubernetes deployment
+
+Offline/fake-API checks:
+
+```bash
+python3 scripts/check-k8s-bootstrap.py
+python3 scripts/check-k8s-all.py
+kubectl kustomize deploy/overlays/flux >/dev/null
 ```
 
-## Development Setup
-
-### Prerequisites
-
-- Git
-- Docker and Docker Compose
-- Kubernetes cluster (for Kubernetes development)
-- Helm (for MariaDB operator)
-- Basic understanding of containerization and orchestration
-
-### Local Development Environment
-
-1. **Clone Repository**
-   ```bash
-   git clone https://github.com/raiken-mf/robrowser_docker.git
-   cd robrowser_docker
-   ```
-
-2. **Prepare Client Files**
-   Place your client files in the `client/` directory:
-   - Ensure `DATA.INI` is all caps
-   - Add required GRF files to appropriate subdirectories
-
-3. **Configure Environment**
-   ```bash
-   cp .env-tmpl .env
-   # Edit .env to set your preferences
-   ```
-
-4. **Build and Run**
-   ```bash
-   # Using Docker Compose
-   ./start.sh
-   
-   # Or for specific server
-   ./start.sh hercules
-   ```
-
-## Contributing
-
-### Code Style Guidelines
-
-1. **Consistent Formatting**
-   - Follow existing code style
-   - Use consistent naming conventions
-   - Maintain proper indentation
-
-2. **Documentation**
-   - Document all new features
-   - Update existing documentation
-   - Follow the documentation structure
-
-3. **Security**
-   - Follow security best practices
-   - Never commit sensitive information
-   - Use environment variables for configuration
-
-### Pull Request Process
-
-1. **Create Feature Branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make Changes**
-   - Implement your feature or fix
-   - Follow existing code patterns
-   - Add tests if applicable
-
-3. **Update Documentation**
-   - Update relevant documentation files
-   - Ensure documentation reflects code changes
-   - Follow the documentation structure
-
-4. **Test Changes**
-   - Test locally with Docker Compose
-   - Test in Kubernetes if applicable
-   - Verify security configurations
-
-5. **Submit Pull Request**
-   - Push to your fork
-   - Create pull request against main branch
-   - Include description of changes
-
-### Commit Guidelines
-
-Follow conventional commits format:
-- `feat: Add new feature`
-- `fix: Resolve bug`
-- `docs: Update documentation`
-- `security: Improve security`
-- `chore: Routine maintenance`
-
-## Testing
-
-### Unit Testing
-
-The project uses the following testing approaches:
-
-1. **Integration Tests**
-   - Test Docker Compose deployments
-   - Test Kubernetes deployments
-   - Verify service connectivity
-
-2. **Security Tests**
-   - Verify non-root execution
-   - Check capability restrictions
-   - Validate security contexts
-
-3. **Functional Tests**
-   - Test server startup
-   - Verify database connection
-   - Validate client connectivity
-
-### Testing Scripts
-
-The project includes test scripts in the `scripts/` directory:
-- `test-deployment.sh` - Test deployment scenarios
-- `test-security.sh` - Test security configurations
-- `test-integration.sh` - Test integration between components
-
-## Development Best Practices
-
-### Container Development
-
-1. **Minimal Images**
-   - Use Alpine base images
-   - Remove unnecessary packages
-   - Optimize layer caching
-
-2. **Security**
-   - Run as non-root user
-   - Drop unnecessary capabilities
-   - Use read-only filesystems where possible
-
-3. **Performance**
-   - Optimize build processes
-   - Minimize image sizes
-   - Use multi-stage builds
-
-### Script Development
-
-1. **Error Handling**
-   - Implement proper error handling
-   - Use `set -e` for scripts
-   - Validate inputs
-
-2. **Security**
-   - Avoid hardcoded credentials
-   - Use environment variables
-   - Sanitize inputs
-
-3. **Maintainability**
-   - Write clear comments
-   - Use descriptive variable names
-   - Follow consistent formatting
-
-## Debugging
-
-### Docker Compose Debugging
-
-1. **View Logs**
-   ```bash
-   docker logs <container-name>
-   ```
-
-2. **Access Containers**
-   ```bash
-   docker exec -it <container-name> /bin/sh
-   ```
-
-3. **Monitor Resources**
-   ```bash
-   docker stats
-   ```
-
-### Kubernetes Debugging
-
-1. **View Logs**
-   ```bash
-   kubectl logs <pod-name>
-   ```
-
-2. **Access Pods**
-   ```bash
-   kubectl exec -it <pod-name> -- /bin/sh
-   ```
-
-3. **Describe Resources**
-   ```bash
-   kubectl describe pod <pod-name>
-   ```
-
-## Performance Optimization
-
-### Container Optimization
-
-1. **Layer Caching**
-   - Order Dockerfile instructions strategically
-   - Group frequently changing instructions
-   - Use .dockerignore
-
-2. **Resource Management**
-   - Set appropriate resource limits
-   - Monitor resource usage
-   - Optimize memory allocation
-
-### Code Optimization
-
-1. **Efficient Scripts**
-   - Minimize subprocess calls
-   - Use efficient string operations
-   - Cache expensive operations
-
-2. **Database Optimization**
-   - Optimize SQL queries
-   - Use appropriate indexes
-   - Monitor query performance
-
-## Release Process
-
-### Versioning
-
-The project follows semantic versioning principles:
-- Major version for breaking changes
-- Minor version for new features
-- Patch version for bug fixes
-
-### Release Checklist
-
-1. **Code Review**
-   - All code reviewed
-   - Security audit performed
-   - Documentation updated
-
-2. **Testing**
-   - All tests pass
-   - Integration tests successful
-   - Security tests passed
-
-3. **Release Preparation**
-   - Update version numbers
-   - Update changelog
-   - Tag release
-
-4. **Publish**
-   - Push to main branch
-   - Create GitHub release
-   - Update documentation
-
-## Continuous Integration
-
-### CI Pipeline
-
-The project includes CI pipeline configuration:
-- Automated testing on code changes
-- Security scanning of container images
-- Documentation validation
-- Deployment verification
-
-### CI Configuration
-
-The CI pipeline includes:
-- Code linting and formatting
-- Security vulnerability scanning
-- Unit and integration testing
-- Documentation generation
-- Artifact publishing
-
-## Community Guidelines
-
-### Communication
-
-1. **Issues**
-   - Report bugs with clear reproduction steps
-   - Request features with detailed descriptions
-   - Provide feedback on existing issues
-
-2. **Discussions**
-   - Participate in development discussions
-   - Share knowledge and experiences
-   - Help other contributors
-
-3. **Support**
-   - Provide support in forums
-   - Answer questions from users
-   - Contribute to documentation
-
-### Code of Conduct
-
-All contributors are expected to follow the project's code of conduct:
-- Be respectful and inclusive
-- Provide constructive feedback
-- Focus on technical merit
-- Maintain professional standards
-
-The standalone frontend image lives in `images/robrowser/`; its package manifest and
-lockfile are the active npm dependency overlay. `images/remote/` builds only
-Apache/PHP and the RemoteClient/translation content. The Apache image does not fetch roBrowserLegacy or contain frontend files.
-Its root page is a static service status page; the browser application and its
-configuration template belong exclusively to `images/robrowser/`.
-
-### API iframe module override
-
-The two versioned API bootstrap overrides and their Vite/query/iframe regression
-checks are described in [Vite iframe HTML-proxy regression](frontend-api-module.md).
-Review them when updating the upstream source pin. Other local overrides stay
-ignored.
+The bootstrap tests use synthetic fixtures/fake kubectl, check confidentiality,
+abort paths and component ordering. They do not install a real stack. Real
+`k8s-all.sh --check` contacts the selected cluster read-only and expects paused
+Flux; it is unsuitable as an active-cluster CI/operations command.
+
+After building the local images, the Docker checks start/remove their own test
+containers/networks. Do not confuse them with cluster acceptance:
+
+```bash
+bash scripts/check-roenglish.sh remote:ci
+bash scripts/check-image-boundaries.sh remote:ci robrowser:ci
+python3 scripts/check-image-overrides.py
+python3 scripts/check-api-module.py robrowser:ci
+python3 scripts/check-compose.py remote:ci robrowser:ci
+```
+
+check-compose.py reads this checkout's `.env` and actual Compose configuration,
+then isolates the web services on temporary networks and loopback ephemeral ports.
+CLIENT_TEST_ROOT optionally points to readonly client fixtures. check-roenglish.sh
+builds/tests the additional Pre-Renewal variant. The upstream-layout check clones
+pinned sources temporarily; it does not modify their original repositories.
+
+The [API iframe override](frontend-api-module.md) is bound to the pinned upstream
+HTML. The layout gate detects changes needing a rebase. Other local override
+payloads stay ignored and are not supplied to clean GitHub Actions builds.
+
+## Documentation checks
+
+The existing documentation workflow installs mkdocs-material and publishes the
+site on main changes to docs or mkdocs.yml. A local strict build is the relevant
+pre-PR check:
+
+```bash
+python3 -m venv /tmp/robrowser-docs-tools
+/tmp/robrowser-docs-tools/bin/pip install mkdocs-material
+/tmp/robrowser-docs-tools/bin/mkdocs build --strict --site-dir /tmp/robrowser-docs-site
+```
+
+Use a fresh temporary directory if those paths already contain someone else's
+work. Do not commit generated site files, test output, reports or private bootstrap
+artifacts. PR CI's required validate check is scope-sensitive: documentation-only
+changes do not exercise image builds. Record the actual local/CI checks in the PR.
+
+## Contribution scope
+
+Keep changes small, describe behavior and validation, and obtain the appropriate
+merge/deployment approvals. Current application fixes use their own reviewed PRs;
+remaining graphics/Lua/GRF-content/gameplay issues are outside documentation
+cleanup. See [validation boundaries](validation.md) and [security](security.md).

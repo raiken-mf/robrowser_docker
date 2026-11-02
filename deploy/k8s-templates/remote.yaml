@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: vite
+  name: remote
   namespace: ${NAMESPACE}
   labels:
-    app.kubernetes.io/name: vite
+    app.kubernetes.io/name: remote
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: vite
+      app.kubernetes.io/name: remote
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: vite
+        app.kubernetes.io/name: remote
     spec:
       securityContext:
         runAsNonRoot: true
@@ -23,13 +23,13 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: vite
-          image: ghcr.io/raiken-mf/vite:${VITE_IMAGE_TAG}
+        - name: remote
+          image: ghcr.io/raiken-mf/remote:${REMOTE_IMAGE_TAG}
           # stable intentionally follows the current main image on each rollout.
           imagePullPolicy: Always
           env:
             - name: ROBROWSER_ROLE
-              value: "vite"
+              value: "web"
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -39,12 +39,16 @@ spec:
             - configMapRef:
                 name: robrowser-config
           ports:
-            - containerPort: 3000
-              name: frontend
+            - containerPort: 8080
+              name: apache
+          volumeMounts:
+            - name: client-data
+              mountPath: /opt/client_files
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /
-              port: frontend
+              port: apache
             initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
@@ -52,7 +56,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: frontend
+              port: apache
             initialDelaySeconds: 20
             periodSeconds: 20
             timeoutSeconds: 3
@@ -64,20 +68,24 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+      volumes:
+        - name: client-data
+          persistentVolumeClaim:
+            claimName: client-data
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: vite
+  name: remote
   namespace: ${NAMESPACE}
   labels:
-    app.kubernetes.io/name: vite
+    app.kubernetes.io/name: remote
 spec:
   type: NodePort
   selector:
-    app.kubernetes.io/name: vite
+    app.kubernetes.io/name: remote
   ports:
-    - name: frontend
-      port: 3000
-      targetPort: 3000
-      nodePort: ${PORT_FRONTEND}
+    - name: apache
+      port: 8080
+      targetPort: 8080
+      nodePort: ${PORT_HTTP}

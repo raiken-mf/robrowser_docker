@@ -12,6 +12,18 @@ You can override files in `repository_override` if you feel like changing settin
 - **Consistent Architecture**: Same configuration patterns for both deployment methods
 - **Easy Setup**: Simple one-command deployment for both environments
 
+## Web architecture
+
+`robrowser` is the Node.js/Vite frontend (`images/robrowser`, PORT_FRONTEND).
+`remote` is Apache/PHP 8.4, RemoteClient, ROEnglishRE and client resources
+(`images/remote`, PORT_HTTP). Both retain independent `repository_override`
+folders. External ports still come from `.env`; internal ports stay 3000/8080.
+
+The Pi namespace has been removed and both Flux Kustomizations are suspended.
+Keep them suspended; do not run installation commands before separate approval.
+See [the fresh-install/release gates](docs/flux-split-migration.md) and
+[override folder compatibility](docs/deployment.md#override-folder-rename).
+
 ## Prerequisites
 
 - **Docker Compose** (for Docker deployment)

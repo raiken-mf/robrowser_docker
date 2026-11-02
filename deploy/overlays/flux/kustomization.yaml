@@ -9,9 +9,11 @@ resources:
 images:
 - name: ghcr.io/raiken-mf/rathena
   newTag: sha-a9c11e46784f25a75cd85cb91cc7fe97e41533f9
+# Final-name releases are published by the security-gated main workflow.
+# Deployment remains blocked until its generated PR supplies scanned SHA tags.
+- name: ghcr.io/raiken-mf/remote
+  newTag: stable
 - name: ghcr.io/raiken-mf/robrowser
-  newTag: sha-ddc424509d376dc1e77f4b6925f3df37fc4caf27
-- name: ghcr.io/raiken-mf/vite
-  newTag: sha-a9c11e46784f25a75cd85cb91cc7fe97e41533f9
+  newTag: stable
 - name: ghcr.io/raiken-mf/wsproxy
   newTag: sha-ddc424509d376dc1e77f4b6925f3df37fc4caf27

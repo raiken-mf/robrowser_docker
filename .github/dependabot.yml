@@ -11,11 +11,11 @@ updates:
 
   # Tracks the Alpine tag/digest used by each image build.
   - package-ecosystem: docker
-    directory: /images/robrowser
+    directory: /images/remote
     schedule:
       interval: weekly
   - package-ecosystem: docker
-    directory: /images/vite
+    directory: /images/robrowser
     schedule:
       interval: weekly
   - package-ecosystem: docker
@@ -33,7 +33,7 @@ updates:
 
   # The project-owned manifest/lockfile overlay for the pinned roBrowser source.
   - package-ecosystem: npm
-    directory: /images/vite
+    directory: /images/robrowser
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

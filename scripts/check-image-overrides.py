@@ -14,23 +14,23 @@ pins = dict(
     if line and not line.startswith("#")
 )
 
-with tempfile.TemporaryDirectory(prefix="robrowser-override-") as directory:
+with tempfile.TemporaryDirectory(prefix="remote-override-") as directory:
     context = pathlib.Path(directory)
     shutil.copytree(ROOT / "images", context / "images")
     shutil.copyfile(ROOT / ".dockerignore", context / ".dockerignore")
     for component, port, keys in (
-        ("robrowser", 8080, ("REMOTECLIENT", "ROENGLISH")),
-        ("vite", 3000, ("ROBROWSER",)),
+        ("remote", 8080, ("REMOTECLIENT", "ROENGLISH")),
+        ("robrowser", 3000, ("ROBROWSER",)),
     ):
         fixture = context / "images" / component / "repository_override"
         (fixture / "boundary-override.txt").write_text(component)
-        page = "index.html" if component == "robrowser" else "index.html.template"
+        page = "index.html" if component == "remote" else "index.html.template"
         expected = f"custom {component} status"
         content = f"<!doctype html><p>{expected}</p>"
-        if component == "vite":
+        if component == "robrowser":
             content += "<p>${HOST}:${PORT_HTTP}</p>"
         (fixture / page).write_text(content)
-        image = "robrowser-override-test:" + component
+        image = "remote-override-test:" + component
         command = ["docker", "build", "-f", f"images/{component}/Dockerfile", "-t", image]
         for key in keys:
             for suffix in ("REPOSITORY", "REF"):
@@ -38,18 +38,18 @@ with tempfile.TemporaryDirectory(prefix="robrowser-override-") as directory:
                 command.extend(["--build-arg", f"{variable}={pins[variable]}"])
         command.append(".")
         subprocess.run(command, cwd=context, check=True)
-        name = "robrowser-override-" + uuid.uuid4().hex[:12]
+        name = "remote-override-" + uuid.uuid4().hex[:12]
         try:
             subprocess.run([
                 "docker", "run", "-d", "--name", name, "--network", "none",
                 "-e", "HOST=override.example", "-e", "PORT_HTTP=31080", image,
             ], check=True)
-            root = "/var/www/localhost/htdocs" if component == "robrowser" else "/app"
+            root = "/var/www/localhost/htdocs" if component == "remote" else "/app"
             marker = subprocess.check_output([
                 "docker", "exec", name, "cat", root + "/boundary-override.txt",
             ], text=True)
             assert marker == component, "Override payloads crossed image boundaries"
-            if component == "robrowser":
+            if component == "remote":
                 fetch = ["php", "-r", f"echo file_get_contents('http://127.0.0.1:{port}/');"]
             else:
                 fetch = ["node", "--input-type=module", "-e",
@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory(prefix="robrowser-override-") as directory:
                     ["docker", "exec", name, *fetch], capture_output=True, text=True,
                 )
                 if result.returncode == 0 and expected in result.stdout:
-                    if component == "vite":
+                    if component == "robrowser":
                         assert "override.example:31080" in result.stdout
                     break
                 time.sleep(1)

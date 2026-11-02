@@ -87,29 +87,29 @@ jobs:
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
 
-      - name: Build roBrowser for smoke test
+      - name: Build RemoteClient for smoke test
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
           set -euo pipefail
           set -a; source build/dependencies.env; set +a
-          docker build --no-cache -f images/robrowser/Dockerfile \
+          docker build --no-cache -f images/remote/Dockerfile \
             --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
             --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
             --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
-            -t robrowser:ci .
+            -t remote:ci .
 
-      - name: Build Vite for smoke test
+      - name: Build roBrowser frontend for smoke test
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
           set -euo pipefail
           set -a; source build/dependencies.env; set +a
-          docker build -f images/vite/Dockerfile \
+          docker build -f images/robrowser/Dockerfile \
             --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
-            -t vite:ci .
+            -t robrowser:ci .
 
       - name: Verify Renewal and Pre-Renewal installed translations
         if: steps.scope.outputs.relevant == 'true'
@@ -121,7 +121,7 @@ jobs:
 
       - name: Verify image filesystem boundaries
         if: steps.scope.outputs.relevant == 'true'
-        run: bash scripts/check-image-boundaries.sh robrowser:ci vite:ci
+        run: bash scripts/check-image-boundaries.sh remote:ci robrowser:ci
 
       - name: Verify independent image overrides
         if: steps.scope.outputs.relevant == 'true'
@@ -132,14 +132,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker run -d --name robrowser-ci \
+          docker run -d --name remote-ci \
             -e ROBROWSER_ROLE=web \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
-            -p 8080:8080 robrowser:ci
-          docker run -d --name vite-ci \
+            -p 8080:8080 remote:ci
+          docker run -d --name robrowser-ci \
             -e ROBROWSER_ROLE=vite \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
-            -p 3000:3000 vite:ci
+            -p 3000:3000 robrowser:ci
           wait_http() {
             local url="$1" count
             for ((count=1; count<=30; count++)); do
@@ -151,16 +151,16 @@ jobs:
           }
           wait_http http://127.0.0.1:8080/
           wait_http http://127.0.0.1:3000/
-          docker cp scripts/check-php.php robrowser-ci:/var/www/localhost/htdocs/ci-php-check.php
+          docker cp scripts/check-php.php remote-ci:/var/www/localhost/htdocs/ci-php-check.php
           curl -fsS http://127.0.0.1:8080/ci-php-check.php | \
             grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
-          docker exec robrowser-ci rm /var/www/localhost/htdocs/ci-php-check.php
-          docker exec robrowser-ci test -f /var/www/localhost/htdocs/remote/.htaccess
+          docker exec remote-ci rm /var/www/localhost/htdocs/ci-php-check.php
+          docker exec remote-ci test -f /var/www/localhost/htdocs/remote/.htaccess
           curl -fsS http://127.0.0.1:8080/ | grep -Fq "RemoteClient service"
-          curl -fsS http://127.0.0.1:3000/ -o /tmp/robrowser-index.html
-          grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/robrowser-index.html
-          grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
-          grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/robrowser-index.html
+          curl -fsS http://127.0.0.1:3000/ -o /tmp/remote-index.html
+          grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/remote-index.html
+          grep -Fq 'address:     "ragnarok-login"' /tmp/remote-index.html
+          grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/remote-index.html
           url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
           status=''
           for ((count=1; count<=30; count++)); do
@@ -177,13 +177,13 @@ jobs:
       - name: roBrowser diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
         run: |
+          docker logs remote-ci || true
           docker logs robrowser-ci || true
-          docker logs vite-ci || true
       - name: Remove roBrowser container
         if: always() && steps.scope.outputs.relevant == 'true'
         run: |
+          docker rm -f remote-ci || true
           docker rm -f robrowser-ci || true
-          docker rm -f vite-ci || true
 
       - name: Set up Docker Buildx
         if: steps.scope.outputs.rathena == 'true'

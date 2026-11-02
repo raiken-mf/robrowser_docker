@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: remote
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: remote
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: remote
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: remote
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: remote
+          image: ghcr.io/raiken-mf/remote:stable
+          # stable intentionally follows the current main image on each rollout.
+          imagePullPolicy: Always
+          env:
+            - name: ROBROWSER_ROLE
+              value: "web"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: robrowser-config
+          ports:
+            - containerPort: 8080
+              name: apache
+          volumeMounts:
+            - name: client-data
+              mountPath: /opt/client_files
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /
+              port: apache
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: apache
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+      volumes:
+        - name: client-data
+          persistentVolumeClaim:
+            claimName: client-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: remote
+  namespace: ragnarok
+  labels:
+    app.kubernetes.io/name: remote
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: remote
+  ports:
+    - name: apache
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080

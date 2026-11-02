@@ -31,9 +31,9 @@ services:
     networks:
       - backend
 
-  robrowser:
-    container_name: "robrowser"
-    image: ghcr.io/raiken-mf/robrowser:${ROBROWSER_IMAGE_TAG:-stable}
+  remote:
+    container_name: "remote"
+    image: ghcr.io/raiken-mf/remote:${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-stable}}
     pull_policy: always
     restart: always
     env_file: ../../.env
@@ -45,7 +45,7 @@ services:
       - ../../client/resources:/opt/client_files/resources:ro
     build:
       context: ../..
-      dockerfile: images/robrowser/Dockerfile
+      dockerfile: images/remote/Dockerfile
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
@@ -63,13 +63,13 @@ services:
       - backend
       - frontend
 
-  vite:
-    container_name: "vite"
-    image: ghcr.io/raiken-mf/vite:${VITE_IMAGE_TAG:-stable}
+  robrowser:
+    container_name: "robrowser"
+    image: ghcr.io/raiken-mf/robrowser:${VITE_IMAGE_TAG:-stable}
     pull_policy: always
     build:
       context: ../..
-      dockerfile: images/vite/Dockerfile
+      dockerfile: images/robrowser/Dockerfile
       args:
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
         ROBROWSER_REF: ${ROBROWSER_REF:-7181f0f54f9785829839bb15459822ac511c58ab}

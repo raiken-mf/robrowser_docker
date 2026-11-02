@@ -2,11 +2,11 @@
 
 ## Vulnerability scan
 
-The **Container Security** workflow runs after CI succeeds. It rebuilds the roBrowser, rAthena, and wsProxy images from the validated source revision and scans them with [Trivy](https://github.com/aquasecurity/trivy). Publishing builds the images again; these are not promoted copies of the CI image artifacts.
+The **Container Security** workflow runs after CI succeeds. It builds changed remote (Apache/PHP), robrowser (frontend), rAthena and wsProxy candidates from the validated main revision and scans them with [Trivy](https://github.com/aquasecurity/trivy). Publication promotes the exact scanned candidate digest; it does not rebuild it. Both AMD64 and ARM64 are scanned before promotion, with source and main-freshness guards retained.
 
 Trivy is configured with `severity: HIGH,CRITICAL`, `ignore-unfixed: true`, and `exit-code: 1`. A fixable HIGH or CRITICAL finding fails the security workflow and blocks publishing. Findings that Trivy cannot currently match to a fix are reported but do not block; lower-severity findings are outside this workflow's reporting threshold. A green scan means no blocking findings at this threshold, not that an image is vulnerability-free.
 
-Download the `trivy-robrowser`, `trivy-rathena`, or `trivy-wsproxy` artifact from the workflow run to inspect the SARIF report. The same run generates an SPDX SBOM per image.
+The scan step emits HIGH/CRITICAL findings in the workflow logs. The same run generates SPDX SBOMs for both architectures in sbom-remote, sbom-robrowser, sbom-rathena or sbom-wsproxy artifacts for rebuilt images.
 
 ## SBOM
 
@@ -14,6 +14,7 @@ An **SBOM** (Software Bill of Materials) is an inventory of the packages contain
 
 The workflow creates one SPDX JSON SBOM artifact per scanned image:
 
+- `sbom-remote`
 - `sbom-robrowser`
 - `sbom-rathena`
 - `sbom-wsproxy`
@@ -22,15 +23,15 @@ The SBOM and Trivy report are workflow artifacts, not public client data and not
 
 ## Runtime hardening
 
-The Kubernetes deployments run containers as non-root, drop Linux capabilities, use the runtime-default seccomp profile, define liveness/readiness probes, and set initial CPU/memory requests and limits. wsProxy also uses a read-only root filesystem; roBrowser cannot yet do so because Apache, Vite, and the generated client configuration require writable runtime paths.
+The Kubernetes deployments run containers as non-root, drop Linux capabilities, use the runtime-default seccomp profile, define liveness/readiness probes, and set initial CPU/memory requests and limits. wsProxy also uses a read-only root filesystem; roBrowser cannot yet do so because their separate Apache and frontend runtimes require writable paths. Both remain non-root.
 
 ## PHP security updates and rollout
 
-`images/robrowser/Dockerfile` installs PHP from the package repositories of its pinned Alpine release. The package constraint `php84>=8.4.27` accepts newer PHP 8.4 patches without automatically switching to PHP 8.5. Both package selection and a build-time version check reject versions older than the fixes for CVE-2026-109618 and CVE-2026-109619. CI also checks the version and security configuration through an actual Apache/mod_php HTTP request.
+`images/remote/Dockerfile` installs PHP from the package repositories of its pinned Alpine release. The package constraint `php84>=8.4.27` accepts newer PHP 8.4 patches without automatically switching to PHP 8.5. Both package selection and a build-time version check reject versions older than the fixes for CVE-2026-109618 and CVE-2026-109619. CI also checks the version and security configuration through an actual Apache/mod_php HTTP request.
 
-`images/robrowser/security.ini` disables `session.upload_progress.enabled` before request parsing, following the [PHP advisory of 23 October 2026](https://www.php.net/archive/2026.php#2026-10-23-1) for CVE-2026-115560. Alpine packages the session extension separately; it is currently not installed, but the setting also applies if it is added later.
+`images/remote/security.ini` disables `session.upload_progress.enabled` before request parsing, following the [PHP advisory of 23 October 2026](https://www.php.net/archive/2026.php#2026-10-23-1) for CVE-2026-115560. Alpine packages the session extension separately; it is currently not installed, but the setting also applies if it is added later.
 
-CI, Container Security, and Publish Images disable Docker layer caching for roBrowser builds, so the `apk add --no-cache` installation is executed again. These are two different caches: `apk --no-cache` alone does **not** invalidate a cached Docker build layer. Package versions still depend on what Alpine publishes for the selected release and architecture.
+CI, Container Security, and Publish Images disable Docker layer caching for RemoteClient builds, so the `apk add --no-cache` installation is executed again. These are two different caches: `apk --no-cache` alone does **not** invalidate a cached Docker build layer. Package versions still depend on what Alpine publishes for the selected release and architecture.
 
 There is no scheduled PHP-package rebuild. A package becoming available does not trigger an image build or change an existing container. The update chain is:
 
@@ -41,8 +42,8 @@ There is no scheduled PHP-package rebuild. A package becoming available does not
 5. Verify the running container, not just the build log:
 
    ```bash
-   kubectl -n ragnarok exec deployment/robrowser -- php -v
-   kubectl -n ragnarok exec deployment/robrowser -- php -r \
+   kubectl -n ragnarok exec deployment/remote -- php -v
+   kubectl -n ragnarok exec deployment/remote -- php -r \
      'echo "upload_progress config=", get_cfg_var("session.upload_progress.enabled"), "\n";'
    ```
 
@@ -65,7 +66,7 @@ This checks wsProxy startup and its WebSocket handshake; it does not require a l
 
 - Base images are pinned to immutable Alpine manifest digests.
 - roBrowserLegacy, roBrowserLegacy-RemoteClient-PHP, rAthena, and ROenglishRE are pinned to Git commit SHAs in `build/dependencies.env`.
-- The roBrowser source revision has no lockfile. The project-owned `images/vite/package.json` and `package-lock.json` define its reproducible dependency overlay and are installed with `npm ci`. `granny-ro-js@1.5.0` is pinned there because the source imports `granny-ro-js/wasm`.
+- The roBrowser source revision has no lockfile. The project-owned `images/robrowser/package.json` and `package-lock.json` define its reproducible dependency overlay and are installed with `npm ci`. `granny-ro-js@1.5.0` is pinned there because the source imports `granny-ro-js/wasm`.
 - CI checks all four upstream layouts, builds the images, starts the services, and requests Vite's transformed GR2 renderer module to catch missing frontend dependencies.
 - Third-party GitHub Actions are pinned to complete commit SHAs rather than mutable version tags.
 - Dependabot checks GitHub Actions, Alpine base-image digests, and the project-owned npm dependency overlay weekly. Its security updates are enabled for this public repository; review and validate its PRs through CI and the image-security workflow.
@@ -85,7 +86,7 @@ git clone https://github.com/raiken-mf/roBrowserLegacy.git "$workdir/robrowser"
 git -C "$workdir/robrowser" checkout --detach <new-ROBROWSER_REF>
 cd "$workdir/robrowser"
 npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-cp package-lock.json /path/to/robrowser_docker/images/vite/package-lock.json
+cp package-lock.json /path/to/robrowser_docker/images/robrowser/package-lock.json
 ```
 
 Then commit the updated dependency reference and lockfile together. CI validates that `npm ci` can consume the lockfile during the image build.

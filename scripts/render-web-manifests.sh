@@ -12,13 +12,13 @@ export HOST="${HOST:-127.0.0.1}"
 export PORT_HTTP="${PORT_HTTP:-30080}"
 export PORT_FRONTEND="${PORT_FRONTEND:-30000}"
 export PORT_WSPROXY="${PORT_WSPROXY:-30599}"
-export ROBROWSER_IMAGE_TAG="${ROBROWSER_IMAGE_TAG:-stable}"
+export REMOTE_IMAGE_TAG="${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-stable}}"
 export VITE_IMAGE_TAG="${VITE_IMAGE_TAG:-stable}"
 export WSPROXY_IMAGE_TAG="${WSPROXY_IMAGE_TAG:-stable}"
 output_dir="${1:?Usage: bash scripts/render-web-manifests.sh OUTPUT_DIRECTORY}"
 mkdir -p "$output_dir"
-for component in robrowser vite wsproxy; do
-  envsubst '${NAMESPACE} ${PORT_HTTP} ${PORT_FRONTEND} ${PORT_WSPROXY} ${ROBROWSER_IMAGE_TAG} ${VITE_IMAGE_TAG} ${WSPROXY_IMAGE_TAG}' \
+for component in remote robrowser wsproxy; do
+  envsubst '${NAMESPACE} ${PORT_HTTP} ${PORT_FRONTEND} ${PORT_WSPROXY} ${REMOTE_IMAGE_TAG} ${VITE_IMAGE_TAG} ${WSPROXY_IMAGE_TAG}' \
     < "deploy/k8s-templates/$component.yaml" > "$output_dir/$component.yaml"
 done
 kubectl create configmap robrowser-config --namespace "$NAMESPACE" \

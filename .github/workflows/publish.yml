@@ -62,7 +62,7 @@ jobs:
             image="${values[0]:-}"
             digest="${values[1]:-}"
             source_sha="${values[2]:-}"
-            [[ "$image" =~ ^(robrowser|vite|rathena|wsproxy)$ ]]
+            [[ "$image" =~ ^(remote|robrowser|rathena|wsproxy)$ ]]
             [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
             [ "$source_sha" = "$EXPECTED_SHA" ]
             ref="ghcr.io/${OWNER,,}/$image"

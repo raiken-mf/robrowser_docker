@@ -49,8 +49,8 @@ This guide explains how to deploy the robrowser_docker project using either Dock
 
 The Docker Compose setup uses:
 - **database**: MariaDB with persistent storage
-- **robrowser**: Apache/PHP RemoteClient and baked ROEnglishRE translations
-- **vite**: Node.js/Vite serving roBrowserLegacy
+- **remote**: Apache/PHP RemoteClient and baked ROEnglishRE translations
+- **robrowser**: Node.js/Vite serving roBrowserLegacy
 - **wsproxy**: WebSocket proxy for game connections
 - **rathena/hercules**: Game server components
 - **network**: Internal network for service communication
@@ -127,82 +127,56 @@ Compose defaults are frontend `3000`, HTTP/client files `8080`, and WebSocket pr
 
 Names such as `database` and `ragnarok-login` are internal Compose/Kubernetes service names and must not be used as the externally visible `HOST`.
 
-### Flux updates on the Pi
+### Flux fresh installation on the Pi
 
-The live Flux manifests deliberately retain the existing combined-container
-architecture in this PR. The split-image migration is deferred; see
-[Controlled Flux migration](flux-split-migration.md). The new templates and
-renderer are preparation for that separately approved migration.
+The operator has removed namespace `ragnarok` and suspended both `flux-system`
+and `ragnarok-stack`. Keep them suspended until explicit installation approval.
+No in-place migration or two-stage NodePort handover is needed. #85 is superseded.
+See [Fresh namespace installation](flux-split-migration.md) for the deployment hold
+and image release gates. Do not run deployment scripts or resume Flux during
+repository preparation.
 
-The Flux deployment uses the concrete Kustomize base in `deploy/k8s/` and the overlay in `deploy/overlays/flux/`. The legacy `scripts/k8s-*.sh` scripts use the configurable templates in `deploy/k8s-templates/`.
-
-Flux does not read the local `.env`, and the concrete manifests are not automatically
-generated from the templates. To prepare the web manifests using `.env`, run
-`bash scripts/render-web-manifests.sh /tmp/ragnarok-web` and review the output.
-For the separately approved migration only, copy the reviewed
-`robrowser.yaml`, `vite.yaml`, `wsproxy.yaml` and
-`robrowser-config.yaml` into `deploy/k8s/`, and include `robrowser-config.yaml` in
-its `kustomization.yaml` if it is not already listed. Review the Flux overlay with
-`kubectl kustomize deploy/overlays/flux` before submitting the Git change.
-The renderer only exports the non-sensitive web ConfigMap fields; never commit `.env`.
-It performs no cluster writes. Custom namespaces also require reviewing the base
-resources and the overlay's namespace setting.
-
-`PORT_HTTP`, `PORT_FRONTEND` and `PORT_WSPROXY` configure external NodePorts;
-their Kubernetes fallbacks remain 30080, 30000 and 30599. Container and Service
-target ports remain 8080, 3000 and 5999. In Compose, the same variables configure
-host ports. Vite receives the shared `robrowser-config`, including `PORT_FRONTEND`;
-its internal listener remains 3000 regardless of the external frontend port.
-
-#### First rollout of the separate Vite image
-
-The frontend NodePort moves from Service `robrowser` to Service `vite`, retaining
-the configured `PORT_FRONTEND` (30000 by default). Kubernetes cannot allocate that
-NodePort to both Services simultaneously. Schedule a short frontend interruption
-and ensure the old frontend port is removed from Service `robrowser` before the
-new Service `vite` is created. Do not rely on Flux's resource ordering for this
-handover: use a reviewed two-stage GitOps rollout, first removing the old Service
-port, then introducing the Vite resources. Coordinate with the Flux operator;
-do not run an unreviewed reconciliation or delete the namespace.
-Verify that a scanned `ghcr.io/raiken-mf/vite:stable` image exists before the
-second stage. Vite has its own image override; the roBrowser override must never
-select the Vite Deployment. Subsequent publication can pin Vite independently
-to its security-approved `sha-<commit>` tag.
-
-#### Merge gate for this migration
-
-The checked-in Flux GitRepository follows `main`. With that configuration active,
-merging these manifests can trigger reconciliation automatically; manually
-running `flux reconcile` is not required. The application Kustomization has no
-suspend flag and no dependency on completion of GitHub Actions. Therefore the
-image security/publish workflow does not gate application of these manifests.
-
-Do not apply the deferred migration as a single unattended rollout. The deferred migration snapshot
-contains both sides of the NodePort handover and a newly managed ConfigMap with
-example `HOST=127.0.0.1`. The current PR excludes these live-manifest changes. Flux can overwrite existing ConfigMap values, while
-already-running pods keep their old environment until recreated. Also, the Flux
-roBrowser override still selects `sha-6cfa563fd1c0c2bf2842345c1499b5bc485847c9`,
-whose source Dockerfile builds the former combined image. That old Apache image
-must not be paired with the new Vite frontend expecting `/remote/`.
-
-Before merging, agree an operator-controlled rollout gate or prepare separate
-migration changes, review the real ConfigMap values, and ensure both matching
-new images are scanned and available. Preserve the existing ConfigMap keys that
-the deployment needs when taking it under Git management. The publish workflow
-creates a draft GitOps image-bump PR without requesting auto-merge. Keep it in
-draft until the separate migration plan and image pairing have been reviewed. Repository code does not establish the live Flux
-state, branch protections or whether GitHub auto-merge is enabled. No live state
-was changed during local validation.
-
-For routine Pi updates, reconcile Flux:
+The final services/images are `robrowser` (frontend, Node.js/Vite, port 3000) and
+`remote` (Apache/PHP/client files, port 8080). Flux uses `deploy/k8s/` through
+`deploy/overlays/flux/`; the legacy scripts use `deploy/k8s-templates/`.
+Flux does not read `.env`. Render without changing the cluster:
 
 ```bash
-flux reconcile source git flux-system
-flux reconcile kustomization ragnarok-stack -n flux-system --with-source
+bash scripts/render-web-manifests.sh /tmp/ragnarok-web
+kubectl kustomize deploy/overlays/flux
 ```
 
-Do not use `scripts/k8s-all.sh` for routine Flux updates: it can delete and recreate
-the namespace after explicit confirmation, and otherwise reconciles/restarts components.
+Review `remote.yaml`, `robrowser.yaml`, `wsproxy.yaml` and `robrowser-config.yaml`
+before copying generated configuration into Git. The renderer only emits reviewed
+non-secret web keys; never commit `.env`. The reviewed Pi values remain HOST=pi,
+PORT_HTTP=30080, PORT_FRONTEND=30000 and PORT_WSPROXY=30599.
+
+`PORT_HTTP`, `PORT_FRONTEND` and `PORT_WSPROXY` configure external NodePorts
+(fallbacks 30080/30000/30599); target ports remain 8080/3000/5999. Compose retains
+its host-port fallbacks 8080/3000/5999. Both web services consume the shared
+`robrowser-config`; PORT_FRONTEND never changes Vite's internal listener.
+
+For compatibility, `VITE_IMAGE_TAG` still selects the frontend tag;
+`ROBROWSER_IMAGE_TAG` remains the legacy Apache tag setting. `REMOTE_IMAGE_TAG`
+can explicitly override the latter. Their registry names are now robrowser and
+remote respectively. Existing custom tag values must identify an actually
+published artifact under the new repository; old-name tags are not copied or
+invented automatically. The first new-name main release must pass all security,
+SBOM and digest-promotion gates before its generated image-pin PR is reviewed.
+Never deploy the old Apache `robrowser:stable` as the new frontend. The new
+frontend readiness probe requests its API module to reject that wrong runtime.
+Keep the reviewed release pins and Flux paused until the separate installation
+approval.
+
+### Override folder rename
+
+The versioned trees are renamed, but existing untracked user overrides are not
+moved by Git. Before building in an existing checkout, preserve/move the OLD
+Apache `images/robrowser/repository_override` payload to
+`images/remote/repository_override`, and the OLD `images/vite/repository_override`
+payload to `images/robrowser/repository_override`. Do not let Apache overrides
+silently enter the renamed frontend build. Each image's independent fixture tests
+verify its own marker and index override.
 
 ### Environment Variables
 
@@ -339,12 +313,12 @@ build. Changing this flag at container runtime does not rebuild translations.
 Optional upstream Additions, Compatibility patches and Addons are not installed
 automatically.
 
-Apache's `images/robrowser/repository_override/` is copied into the document root
+Apache's `images/remote/repository_override/` is copied into the document root
 after translations (use `remote/data/` and `remote/System/` for translation
-overrides). Vite's `images/vite/repository_override/` is copied into `/app/` after
-npm installation and the default template. Vite alone owns and renders `images/vite/index.html.template`; override its
+overrides). Vite's `images/robrowser/repository_override/` is copied into `/app/` after
+npm installation and the default template. Vite alone owns and renders `images/robrowser/index.html.template`; override its
 `index.html.template` to customize the browser configuration. Apache serves a
-static `images/robrowser/index.html` status page at `/` for existing probes;
+static `images/remote/index.html` status page at `/` for existing probes;
 override `index.html` in its own override directory to customize that page.
 Apache does not clone roBrowserLegacy or generate frontend configuration.
 Loose files mounted at `/opt/client_files/data` and `/opt/client_files/System`
@@ -355,14 +329,14 @@ by Git; therefore they are not automatically available to GitHub Actions builds.
 
 ### Local validation without deployment
 
-After building local `robrowser:ci` and `vite:ci` images using the pins in
+After building local `remote:ci` and `robrowser:ci` images using the pins in
 `build/dependencies.env`, run:
 
 ```bash
-bash scripts/check-roenglish.sh robrowser:ci
-bash scripts/check-image-boundaries.sh robrowser:ci vite:ci
+bash scripts/check-roenglish.sh remote:ci
+bash scripts/check-image-boundaries.sh remote:ci robrowser:ci
 python3 scripts/check-image-overrides.py
-python3 scripts/check-compose.py robrowser:ci vite:ci
+python3 scripts/check-compose.py remote:ci robrowser:ci
 ```
 
 The translation check builds a separate Pre-Renewal test image and checks every

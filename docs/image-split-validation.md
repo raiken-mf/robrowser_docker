@@ -285,3 +285,24 @@ full-chain trigger for the intended main revision is needed before publishing;
 validation, multiarch security scanning and promotion must remain connected.
 Updating stable tags can affect installations on a later pull/restart, so no
 release is authorized by this read-only assessment.
+
+## Apache Alpine 3.24.3 / PHP CLI correction (PR #75)
+
+Alpine 3.24.3 installs the explicitly requested PHP 8.4 CLI as `/usr/bin/php84`
+without the unversioned `php` command used by the Dockerfile and RemoteClient
+entrypoint. The previous PR build failed with `php: not found`. The Dockerfile
+now checks the versioned executable exists and links `/usr/bin/php` to it.
+The PHP >=8.4.27 and <8.5 guard, PHP upload-progress hardening, Apache restrictions,
+non-root runtime and immutable base-image digest are retained.
+
+Native ARM64 builds passed for Apache Renewal, Apache Pre-Renewal and Vite on the
+updated tree based on main `35adbdc1cda0a2b80e7eee0e741cd6ba2dc9a81a`.
+Both Apache CLI runtimes report PHP 8.4.27. Translation checks passed 625/684
+SHA-256 comparisons, including ten differing Pre-Renewal overrides; both retain
+the byte-identical pinned RemoteClient `.htaccess`. Independent marker/index
+fixture builds passed for both images. Shell/Python/workflow syntax and actionlint
+also passed locally.
+
+GitHub PR validation must pass on the pushed correction. Registry vulnerability
+scans, publication and any Kubernetes migration remain separate guarded steps;
+this base-image fix does not change Flux image selections or authorize a rollout.

@@ -93,29 +93,43 @@ jobs:
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
           docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
 
+      - name: Set up Docker Buildx
+        if: steps.scope.outputs.relevant == 'true'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
+
+      - name: Load pinned source revisions
+        if: steps.scope.outputs.relevant == 'true'
+        run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
+
       - name: Build RemoteClient for smoke test
         if: steps.scope.outputs.relevant == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          set -a; source build/dependencies.env; set +a
-          docker build --no-cache -f images/remote/Dockerfile \
-            --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
-            --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
-            --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
-            --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
-            -t remote:ci .
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: .
+          file: images/remote/Dockerfile
+          load: true
+          tags: remote:ci
+          cache-from: type=gha,scope=ci-remote-amd64
+          cache-to: type=gha,scope=ci-remote-amd64,mode=max,ignore-error=true
+          build-args: |
+            REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
+            REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}
+            ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}
+            ROENGLISH_REF=${{ env.ROENGLISH_REF }}
 
       - name: Build roBrowser frontend for smoke test
         if: steps.scope.outputs.relevant == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          set -a; source build/dependencies.env; set +a
-          docker build -f images/robrowser/Dockerfile \
-            --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
-            --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
-            -t robrowser:ci .
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: .
+          file: images/robrowser/Dockerfile
+          load: true
+          tags: robrowser:ci
+          cache-from: type=gha,scope=ci-robrowser-amd64
+          cache-to: type=gha,scope=ci-robrowser-amd64,mode=max,ignore-error=true
+          build-args: |
+            ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
+            ROBROWSER_REF=${{ env.ROBROWSER_REF }}
 
       - name: Regress cache-busted iframe HTML and Vite module handshake
         if: steps.scope.outputs.relevant == 'true'
@@ -123,6 +137,8 @@ jobs:
 
       - name: Verify Renewal and Pre-Renewal installed translations
         if: steps.scope.outputs.relevant == 'true'
+        env:
+          ROENGLISH_BUILDX: "1"
         run: bash scripts/check-roenglish.sh
 
       - name: Smoke-test isolated Compose web services
@@ -135,6 +151,8 @@ jobs:
 
       - name: Verify independent image overrides
         if: steps.scope.outputs.relevant == 'true'
+        env:
+          OVERRIDE_BUILDX: "1"
         run: python3 scripts/check-image-overrides.py
 
       - name: Smoke-test roBrowser
@@ -195,14 +213,6 @@ jobs:
           docker rm -f remote-ci || true
           docker rm -f robrowser-ci || true
 
-      - name: Set up Docker Buildx
-        if: steps.scope.outputs.rathena == 'true'
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
-
-      - name: Load rAthena source revisions
-        if: steps.scope.outputs.rathena == 'true'
-        run: grep -E '^RATHENA_(REPOSITORY|REF)=' build/dependencies.env >> "$GITHUB_ENV"
-
       - name: Build rAthena on AMD64 (PR validation)
         if: steps.scope.outputs.rathena == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
@@ -210,15 +220,21 @@ jobs:
           context: ./images/rathena
           platforms: linux/amd64
           push: false
-          cache-from: type=gha,scope=rathena
-          cache-to: type=gha,scope=rathena,mode=max,ignore-error=true
+          cache-from: type=gha,scope=ci-rathena-amd64
+          cache-to: type=gha,scope=ci-rathena-amd64,mode=max,ignore-error=true
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
 
       - name: Build wsProxy
         if: steps.scope.outputs.relevant == 'true'
-        run: docker build -t wsproxy:ci ./images/wsproxy
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
+        with:
+          context: ./images/wsproxy
+          load: true
+          tags: wsproxy:ci
+          cache-from: type=gha,scope=ci-wsproxy-amd64
+          cache-to: type=gha,scope=ci-wsproxy-amd64,mode=max,ignore-error=true
       - name: Smoke-test wsProxy
         if: steps.scope.outputs.relevant == 'true'
         run: |

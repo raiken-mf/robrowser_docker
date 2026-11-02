@@ -15,6 +15,10 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: docker
+    directory: /images/vite
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
     directory: /images/rathena
     schedule:
       interval: weekly
@@ -29,7 +33,7 @@ updates:
 
   # The project-owned manifest/lockfile overlay for the pinned roBrowser source.
   - package-ecosystem: npm
-    directory: /images/robrowser
+    directory: /images/vite
     schedule:
       interval: weekly
     open-pull-requests-limit: 5

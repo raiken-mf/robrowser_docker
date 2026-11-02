@@ -65,7 +65,7 @@ This checks wsProxy startup and its WebSocket handshake; it does not require a l
 
 - Base images are pinned to immutable Alpine manifest digests.
 - roBrowserLegacy, roBrowserLegacy-RemoteClient-PHP, rAthena, and ROenglishRE are pinned to Git commit SHAs in `build/dependencies.env`.
-- The roBrowser source revision has no lockfile. The project-owned `images/robrowser/package.json` and `package-lock.json` define its reproducible dependency overlay and are installed with `npm ci`. `granny-ro-js@1.5.0` is pinned there because the source imports `granny-ro-js/wasm`.
+- The roBrowser source revision has no lockfile. The project-owned `images/vite/package.json` and `package-lock.json` define its reproducible dependency overlay and are installed with `npm ci`. `granny-ro-js@1.5.0` is pinned there because the source imports `granny-ro-js/wasm`.
 - CI checks all four upstream layouts, builds the images, starts the services, and requests Vite's transformed GR2 renderer module to catch missing frontend dependencies.
 - Third-party GitHub Actions are pinned to complete commit SHAs rather than mutable version tags.
 - Dependabot checks GitHub Actions, Alpine base-image digests, and the project-owned npm dependency overlay weekly. Its security updates are enabled for this public repository; review and validate its PRs through CI and the image-security workflow.
@@ -85,7 +85,7 @@ git clone https://github.com/raiken-mf/roBrowserLegacy.git "$workdir/robrowser"
 git -C "$workdir/robrowser" checkout --detach <new-ROBROWSER_REF>
 cd "$workdir/robrowser"
 npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-cp package-lock.json /path/to/robrowser_docker/images/robrowser/package-lock.json
+cp package-lock.json /path/to/robrowser_docker/images/vite/package-lock.json
 ```
 
 Then commit the updated dependency reference and lockfile together. CI validates that `npm ci` can consume the lockfile during the image build.

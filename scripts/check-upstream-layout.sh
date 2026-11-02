@@ -30,6 +30,8 @@ checkout remoteclient "$REMOTECLIENT_REPOSITORY" "$REMOTECLIENT_REF"
 require_file "$workdir/remoteclient/index.php"
 require_file "$workdir/remoteclient/Client.php"
 require_file "$workdir/remoteclient/configs.php"
+require_file "$workdir/remoteclient/.htaccess"
+require_file "$workdir/remoteclient/tools/convert-encoding.php"
 require_dir "$workdir/remoteclient/data"
 require_dir "$workdir/remoteclient/System"
 

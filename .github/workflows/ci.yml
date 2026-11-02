@@ -6,7 +6,6 @@ on:
     branches: [main]
     paths-ignore:
       - 'clusters/**'
-      - 'deploy/**'
       - '.gitignore'
       - 'README.md'
       - 'docs/**'
@@ -67,6 +66,15 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: kubectl kustomize deploy/overlays/flux >/dev/null
 
+      - name: Render configurable Kubernetes web manifests
+        if: steps.scope.outputs.relevant == 'true'
+        run: |
+          ENV_FILE=.env-tmpl bash scripts/render-web-manifests.sh "$RUNNER_TEMP/web-manifests"
+          if grep -R -F "\${" "$RUNNER_TEMP/web-manifests"; then
+            echo 'Unresolved Kubernetes template variables' >&2
+            exit 1
+          fi
+
       - name: Validate Docker Compose
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
@@ -94,17 +102,41 @@ jobs:
             --build-arg ROENGLISH_REF="$ROENGLISH_REF" \
             -t robrowser:ci .
 
+      - name: Build Vite for smoke test
+        if: steps.scope.outputs.relevant == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a; source build/dependencies.env; set +a
+          docker build -f images/vite/Dockerfile \
+            --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
+            --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
+            -t vite:ci .
+
+      - name: Verify Renewal and Pre-Renewal installed translations
+        if: steps.scope.outputs.relevant == 'true'
+        run: bash scripts/check-roenglish.sh
+
+      - name: Smoke-test isolated Compose web services
+        if: steps.scope.outputs.relevant == 'true'
+        run: python3 scripts/check-compose.py
+
       - name: Smoke-test roBrowser
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
           set -euo pipefail
           docker run -d --name robrowser-ci \
+            -e ROBROWSER_ROLE=web \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
-            -p 8080:8080 -p 3000:3000 robrowser:ci
+            -p 8080:8080 robrowser:ci
+          docker run -d --name vite-ci \
+            -e ROBROWSER_ROLE=vite \
+            -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
+            -p 3000:3000 vite:ci
           wait_http() {
             local url="$1" count
-            for count in $(seq 1 30); do
+            for ((count=1; count<=30; count++)); do
               if curl -fsS "$url" >/dev/null 2>&1; then return 0; fi
               sleep 2
             done
@@ -117,13 +149,14 @@ jobs:
           curl -fsS http://127.0.0.1:8080/ci-php-check.php | \
             grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
           docker exec robrowser-ci rm /var/www/localhost/htdocs/ci-php-check.php
+          docker exec robrowser-ci test -f /var/www/localhost/htdocs/remote/.htaccess
           curl -fsS http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
-          grep -Fq 'remoteClient:  "http://ro.example.test:30080/client/"' /tmp/robrowser-index.html
+          grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/robrowser-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
           grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/robrowser-index.html
           url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'
           status=''
-          for count in $(seq 1 30); do
+          for ((count=1; count<=30; count++)); do
             status=$(curl -sS -o /tmp/gr2-module.js -w '%{http_code}' "$url" || true)
             if [ "$status" = '200' ] && grep -q 'granny-ro-js_wasm' /tmp/gr2-module.js; then break; fi
             sleep 2
@@ -136,10 +169,14 @@ jobs:
 
       - name: roBrowser diagnostics
         if: always() && steps.scope.outputs.relevant == 'true'
-        run: docker logs robrowser-ci || true
+        run: |
+          docker logs robrowser-ci || true
+          docker logs vite-ci || true
       - name: Remove roBrowser container
         if: always() && steps.scope.outputs.relevant == 'true'
-        run: docker rm -f robrowser-ci || true
+        run: |
+          docker rm -f robrowser-ci || true
+          docker rm -f vite-ci || true
 
       - name: Set up Docker Buildx
         if: steps.scope.outputs.rathena == 'true'

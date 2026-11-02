@@ -20,6 +20,7 @@ export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export PACKETVER="${PACKETVER:-20211103}"
 # Use an immutable sha-<commit> image tag in production; stable is only a convenience default.
 export ROBROWSER_IMAGE_TAG="${ROBROWSER_IMAGE_TAG:-stable}"
+export VITE_IMAGE_TAG="${VITE_IMAGE_TAG:-stable}"
 export WSPROXY_IMAGE_TAG="${WSPROXY_IMAGE_TAG:-stable}"
 
 echo "==> 2. Ensuring target namespace exists..."
@@ -49,8 +50,14 @@ envsubst < deploy/k8s-templates/wsproxy.yaml | kubectl apply -f -
 echo "==> 6. Applying roBrowser deployment & service..."
 envsubst < deploy/k8s-templates/robrowser.yaml | kubectl apply -f -
 
-echo "==> 7. Restarting roBrowser rollout..."
+echo "==> 6.1. Applying Vite deployment & service..."
+envsubst < deploy/k8s-templates/vite.yaml | kubectl apply -f -
+
+echo "==> 7. Restarting roBrowser and Vite rollouts..."
 kubectl rollout restart deployment/robrowser -n "${NAMESPACE}"
 kubectl rollout status deployment/robrowser -n "${NAMESPACE}" --timeout=120s
 
-echo "==> roBrowser successfully deployed on NodePorts! 🎮"
+kubectl rollout restart deployment/vite -n "${NAMESPACE}"
+kubectl rollout status deployment/vite -n "${NAMESPACE}" --timeout=120s
+
+echo "==> roBrowser and Vite successfully deployed on NodePorts! 🎮"

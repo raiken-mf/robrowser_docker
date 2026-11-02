@@ -62,7 +62,7 @@ jobs:
             image="${values[0]:-}"
             digest="${values[1]:-}"
             source_sha="${values[2]:-}"
-            [[ "$image" =~ ^(robrowser|rathena|wsproxy)$ ]]
+            [[ "$image" =~ ^(robrowser|vite|rathena|wsproxy)$ ]]
             [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
             [ "$source_sha" = "$EXPECTED_SHA" ]
             ref="ghcr.io/${OWNER,,}/$image"
@@ -113,8 +113,6 @@ jobs:
           git switch -c "$branch"
           git commit -m "chore(gitops): bump images to sha-$GITHUB_SHA"
           git push --set-upstream origin "$branch"
-          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" --draft \
             --title "chore(gitops): bump images to sha-$GITHUB_SHA" \
             --body "Update Flux image references to the scanned and promoted images for $GITHUB_SHA."
-          gh pr merge "$branch" --repo "$GITHUB_REPOSITORY" \
-            --auto --squash --delete-branch

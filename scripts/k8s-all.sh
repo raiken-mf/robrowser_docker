@@ -1,138 +1,133 @@
 #!/usr/bin/env bash
+# Fresh application bootstrap. Flux is never resumed; no namespace is deleted.
 set -euo pipefail
-
-export KUBECONFIG=${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}
-
-if [ -f .env ]; then
-  set -a
-  source .env
-  set +a
-fi
-
-export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
-
-# check_namespace_state: queries whether $1 exists and stores the result in
-# the NAMESPACE_STATE global ("active" or "notfound").
-#
-# This deliberately distinguishes a successful "not found" lookup from any
-# other kubectl failure (API server unreachable, auth/RBAC errors, invalid
-# kubeconfig, etc.). A real error is NEVER mapped to "notfound"; the caller
-# must check the return code and abort on failure instead of silently
-# treating the namespace as missing.
-#
-# Returns 0 on a successful lookup (NAMESPACE_STATE set), 1 on any other
-# kubectl error (diagnostic printed to stderr, NAMESPACE_STATE left unset).
-check_namespace_state() {
-  local ns="$1" output status
-  output=$(kubectl get namespace "${ns}" -o name 2>&1)
-  status=$?
-  if [ "${status}" -eq 0 ]; then
-    NAMESPACE_STATE="active"
-    return 0
-  fi
-  if printf '%s' "${output}" | grep -qi 'NotFound'; then
-    NAMESPACE_STATE="notfound"
-    return 0
-  fi
-  echo "Error: failed to query namespace '${ns}' via kubectl (exit code ${status}); treating as a hard failure, NOT as 'missing':" >&2
-  echo "${output}" >&2
-  return 1
-}
-
-if ! check_namespace_state "${NAMESPACE}"; then
-  echo "Error: aborting before any deployment or deletion because the namespace lookup for '${NAMESPACE}' failed (see above). Check cluster connectivity/credentials and retry." >&2
-  exit 1
-fi
-
-if [ "${NAMESPACE_STATE}" == "active" ]; then
-  if [ ! -t 0 ]; then
-    echo "Error: interactive confirmation required before deploying to existing namespace '${NAMESPACE}'." >&2
-    exit 1
-  fi
-
-  read -r -p "Delete namespace '${NAMESPACE}' and all its resources before deployment? [y/N] " answer
-  case "${answer}" in
-    y|Y|yes|YES)
-      # Revalidate right before deleting: time has passed since the initial
-      # check (user had to answer the prompt), so another process may have
-      # already deleted the namespace, or a lookup error may now occur.
-      if ! check_namespace_state "${NAMESPACE}"; then
-        echo "Error: aborting reset; namespace lookup for '${NAMESPACE}' failed on revalidation (see above)." >&2
-        exit 1
-      fi
-
-      if [ "${NAMESPACE_STATE}" == "notfound" ]; then
-        echo "==> 1. Namespace '${NAMESPACE}' was already removed by the time of confirmation; nothing to delete."
-      else
-        echo "==> 1. Deleting namespace '${NAMESPACE}'..."
-        echo "    Note: this removes namespaced resources (and their PVC claims), but whether the"
-        echo "    underlying persistent storage/data is actually erased depends on the storage"
-        echo "    provisioner's reclaim policy and is NOT guaranteed by this script."
-        if ! kubectl delete namespace "${NAMESPACE}" --wait=true --timeout=180s; then
-          echo "Error: failed to delete namespace '${NAMESPACE}' (timeout, Terminating/finalizer stall, or API error). Aborting; deployment was NOT attempted and the reset must be treated as failed." >&2
-          exit 1
-        fi
-
-        echo "==> 1.1. Verifying namespace '${NAMESPACE}' is fully gone before recreating it..."
-        wait_deadline=$((SECONDS + 60))
-        while :; do
-          if ! check_namespace_state "${NAMESPACE}"; then
-            echo "Error: aborting reset; namespace lookup for '${NAMESPACE}' failed while waiting for removal (see above)." >&2
-            exit 1
-          fi
-          if [ "${NAMESPACE_STATE}" == "notfound" ]; then
-            break
-          fi
-          if [ "${SECONDS}" -ge "${wait_deadline}" ]; then
-            phase=$(kubectl get namespace "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-            if [ "${phase}" == "Active" ]; then
-              echo "Error: namespace '${NAMESPACE}' is Active again after deletion was issued, likely re-created by another process (race). Aborting without deploying; the namespace must NOT be assumed reset." >&2
-            else
-              echo "Error: namespace '${NAMESPACE}' is still present after deletion (phase: '${phase}', likely stuck Terminating due to finalizers). Aborting without deploying; the namespace must NOT be assumed reset." >&2
-            fi
-            exit 1
-          fi
-          phase=$(kubectl get namespace "${NAMESPACE}" -o jsonpath='{.status.phase}' 2>/dev/null || echo "unknown")
-          echo "Waiting for namespace '${NAMESPACE}' to be fully removed before recreation (current phase: '${phase}')..."
-          sleep 3
-        done
-        echo "==> Namespace '${NAMESPACE}' confirmed fully removed."
-      fi
-      ;;
-    n|N|no|NO|"")
-      echo "==> 1. Keeping existing namespace '${NAMESPACE}' and its persistent resources; continuing with normal deployment reconciliation (component scripts may still restart workloads)."
-      ;;
-    *)
-      echo "Error: expected yes or no; deployment cancelled." >&2
-      exit 1
-      ;;
+set +x
+cd "$(dirname "$0")/.."
+mode=check
+reconcile=false
+for argument in "$@"; do
+  case "$argument" in
+    --check) mode=check ;;
+    --apply) mode=apply ;;
+    --reconcile) reconcile=true ;;
+    *) echo 'Usage: bash scripts/k8s-all.sh [--check|--apply] [--reconcile]' >&2; exit 2 ;;
   esac
-else
-  echo "==> 1. Namespace '${NAMESPACE}' does not exist; proceeding directly with normal creation/deployment (no reset prompt needed)."
-fi
-
-echo "==> 2. Creating hardened namespace '${NAMESPACE}'..."
-if ! envsubst < deploy/k8s-templates/namespace.yaml | kubectl apply -f -; then
-  echo "Error: failed to create/apply namespace '${NAMESPACE}'. Aborting before deploying components." >&2
+done
+export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
+export ENV_FILE="${ENV_FILE:-$PWD/.env}"
+[[ -f "$ENV_FILE" ]] || { echo 'Missing operator-owned .env' >&2; exit 1; }
+set -a
+source "$ENV_FILE" >/dev/null 2>&1
+set +a
+export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
+export CLIENT_SOURCE_DIR="${CLIENT_SOURCE_DIR:-$PWD/client}"
+export HOST="${HOST:-127.0.0.1}"
+export PORT_HTTP="${PORT_HTTP:-30080}" PORT_FRONTEND="${PORT_FRONTEND:-30000}" PORT_WSPROXY="${PORT_WSPROXY:-30599}"
+for executable in kubectl python3 envsubst tar; do command -v "$executable" >/dev/null; done
+workdir=$(mktemp -d)
+trap 'rm -rf "$workdir"' EXIT
+chmod 700 "$workdir"
+python3 scripts/render-k8s-bootstrap.py --env-file "$ENV_FILE" --output-dir "$workdir" >/dev/null
+# Use reviewed, scanned release pins by default rather than an unrelated latest tag.
+image_tag() {
+  awk -v image="ghcr.io/raiken-mf/$1" '
+    $1=="-" && $2=="name:" {selected=($3==image)}
+    selected && $1=="newTag:" {print $2; exit}
+  ' deploy/overlays/flux/kustomization.yaml
+}
+export REMOTE_IMAGE_TAG="${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-$(image_tag remote)}}"
+export VITE_IMAGE_TAG="${VITE_IMAGE_TAG:-$(image_tag robrowser)}"
+export RATHENA_IMAGE_TAG="${RATHENA_IMAGE_TAG:-$(image_tag rathena)}"
+export WSPROXY_IMAGE_TAG="${WSPROXY_IMAGE_TAG:-$(image_tag wsproxy)}"
+for tag in "$REMOTE_IMAGE_TAG" "$VITE_IMAGE_TAG" "$RATHENA_IMAGE_TAG" "$WSPROXY_IMAGE_TAG"; do
+  [[ -n "$tag" && "$tag" != stable ]] || { echo 'Select reviewed published SHA tags before bootstrap' >&2; exit 1; }
+done
+# Every failed API lookup is fatal; an auth/connectivity error is never "not found".
+namespace=$(kubectl get namespace "$NAMESPACE" --ignore-not-found -o name)
+if [[ "$mode" == apply && -n "$namespace" && "$reconcile" != true ]]; then
+  echo 'Namespace already exists; use --reconcile only for an approved retry. Nothing deleted.' >&2
   exit 1
 fi
-
-echo "==> 3. Deploying MariaDB..."
-./scripts/k8s-mariadb.sh
-
-echo "==> 3.1. Ensuring MariaDB Operator Webhook is ready..."
-if kubectl get deployment mariadb-operator-webhook -n mariadb-operator >/dev/null 2>&1; then
-  kubectl rollout status deployment/mariadb-operator-webhook -n mariadb-operator --timeout=90s
+kubectl get crd mariadbs.k8s.mariadb.com >/dev/null
+kubectl get storageclass longhorn >/dev/null
+kubectl -n mariadb-operator get deployments -o json > "$workdir/operator.json"
+python3 - "$workdir/operator.json" <<'PY'
+import json,sys
+items=json.load(open(sys.argv[1]))['items']
+for name in ('mariadb-operator','mariadb-operator-webhook'):
+ o=next(o for o in items if o['metadata']['name']==name)
+ assert o.get('status',{}).get('availableReplicas',0)>=o['spec'].get('replicas',1), name+' not available'
+PY
+if [[ -n "$(kubectl get crd kustomizations.kustomize.toolkit.fluxcd.io --ignore-not-found -o name)" ]]; then
+  kubectl -n flux-system get kustomizations flux-system ragnarok-stack --ignore-not-found -o json > "$workdir/flux.json"
+  python3 - "$workdir/flux.json" <<'PY'
+import json,sys
+for o in json.load(open(sys.argv[1]))['items']:
+ assert o['spec'].get('suspend') is True, o['metadata']['name']+' must stay suspended during manual bootstrap'
+PY
 fi
-
-echo "==> 4. Initializing Client Data..."
-./scripts/k8s-client-data.sh
-
-echo "==> 5. Deploying rAthena Server..."
-./scripts/k8s-rathena.sh
-
-echo "==> 6. Deploying roBrowser & wsProxy..."
-./scripts/k8s-robrowser.sh
-
-echo "==> Verification: All Pods in '${NAMESPACE}':"
-kubectl get pods -n "${NAMESPACE}"
+kubectl get services -A -o json > "$workdir/services.json"
+python3 - "$workdir/services.json" "$NAMESPACE" "$PORT_HTTP" "$PORT_FRONTEND" "$PORT_WSPROXY" <<'PY'
+import json,sys
+ports=list(map(int,sys.argv[3:])); assert len(set(ports))==3 and all(1<=p<=65535 for p in ports)
+for o in json.load(open(sys.argv[1]))['items']:
+ for p in o['spec'].get('ports',[]):
+  if p.get('nodePort') in ports:
+   assert o['metadata']['namespace']==sys.argv[2] and o['metadata']['name'] in ('remote','robrowser','wsproxy'), 'NodePort already allocated elsewhere'
+PY
+python3 - "$CLIENT_SOURCE_DIR" <<'PY'
+import configparser,pathlib,sys
+base=pathlib.Path(sys.argv[1]);resources=(base/'resources').resolve()
+for directory in ('AI','BGM','data','System','resources'):assert (base/directory).is_dir(), 'Missing client folder: '+directory
+ini=configparser.ConfigParser(); assert ini.read(resources/'DATA.INI'), 'Missing DATA.INI'
+section=next(s for s in ini.sections() if s.lower()=='data'); assert ini[section]
+for name in ini[section].values():
+ p=(resources/name).resolve(); assert p.is_relative_to(resources) and p.is_file() and p.stat().st_size>46, 'Missing/invalid referenced GRF'
+PY
+ENV_FILE="$ENV_FILE" bash scripts/render-web-manifests.sh "$workdir/web"
+for component in namespace network-policy mariadb rathena; do
+  envsubst < "deploy/k8s-templates/$component.yaml" > "$workdir/$component.yaml"
+done
+if [[ "$mode" == check ]]; then
+  echo 'READY: local configuration, private bootstrap, client sources, operators, storage and free/configured NodePorts checked; no cluster writes.'
+  exit 0
+fi
+# Execute only after the operator separately approves installation.
+kubectl apply -f "$workdir/namespace.yaml"
+kubectl apply -f "$workdir/network-policy.yaml"
+kubectl apply -f "$workdir/bootstrap.json"
+kubectl apply -f "$workdir/web/robrowser-config.yaml"
+kubectl apply -f "$workdir/mariadb.yaml"
+kubectl wait -n "$NAMESPACE" --for=condition=Ready "mariadbs.k8s.mariadb.com/$MARIADB_HOST" \
+  "databases.k8s.mariadb.com/$MARIADB_DATABASE" "users.k8s.mariadb.com/$MARIADB_USER" \
+  "grants.k8s.mariadb.com/$MARIADB_USER-grant" --timeout=300s
+# Populate the readonly runtime volume before the web deployments start.
+bash scripts/k8s-client-data.sh
+kubectl apply -f "$workdir/rathena.yaml"
+for deployment in ragnarok-login ragnarok-char ragnarok-map; do
+  kubectl rollout status "deployment/$deployment" -n "$NAMESPACE" --timeout=300s
+done
+# The login entrypoint initializes the empty DB, including the interserver account.
+# Passwords expand only inside the pod environment, never into local command arguments.
+kubectl exec -n "$NAMESPACE" deployment/ragnarok-login -- sh -ec '
+  export MYSQL_PWD="$MARIADB_PASSWORD"
+  test "$(mariadb -h "$MARIADB_HOST" -u "$MARIADB_USER" "$MARIADB_DATABASE" -sN -e "SELECT COUNT(*) FROM login WHERE account_id=1 AND sex=CHAR(83)")" = 1
+'
+for component in wsproxy remote robrowser; do
+  kubectl apply -f "$workdir/web/$component.yaml"
+  kubectl rollout status "deployment/$component" -n "$NAMESPACE" --timeout=300s
+done
+kubectl exec -i -n "$NAMESPACE" deployment/wsproxy -- node - < scripts/check-wsproxy.cjs
+kubectl exec -i -n "$NAMESPACE" deployment/remote -- php <<'PHP'
+<?php
+chdir('/var/www/localhost/htdocs/remote');
+require 'Debug.php'; require 'GrfDES.php'; require 'Grf.php';
+$ini=parse_ini_file('resources/DATA.INI',true);
+$section=[]; foreach ($ini as $name=>$values) { if (strcasecmp($name,'Data')===0) $section=$values; }
+if (!$section) exit(1); ksort($section);
+$grf=new Grf('resources/'.array_values($section)[0]); $grf->load();
+if (!$grf->loaded) exit(1);
+echo "RemoteClient mounted GRF parser check passed\n";
+PHP
+kubectl get pods,services,pvc -n "$NAMESPACE"
+echo 'Stack bootstrapped. Flux remains paused. Verify browser/frontend and approve GitOps adoption separately.'

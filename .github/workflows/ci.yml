@@ -75,6 +75,12 @@ jobs:
             exit 1
           fi
 
+      - name: Validate private offline Kubernetes bootstrap
+        if: steps.scope.outputs.relevant == 'true'
+        run: |
+          python3 scripts/check-k8s-bootstrap.py
+          python3 scripts/check-k8s-all.py
+
       - name: Validate Docker Compose
         if: steps.scope.outputs.relevant == 'true'
         shell: bash

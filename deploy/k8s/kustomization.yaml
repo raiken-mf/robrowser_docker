@@ -6,6 +6,7 @@ resources:
   - network-policy.yaml
   - pvc-client-data.yaml
   - mariadb.yaml
+  - rathena-config.yaml
   - rathena.yaml
   - robrowser-config.yaml
   - remote.yaml

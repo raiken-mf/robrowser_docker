@@ -86,7 +86,8 @@ The Docker Compose setup uses:
 
    #### All-in-One Deployment
    ```bash
-   ./scripts/k8s-all.sh
+   # Read-only check; installation needs separate approval
+   ./scripts/k8s-all.sh --check
    ```
 
    #### Individual Deployments
@@ -365,3 +366,11 @@ script. Frontend configuration is tested on Vite rather than Apache.
 also checks image build history so a deleted frontend checkout cannot pass the
 filesystem check. Both images retain independent build-time overrides. Changing
 an Apache override does not change the Vite frontend configuration.
+
+### Complete fresh bootstrap
+
+See [Fresh-install runbook](fresh-install-runbook.md). `k8s-all.sh` defaults to
+read-only `--check`; after approval `--apply` provisions the complete application
+stack from local `.env`, including private Secrets, ConfigMaps, PVC/data, MariaDB
+and automatic rAthena schema initialization. It never resumes Flux or deletes a
+namespace. Existing namespace retries require explicit `--reconcile`.

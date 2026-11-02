@@ -131,6 +131,10 @@ jobs:
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
 
+      - name: Verify loose client resource resolution over HTTP
+        if: steps.scope.outputs.relevant == 'true'
+        run: python3 scripts/check-loose-resources.py remote:ci
+
       - name: Regress cache-busted iframe HTML and Vite module handshake
         if: steps.scope.outputs.relevant == 'true'
         run: python3 scripts/check-api-module.py robrowser:ci

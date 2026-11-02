@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+"""Exercise the actual Apache/PHP image using isolated, synthetic client files."""
+import http.client
+import pathlib
+import subprocess
+import tempfile
+import time
+import urllib.parse
+import uuid
+
+image = __import__('sys').argv[1] if len(__import__('sys').argv) > 1 else 'remote:ci'
+name = 'remote-resource-test-' + uuid.uuid4().hex[:12]
+with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
+    root = pathlib.Path(temporary)
+    for directory in ['System', 'SystemEN/LuaFiles514', 'data/nested', 'AI', 'BGM', 'resources']:
+        (root / directory).mkdir(parents=True, exist_ok=True)
+    fixtures = {'System/itemInfo.lua': b'original-system\n',
+                'SystemEN/itemInfo.lua': b'translation-systemen\n',
+                'SystemEN/LuaFiles514/itemInfo_f.lua': b'fixture-module\n',
+                'data/nested/한글.lua': b'korean-bytes\n', 'AI/Util.lua': b'ai-content\n'}
+    for path, data in fixtures.items(): (root / path).write_bytes(data)
+    (root / 'data/escape.txt').symlink_to('/etc/passwd')
+    command = ['docker', 'run', '-d', '--name', name, '-p', '127.0.0.1::8080',
+               '-e', 'CLIENT_AUTOEXTRACT=false', '-v', f'{root}:/opt/client_files:ro', image]
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+        port = int(subprocess.check_output(['docker', 'port', name, '8080'], text=True).strip().rsplit(':', 1)[1])
+        def request(path):
+            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=20)
+            connection.request('GET', '/remote/' + path)
+            response = connection.getresponse()
+            result = response.status, response.read()
+            connection.close()
+            return result
+        for attempt in range(30):
+            try:
+                if request('System/itemInfo.lua')[0] == 200: break
+            except OSError: pass
+            time.sleep(1)
+        for path, expected in fixtures.items():
+            status, body = request(urllib.parse.quote(path, safe='/'))
+            assert (status, body) == (200, expected), (path, status, body[:80])
+        # System wins conflicts; absent System paths use SystemEN without copying.
+        assert request('System/LuaFiles514/itemInfo_f.lua') == (200, fixtures['SystemEN/LuaFiles514/itemInfo_f.lua'])
+        for path in ['data/escape.txt', 'data/missing.txt', 'data/../configs.php',
+                     'data/%2e%2e/configs.php', 'data/%252e%252e/configs.php',
+                     'data/%2e%2e/%2e%2e/index.html']:
+            status, _ = request(path)
+            assert status in (403, 404), (path, status)
+        print('PASS Apache/PHP loose resources, precedence, Korean paths, traversal and symlinks')
+    finally:
+        subprocess.run(['docker', 'stop', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(['docker', 'rm', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

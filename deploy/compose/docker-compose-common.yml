@@ -38,18 +38,14 @@ services:
     restart: always
     env_file: ../../.env
     volumes:
-      - ../../client/AI:/opt/client_files/AI:ro
-      - ../../client/BGM:/opt/client_files/BGM:ro
-      - ../../client/data:/opt/client_files/data:ro
-      - ../../client/System:/opt/client_files/System:ro
-      - ../../client/resources:/opt/client_files/resources:ro
+      - ../../client:/opt/client_files:ro
     build:
       context: ../..
       dockerfile: images/remote/Dockerfile
       args:
         SET_PRERENEWAL: ${SET_PRERENEWAL}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
-        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-fe7c14dceb62a761f4319abe9738b70b52559078}
+        REMOTECLIENT_REF: ${REMOTECLIENT_REF:-60f876e95094bb789503783fa9b8d05e3e3f8b1c}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
         ROENGLISH_REF: ${ROENGLISH_REF:-680a2f2126c8eb5872bf06cf441685c408ed1358}
     tty: true

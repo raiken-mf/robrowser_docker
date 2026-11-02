@@ -66,7 +66,7 @@ RUN set -eu; \
     git -C /opt/translation checkout --detach "${ROENGLISH_REF}"; \
     test -d /opt/translation/Translation; \
     mkdir -p /var/www/localhost/htdocs/remote/data \
-             /var/www/localhost/htdocs/remote/System; \
+             /var/www/localhost/htdocs/remote/SystemEN; \
     case "${SET_PRERENEWAL}" in 0|1) ;; *) echo "SET_PRERENEWAL must be 0 or 1" >&2; exit 1 ;; esac; \
     layers="Renewal"; \
     if [ "${SET_PRERENEWAL}" = "1" ]; then \
@@ -80,12 +80,21 @@ RUN set -eu; \
             cp -a "$src/data/." /var/www/localhost/htdocs/remote/data/; \
         fi; \
         if [ -d "$src/SystemEN" ]; then \
-            cp -a "$src/SystemEN/." /var/www/localhost/htdocs/remote/System/; \
+            cp -a "$src/SystemEN/." /var/www/localhost/htdocs/remote/SystemEN/; \
         elif [ -d "$src/system" ]; then \
-            cp -a "$src/system/." /var/www/localhost/htdocs/remote/System/; \
+            cp -a "$src/system/." /var/www/localhost/htdocs/remote/SystemEN/; \
         fi; \
     done; \
     rm -rf /opt/translation
+
+# Reject traversal in the original request before Apache normalizes the URL.
+COPY images/remote/resource-safety.conf /etc/apache2/resource-safety.conf
+RUN echo 'Include /etc/apache2/resource-safety.conf' >> /etc/apache2/httpd.conf
+
+# A real System file wins; SystemEN is a virtual fallback for missing System files.
+ENV DATA_OVERRIDE_PATH=/opt/client_files/data SYSTEM_PATH=/opt/client_files/System \
+    SYSTEMEN_PATH=/opt/client_files/SystemEN AI_PATH=/opt/client_files/AI \
+    BGM_PATH=/opt/client_files/BGM SYSTEM_ALIAS_SYSTEMEN=true
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI && \

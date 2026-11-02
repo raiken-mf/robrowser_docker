@@ -1,4 +1,4 @@
-# alpine:3.23.6 pinned by immutable multi-architecture manifest digest.
+# alpine:3.24.3 pinned by immutable multi-architecture manifest digest.
 FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 ARG REMOTECLIENT_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git
@@ -7,8 +7,10 @@ ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
 ARG ROENGLISH_REF
 
 # Install runtime/build packages from the pinned Alpine release.
+# Bind the generic CLI explicitly to PHP 8.4; Alpine 3.24 does not provide
+# the unversioned php executable when installing the non-default PHP branch.
 # zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
-# drop this once alpine:3.23.6 ships zlib >= 1.3.2-r1 by default.
+# drop this once alpine:3.24.3 ships zlib >= 1.3.2-r1 by default.
 RUN apk add --no-cache \
     apache2 \
     'php84>=8.4.27' \
@@ -19,6 +21,8 @@ RUN apk add --no-cache \
     php84-zlib \
     git \
     && apk upgrade --no-cache zlib \
+    && test -x /usr/bin/php84 \
+    && ln -sf /usr/bin/php84 /usr/bin/php \
     && rm -rf /var/www/localhost/htdocs/*
 
 # Stay on PHP 8.4 while accepting patched releases from Alpine. Reject old

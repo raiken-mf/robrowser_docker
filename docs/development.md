@@ -333,3 +333,10 @@ lockfile are the active npm dependency overlay. `images/remote/` builds only
 Apache/PHP and the RemoteClient/translation content. The Apache image does not fetch roBrowserLegacy or contain frontend files.
 Its root page is a static service status page; the browser application and its
 configuration template belong exclusively to `images/robrowser/`.
+
+### API iframe module override
+
+The two versioned API bootstrap overrides and their Vite/query/iframe regression
+checks are described in [Vite iframe HTML-proxy regression](frontend-api-module.md).
+Review them when updating the upstream source pin. Other local overrides stay
+ignored.

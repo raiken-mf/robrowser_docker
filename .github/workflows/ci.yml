@@ -117,6 +117,10 @@ jobs:
             --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
             -t robrowser:ci .
 
+      - name: Regress cache-busted iframe HTML and Vite module handshake
+        if: steps.scope.outputs.relevant == 'true'
+        run: python3 scripts/check-api-module.py robrowser:ci
+
       - name: Verify Renewal and Pre-Renewal installed translations
         if: steps.scope.outputs.relevant == 'true'
         run: bash scripts/check-roenglish.sh

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +x
+cd "$(dirname "$0")/.."
 
 # ==============================================================================
 # Client Data Initializer (Universal Throttled Streaming)
@@ -7,9 +9,9 @@ set -euo pipefail
 
 export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 
-if [ -f .env ]; then
+if [ -f "${ENV_FILE:-.env}" ]; then
   set -a
-  source .env
+  source "${ENV_FILE:-.env}" >/dev/null 2>&1
   set +a
 fi
 
@@ -33,7 +35,7 @@ kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p /data/resources /d
 echo "==> [4/4] Ingesting client assets file-by-file (25MB/s throttled)..."
 
 for cat_dir in resources BGM AI System data; do
-  src_path="../../client/${cat_dir}"
+  src_path="${CLIENT_SOURCE_DIR:-$PWD/client}/${cat_dir}"
   
   if [ -d "${src_path}" ] && [ "$(ls -A "${src_path}" 2>/dev/null)" ]; then
     echo "  --> Processing ${cat_dir}..."
@@ -53,6 +55,10 @@ for cat_dir in resources BGM AI System data; do
       else
         cat "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${target_file}" >/dev/null
       fi
+
+      expected_size=$(stat -c %s "$file")
+      actual_size=$(kubectl exec -n "${NAMESPACE}" client-data-loader -- stat -c %s "$target_file")
+      [[ "$actual_size" = "$expected_size" ]] || { echo 'Client upload size mismatch' >&2; exit 1; }
 
       # 100ms pause to let Kubernetes API server process heartbeats and pings
       sleep 0.1

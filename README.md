@@ -69,8 +69,9 @@ cp .env-tmpl .env
 
 #### Kubernetes Deployment
 ```bash
-# Deploy all components to Kubernetes
-./scripts/k8s-all.sh
+# Check prerequisites without deployment
+./scripts/k8s-all.sh --check
+# After separate installation approval only: ./scripts/k8s-all.sh --apply
 
 # Deploy only MariaDB
 ./scripts/k8s-mariadb.sh

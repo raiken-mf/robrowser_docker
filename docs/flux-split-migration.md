@@ -75,3 +75,11 @@ or change upstream code just to make this metric green. Validate actual GRF and
 loose-file access, routing and Kubernetes probes in each approved phase, and
 record the existing health-endpoint limitation separately. Browser/game checks
 remain required after Vite is exposed.
+
+## Prepared automatic fresh bootstrap
+
+The operator selected an empty new database, no restores, and credentials from
+the existing private `.env`. The complete ordered procedure, offline bootstrap
+checks and parent/child Flux adoption gates are in the
+[fresh-install runbook](fresh-install-runbook.md). Both reconcilers remain paused;
+the Git child hold prevents parent resumption from starting an unapproved stack.

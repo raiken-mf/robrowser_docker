@@ -97,3 +97,6 @@ node_modules/
 /reports/
 /ready/
 /deploy/client/
+
+# Private offline Kubernetes bootstrap output must never enter Git.
+**/bootstrap-private/

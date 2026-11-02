@@ -16,6 +16,13 @@ spec:
               - key: app.kubernetes.io/name
                 operator: In
                 values: ["ragnarok-login", "ragnarok-char", "ragnarok-map", "client-data-loader"]
+        # Database/User/Grant reconciliation uses SQL from this controller.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: mariadb-operator
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mariadb-operator
       ports:
         - protocol: TCP
           port: 3306

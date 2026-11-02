@@ -1,0 +1,20 @@
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "rathena-config",
+    "namespace": "ragnarok"
+  },
+  "data": {
+    "MARIADB_HOST": "database",
+    "MARIADB_DATABASE": "ragnarok",
+    "MARIADB_USER": "ragnarok",
+    "SET_PRERENEWAL": "0",
+    "SET_NEW_ACCOUNT": "yes",
+    "SET_PINCODE_ENABLED": "no",
+    "SET_MOTD": "SORCERY!!!",
+    "LOGIN_SERVER_HOST": "ragnarok-login",
+    "CHAR_SERVER_HOST": "ragnarok-char",
+    "MAP_SERVER_HOST": "ragnarok-map"
+  }
+}

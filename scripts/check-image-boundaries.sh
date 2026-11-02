@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-apache_image="${1:-robrowser:ci}"
-vite_image="${2:-vite:ci}"
+apache_image="${1:-remote:ci}"
+vite_image="${2:-robrowser:ci}"
 
 docker run --rm --network none --entrypoint sh "$apache_image" -ec '
   root=/var/www/localhost/htdocs

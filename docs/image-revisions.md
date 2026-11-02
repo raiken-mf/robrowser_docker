@@ -1,6 +1,6 @@
-# Verified image selection for migration phase B
+# Historical pre-rename image verification
 
-PR #73 uses the following published releases. Registry SHA tags, stable tags,
+Before the final naming change, PR #73 used the following published releases. Registry SHA tags, stable tags,
 OCI source annotations and both linux/amd64 and linux/arm64 manifests were
 verified after the successful main release of
 `4e94f3a373936e95d17322970c26be09af1c7c7c`. Each selected digest matched stable
@@ -32,22 +32,23 @@ at verification. Stable remains mutable; this table records the verified snapsho
 - Never compare SHA strings alphabetically or assign main HEAD to unchanged
   images. A candidate tag is not a released image.
 
-## Deployment hold and naming cutover
+## Final naming cutover and installation hold
 
-These are verified PRE-RENAME artifacts: `robrowser` is Apache/PHP and `vite` is
-the frontend. Do not mistake them for the newly requested final image roles.
+The final source trees, services, workflow matrices and registry targets now use
+`remote` for Apache/PHP and `robrowser` for the Node.js/Vite frontend. The table
+above is HISTORICAL pre-rename evidence, not an installation selection for the
+new names. In particular its robrowser digest contains Apache, not the frontend.
 
-PR #85 is superseded and closed without merging. The operator now owns a full
-namespace reset and Flux control. PR #73 remains draft/unmerged while the rename
-is prepared: frontend vite -> robrowser, Apache robrowser -> remote. No automatic
-NodePort handover or deployment is authorized. Existing variables, reviewed
-ConfigMap values, ports and security settings must remain intact.
+PR #85 is closed without merging. The namespace has been removed by the operator;
+both Flux Kustomizations are suspended and must stay paused until separate
+installation approval. No two-stage port handover remains necessary.
 
-If registry image names change, only a controlled, fully validated release may
-establish the new image roles. In particular the existing `robrowser:stable`
-currently points at Apache, not the renamed frontend. Do not reuse that tag as
-frontend evidence or reference an unpublished remote image.
+The reviewed final-name source must pass CI and then the security-gated main
+release. Only its actually promoted registry digests may supply final web image
+pins. The publication workflow produces a draft GitOps PR with those source
+SHA tags. Verify that remote contains PHP/Apache and robrowser contains Node/Vite
+before closing the repository release work. Neither code/image-pin merges nor
+registry publication authorize Flux resume or installation.
 
-See [Fresh namespace installation](flux-split-migration.md) for the preparation,
-release and operator approval gates. No namespace deletion or rollout has been
-performed by this repository-only update.
+See [Fresh namespace installation](flux-split-migration.md). Existing ConfigMap
+values, source pins, port variables and security restrictions are retained.

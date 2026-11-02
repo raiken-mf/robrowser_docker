@@ -103,7 +103,9 @@ All configuration is managed through the `.env` file:
 | `PORT_WSPROXY` | WebSocket proxy port | `30599` |
 | `PORT_FRONTEND` | Frontend port for roBrowser | `30000` |
 | `RATHENA_IMAGE_TAG` | rAthena image tag for legacy Kubernetes scripts | `stable` |
-| `ROBROWSER_IMAGE_TAG` | roBrowser image tag for legacy Kubernetes scripts | `stable` |
+| `ROBROWSER_IMAGE_TAG` | Legacy Apache/remote image tag fallback | `stable` |
+| `REMOTE_IMAGE_TAG` | Explicit Apache/remote image tag | legacy fallback |
+| `VITE_IMAGE_TAG` | roBrowser frontend image tag (compatible variable name) | `stable` |
 | `WSPROXY_IMAGE_TAG` | wsProxy image tag for legacy Kubernetes scripts | `stable` |
 
 ### External host and ports

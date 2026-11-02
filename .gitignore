@@ -5,8 +5,8 @@
 !/images/rathena/repository_override/put_files_to_override_here.txt
 /images/hercules/repository_override/*
 !/images/hercules/repository_override/put_files_to_override_here.txt
-/images/robrowser/repository_override/*
-!/images/robrowser/repository_override/put_files_to_override_here.txt
+/images/remote/repository_override/*
+!/images/remote/repository_override/put_files_to_override_here.txt
 /client/AI/*
 !/client/AI/add-AI-folder-files-here.txt
 /client/AI/USER_AI/*
@@ -85,8 +85,8 @@ ENV/
 .DS_Store
 Thumbs.db
 # Vite overrides are local customization, like the Apache overrides.
-/images/vite/repository_override/*
-!/images/vite/repository_override/.gitkeep
+/images/robrowser/repository_override/*
+!/images/robrowser/repository_override/.gitkeep
 *.bak
 *.backup
 *.orig

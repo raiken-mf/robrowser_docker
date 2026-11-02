@@ -1,3 +1,8 @@
+> Historical sections below use the former names: robrowser = Apache/PHP,
+> vite = frontend. Final names are remote = Apache/PHP and robrowser = frontend.
+> See the final-name validation section at the end; do not interpret old registry
+> digests or build commands as releases under the new names.
+
 # Image split validation — 2026-11-02
 
 Branch: `fix/roBrowserLegacyUpdate`. Local builds and runtime tests ran on ARM64.
@@ -306,3 +311,24 @@ also passed locally.
 GitHub PR validation must pass on the pushed correction. Registry vulnerability
 scans, publication and any Kubernetes migration remain separate guarded steps;
 this base-image fix does not change Flux image selections or authorize a rollout.
+
+## Final-name architecture validation
+
+The final trees are `images/remote` (Apache/PHP/RemoteClient/ROEnglishRE/resources)
+and `images/robrowser` (Node.js/Vite/frontend). Compose, Kubernetes and template
+services/selectors, CI/security/SBOM/promotion matrices and Dependabot follow
+those names. Source revisions and upstream repositories are unchanged. Both
+local override trees remain independently tested.
+
+Native ARM64 builds of remote Renewal/Pre-Renewal and robrowser frontend passed.
+Translation checks passed 625/684 SHA-256 comparisons, including all ten differing
+Pre-Renewal overrides and byte-identical pinned .htaccess. Non-default external
+ports and legacy/explicit image tag mappings passed for Compose and templates.
+Both modes passed image/history boundaries and isolated Compose with actual
+read-only client resources: HTTP pages, GR2 transform, PHP 8.4.27 runtime security,
+TRACE/Git blocking, /remote/ routing, GRF encoding mapping and cross-service CORS.
+Independent marker/index override builds passed for both renamed trees. These
+checks do not create Kubernetes resources or restart existing local containers.
+The operator-deleted namespace is absent and both Flux Kustomizations remain
+suspended. New-name registry publication/security results must be recorded after
+the reviewed main release; local tests do not claim unpublished artifacts exist.

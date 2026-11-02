@@ -18,9 +18,9 @@ If the PR's required `validate` check passes, auto-merge merges it. No per-updat
 1. CI builds the images and runs smoke tests.
 2. After CI passes on `main`, Container Security scans the images for **HIGH/CRITICAL** findings (unfixed findings are reported but do not block).
 3. Only after the security workflow succeeds does Publish Images publish the affected image(s) to GHCR, using immutable `sha-<robrowser_docker commit>` tags as well as `stable`.
-4. Publish opens a GitOps PR that updates Flux's immutable image references. Auto-merge plus Flux reconciliation rolls the changed image(s) out to Kubernetes.
+4. Publish opens a GitOps PR that updates Flux's immutable image references. The GitOps PR stays draft without auto-merge; deployment requires operator approval. Currently both Flux Kustomizations are suspended for the separately approved fresh installation.
 
-rAthena is published separately. Changes to roBrowserLegacy, RemoteClient-PHP, or ROenglishRE affect the roBrowser image. Unaffected images are not rebuilt by selective publishing.
+rAthena is published separately. roBrowserLegacy changes affect the robrowser frontend image; RemoteClient-PHP and ROenglishRE changes affect remote. Unaffected images are not rebuilt by selective publishing.
 
 ### One-time setup
 
@@ -37,7 +37,7 @@ The layout check verifies the paths required by the Dockerfiles:
 - **rAthena:** `configure`, `src/custom/defines_pre.hpp`, and `conf/`
 - **ROenglishRE:** Renewal and Pre-Renewal `Translation/.../data` and `SystemEN` directories
 
-The roBrowser image pins the RemoteClient-PHP SHA too. Its project-owned npm manifest and lockfile also pin `granny-ro-js@1.5.0`, required by the fork's `granny-ro-js/wasm` import. CI's roBrowser smoke test requests Vite's transformed `GR2ModelRenderer.js` and verifies the WASM module exports resolve; a basic HTTP readiness probe alone would not catch this class of frontend module-resolution error.
+The remote image pins RemoteClient-PHP and ROenglishRE separately from the robrowser frontend. Its project-owned npm manifest and lockfile also pin `granny-ro-js@1.5.0`, required by the fork's `granny-ro-js/wasm` import. CI's roBrowser smoke test requests Vite's transformed `GR2ModelRenderer.js` and verifies the WASM module exports resolve; a basic HTTP readiness probe alone would not catch this class of frontend module-resolution error.
 
 These checks prove the expected paths exist, the images build, services start, and the tested frontend module resolves. They do **not** prove full gameplay compatibility or exercise a complete login/map/effect session. The update process currently auto-merges after CI, so a compatible layout and passing smoke test can still precede a runtime issue. Monitor the post-merge Security → Publish → GitOps/Flux pipeline and test gameplay after an update.
 

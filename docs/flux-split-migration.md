@@ -1,85 +1,66 @@
-# Fresh namespace installation — deployment hold
+# Final web architecture — fresh installation held
 
-The operator replaced the two-phase in-place migration with a full, manually
-controlled deletion and recreation of namespace `ragnarok`. PR #85 is superseded
-and closed without merging. Do not execute its old NodePort handover. PR #73
-remains draft, without auto-merge, and must not be merged or applied yet.
+The operator confirmed namespace `ragnarok` was completely removed. Read-only
+inspection confirmed it absent and both `flux-system` and `ragnarok-stack`
+Kustomizations suspended. Keep both paused. No Kubernetes resources may be
+created and Flux must not be resumed before separate installation approval.
+PR #85 is closed without merging; no old NodePort handover is required.
 
-The operator owns Flux suspension/resumption and namespace deletion. Repository
-preparation is authorized; no agent-driven namespace/PVC deletion, Flux
-reconciliation, resource application, rollout or deployment merge is authorized.
-Wait for the operator to confirm the namespace has been removed. That confirmation
-alone is not approval to resume Flux or merge deployment changes.
+## Final runtime ownership
 
-## Target names and port compatibility
+| Service / GHCR image | Build tree | Responsibility | External / internal port |
+| --- | --- | --- | --- |
+| robrowser | images/robrowser | Node.js, Vite, roBrowserLegacy frontend | PORT_FRONTEND / 3000 |
+| remote | images/remote | Apache, PHP 8.4, RemoteClient, ROEnglishRE, GRF/BGM/AI | PORT_HTTP / 8080 |
+| wsproxy | images/wsproxy | WebSocket proxy | PORT_WSPROXY / 5999 |
 
-| Responsibility | Previous service | Target service | External variable / reviewed value | Internal listener |
-| --- | --- | --- | --- | --- |
-| Node.js/Vite/roBrowserLegacy frontend | vite | robrowser | PORT_FRONTEND / 30000 | 3000 |
-| Apache/PHP/RemoteClient/ROEnglishRE/resources | robrowser | remote | PORT_HTTP / 30080 | 8080 |
-| WebSocket proxy | wsproxy | wsproxy | PORT_WSPROXY / 30599 | 5999 |
+The reviewed ConfigMap stays `robrowser-config`: HOST=pi, PORT_HTTP=30080,
+PORT_FRONTEND=30000, PORT_WSPROXY=30599, PACKETVER=20211103,
+SET_PRERENEWAL=0 and SERVER_NAME=Ragnarok Online. Existing variables/fallbacks,
+non-root security, dropped capabilities, probes, readonly resource mounts,
+pull Always, independent overrides, source pins and `/remote/` routing remain.
+`REMOTE_IMAGE_TAG` explicitly overrides legacy `ROBROWSER_IMAGE_TAG` for Apache;
+`VITE_IMAGE_TAG` continues to select the frontend. See the deployment guide before
+moving existing local override payloads into the renamed build folders.
 
-The runtime remains split. Both components keep independent repository_override
-payloads. Preserve `.env` names and fallbacks, PORT_FRONTEND rendering, `/remote/`
-URLs, Apache `.htaccess`, readonly resource mounts, pull Always policies and all
-security restrictions. Keep the shared ConfigMap name `robrowser-config`; changing
-service responsibilities does not require renaming configuration variables.
+## Repository and release gates
 
-The reviewed ConfigMap remains HOST=pi, PORT_HTTP=30080, PORT_FRONTEND=30000,
-PORT_WSPROXY=30599, PACKETVER=20211103, SET_PRERENEWAL=0 and
-SERVER_NAME=Ragnarok Online. No credentials belong in Git. The renderer consumes
-`.env`; Flux consumes reviewed manifests in Git, not the local `.env`.
+The source/build/runtime names are changed together across Docker, Compose,
+Kubernetes/templates, scripts, CI smoke tests, multiarch security/SBOM/publication
+and Dependabot. Vite engine/package names and upstream source identities remain.
 
-## Rename preparation and release gate
+The registry's OLD robrowser image still contains Apache until a new-name release
+is actually published. Old vite releases contain the frontend. Do not reuse their
+source SHA tags under different repositories. The historical digest table is
+pre-rename evidence only. Current target web overrides temporarily use stable;
+they are NOT installation-ready release pins. After a reviewed main merge, the
+unchanged security-gated publication workflow builds the two new-name images,
+scans both architectures, emits SBOMs and promotes exact candidate digests only
+while source main is current. Its generated draft GitOps PR then supplies the
+new immutable source tags. Review and verify those registry digests/roles before
+installation approval. Frontend readiness checks its API module rather than only
+HTTP `/`, so the old Apache image cannot appear as a ready frontend.
 
-Implement the rename as a coordinated change across Compose services, Kubernetes
-Deployments/Services/selectors, templates, renderer/deployment scripts, tests and
-documentation. Keep upstream Vite dependencies, vite.config.js, roBrowserLegacy
-source URLs and source revision pins unchanged: they are implementation/source
-identities rather than deployment service names.
+PR #73 remains unmerged unless its repository merge is explicitly authorized.
+No force-push, image-security bypass, Kubernetes write or Flux resume is part of
+repository validation. A repository merge/release is separate from installation.
 
-If image/build names are renamed too, move the Apache build to `images/remote`
-and the frontend build to `images/robrowser`, including their separate override
-folders. Update CI build contexts, security matrices, SBOM/release records,
-change detection, publication, image boundary/Compose/override tests, Dependabot
-paths and Flux image overrides together. Preserve existing configuration variable
-names or explicit compatibility fallbacks; never silently reinterpret a previous
-image-tag variable as the other runtime.
+## Installation approval remains separate
 
-IMPORTANT: the currently published `ghcr.io/raiken-mf/robrowser` image contains
-Apache/PHP; `ghcr.io/raiken-mf/vite` contains the frontend. Replacing a service label
-or directory does not change those artifacts. Never point the renamed frontend
-at the existing Apache `robrowser` tag, or invent an unpublished `remote` tag.
-The image naming cutover needs its own validated current-source build, multiarch
-security scans, SBOMs and exact-digest publication. A new frontend `robrowser:stable`
-would change the meaning of an existing registry reference and requires an
-explicit controlled release decision before publication.
+After final-name images and immutable Flux pins are available, review storage
+restore/provisioning and all actual configuration. The old namespace/PVC objects
+are gone; prior Bound status is not a storage restore guarantee. Do not create
+PVCs, change reclaim policies or resume Flux yourself. The operator will approve
+the fresh installation separately.
 
-The digests in [Image revision guide](image-revisions.md) describe the published
-PRE-RENAME artifacts only. They remain evidence for the previous runtime split,
-not proof that final-name images already exist. Keep deployment held until names,
-actual published digests and runtime roles are verified together.
-
-## Fresh-install gates
-
-1. Obtain operator confirmation of the namespace reset and their intended Flux
-   state. Do not delete resources, recreate the namespace or resume Flux yourself.
-2. Before any deployment merge, review the final rename diff, required CI, exact
-   image roles/digests and the actual non-secret ConfigMap. The existing #73 snapshot
-   is not a ready final-name installation. Synchronize it with current main.
-3. Confirm the operator's storage/restore plan. Namespace deletion also removes
-   namespaced PVC objects; Bound status before deletion does not prove data will
-   survive a reset. Do not alter reclaim policies or storage yourself.
-4. Only after explicit deployment approval may final resources be merged into the
-   Flux-watched main. Existing deployments must remain untouched until then.
-5. After the operator-authorized fresh installation, check Flux's exact applied
-   revision, namespace/PVC readiness, final service selectors/endpoints, pod probes,
-   Apache 30080/8080, frontend 30000/3000, RemoteClient GRF/loose-file access/CORS,
-   an actual WebSocket upgrade and browser/game connectivity.
+After that approval, verify Flux's exact applied revision, PVC/pod readiness,
+service selectors/endpoints, probes, frontend on 30000, Apache on 30080,
+RemoteClient GRF/loose-file delivery/CORS, a real WebSocket upgrade and browser/game
+connectivity. No two-stage Service port transfer is needed in the empty namespace.
 
 ## Observed baseline and RemoteClient health caveat
 
-Before the strategy change, all five existing Deployments were ready, the
+Historical baseline before the namespace deletion: all five existing Deployments were ready, the
 client-data PVC was Bound, Apache served HTTP 200 on 30080, and the old Apache
 Service still owned 30000. No Vite Deployment/Service existed. The reviewed
 ConfigMap matched the operator preview; PORT_FRONTEND is the explicit new key.

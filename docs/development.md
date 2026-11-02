@@ -21,7 +21,8 @@ robrowser_docker/
 │   ├── Dockerfile          # Rathena server Dockerfile
 │   ├── entrypoint.sh       # Rathena entrypoint script
 │   └── repository_override/ # Override files for Rathena
-├── images/robrowser/       # roBrowser image files
+├── images/remote/          # Apache/PHP/RemoteClient and resources
+├── images/robrowser/       # Node.js/Vite frontend
 │   ├── Dockerfile          # roBrowser Dockerfile
 │   ├── entrypoint.sh       # roBrowser entrypoint script
 │   ├── index.html.template # Template for HTML generation
@@ -327,8 +328,8 @@ All contributors are expected to follow the project's code of conduct:
 - Focus on technical merit
 - Maintain professional standards
 
-The standalone frontend image lives in `images/vite/`; its package manifest and
-lockfile are the active npm dependency overlay. `images/robrowser/` builds only
+The standalone frontend image lives in `images/robrowser/`; its package manifest and
+lockfile are the active npm dependency overlay. `images/remote/` builds only
 Apache/PHP and the RemoteClient/translation content. The Apache image does not fetch roBrowserLegacy or contain frontend files.
 Its root page is a static service status page; the browser application and its
-configuration template belong exclusively to `images/vite/`.
+configuration template belong exclusively to `images/robrowser/`.

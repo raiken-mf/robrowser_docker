@@ -8,6 +8,6 @@ resources:
   - mariadb.yaml
   - rathena.yaml
   - robrowser-config.yaml
+  - remote.yaml
   - robrowser.yaml
-  - vite.yaml
   - wsproxy.yaml

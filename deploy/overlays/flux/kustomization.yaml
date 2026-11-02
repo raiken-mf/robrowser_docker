@@ -14,6 +14,6 @@ images:
 - name: ghcr.io/raiken-mf/remote
   newTag: sha-6c00eb847d9f65c9b0f4c941140b790177c37470
 - name: ghcr.io/raiken-mf/robrowser
-  newTag: sha-6c00eb847d9f65c9b0f4c941140b790177c37470
+  newTag: sha-d32fa0e2a793eac80274fcc8d1206a871f4a1376
 - name: ghcr.io/raiken-mf/wsproxy
   newTag: sha-ddc424509d376dc1e77f4b6925f3df37fc4caf27

@@ -9,13 +9,16 @@ not provide `SYSTEM_PATH`, `SYSTEMEN_PATH`, `AI_PATH`, `DATA_OVERRIDE_PATH`,
 or a `System` to `SystemEN` alias.
 
 The image installs ROEnglishRE's original `SystemEN` tree once, at its original
-path. Apache can serve existing static `SystemEN/` files directly. Missing
+path. Apache can serve existing static `SystemEN/` files directly. The existing
+roBrowser `customItemInfo` option selects `SystemEN/itemInfo.lua`, which loads
+its original nested `SystemEN` files. `System/` is a separate symlink to the
+read-only client-data mount, so real original System files remain accessible. Missing
 `SystemEN/`, `System/` and `AI/` files are not resolved from GRFs by the PHP
 fallback. A `System/` request is not automatically mapped to `SystemEN/`.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
-The image does not copy external PVC `data/` or `System/` files into its own
-tree at startup; those directories cannot be overlaid together with baked
-files using a supported PHP setting. No copies or changes to original client
+The image does not copy external PVC `data/` files into its own tree at
+startup; those files cannot be overlaid together with baked files using a
+supported PHP setting. No copies or changes to original client
 files are made. If those overlays or virtual aliases are required, the
 unmodified software does not provide them and a separate decision is needed.
 

@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   # Installation hold: resuming the parent must not start this stack.
-  suspend: true
+  suspend: false
   interval: 10m0s
   path: ./deploy/overlays/flux
   prune: true

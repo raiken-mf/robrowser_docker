@@ -59,6 +59,7 @@ try:
    assert b'RemoteClient service' in content and b'<script' not in content.lower()
   else:
    assert b'applications/api/api.js' in content
+   assert b'customItemInfo: ["SystemEN/itemInfo.lua"]' in content
   print(f'PASS {name}: HTTP 200 and correct service page')
  content,_=request('robrowser',3000,'/applications/api/api.js')
  assert content, 'Frontend readiness module is empty'
@@ -81,6 +82,16 @@ try:
   except urllib.error.HTTPError as error:
    assert error.code==expected,(method,error.code)
  print('PASS Git-path blocking and TRACE protection')
+ for asset in ('/remote/SystemEN/itemInfo.lua', '/remote/SystemEN/LuaFiles514/itemInfo_f.lua'):
+  content,_=request('remote',8080,asset)
+  assert content, asset
+ for asset in ('/remote/resources/DATA.INI', '/remote/configs.php', '/remote/data/%252e%252e/resources/DATA.INI'):
+  try:
+   urllib.request.urlopen('http://'+address+asset,timeout=5)
+   raise AssertionError(f'{asset} unexpectedly allowed')
+  except urllib.error.HTTPError as error:
+   assert error.code==403,(asset,error.code)
+ print('PASS ROEnglishRE static paths and private-file access controls')
  # This nonexistent filesystem path must route through remote/.htaccess to PHP.
  # Missing GRFs produce a semantic 503 in clean CI, not a routing/PHP failure.
  try:

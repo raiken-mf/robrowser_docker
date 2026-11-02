@@ -1,5 +1,5 @@
 # alpine:3.24.2 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
 # drop this once alpine:3.24.2 ships zlib >= 1.3.2-r1 by default.

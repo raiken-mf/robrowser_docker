@@ -94,8 +94,6 @@ jobs:
           set -euo pipefail
           set -a; source build/dependencies.env; set +a
           docker build --no-cache -f images/robrowser/Dockerfile \
-            --build-arg ROBROWSER_REPOSITORY="$ROBROWSER_REPOSITORY" \
-            --build-arg ROBROWSER_REF="$ROBROWSER_REF" \
             --build-arg REMOTECLIENT_REPOSITORY="$REMOTECLIENT_REPOSITORY" \
             --build-arg REMOTECLIENT_REF="$REMOTECLIENT_REF" \
             --build-arg ROENGLISH_REPOSITORY="$ROENGLISH_REPOSITORY" \
@@ -120,6 +118,14 @@ jobs:
       - name: Smoke-test isolated Compose web services
         if: steps.scope.outputs.relevant == 'true'
         run: python3 scripts/check-compose.py
+
+      - name: Verify image filesystem boundaries
+        if: steps.scope.outputs.relevant == 'true'
+        run: bash scripts/check-image-boundaries.sh robrowser:ci vite:ci
+
+      - name: Verify independent image overrides
+        if: steps.scope.outputs.relevant == 'true'
+        run: python3 scripts/check-image-overrides.py
 
       - name: Smoke-test roBrowser
         if: steps.scope.outputs.relevant == 'true'
@@ -150,7 +156,8 @@ jobs:
             grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
           docker exec robrowser-ci rm /var/www/localhost/htdocs/ci-php-check.php
           docker exec robrowser-ci test -f /var/www/localhost/htdocs/remote/.htaccess
-          curl -fsS http://127.0.0.1:8080/ -o /tmp/robrowser-index.html
+          curl -fsS http://127.0.0.1:8080/ | grep -Fq "RemoteClient service"
+          curl -fsS http://127.0.0.1:3000/ -o /tmp/robrowser-index.html
           grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/robrowser-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/robrowser-index.html
           grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/robrowser-index.html

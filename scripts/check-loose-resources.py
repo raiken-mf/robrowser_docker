@@ -12,6 +12,7 @@ image = __import__('sys').argv[1] if len(__import__('sys').argv) > 1 else 'remot
 name = 'remote-resource-test-' + uuid.uuid4().hex[:12]
 with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
     root = pathlib.Path(temporary)
+    root.chmod(0o755)  # Container runs as UID 1000; CI runner may use another UID.
     for directory in ['System', 'SystemEN/LuaFiles514', 'data/nested', 'AI', 'BGM', 'resources']:
         (root / directory).mkdir(parents=True, exist_ok=True)
     fixtures = {'System/itemInfo.lua': b'original-system\n',

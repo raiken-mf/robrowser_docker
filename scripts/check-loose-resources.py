@@ -26,9 +26,9 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
     try:
         subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
         port = int(subprocess.check_output(['docker', 'port', name, '8080'], text=True).strip().rsplit(':', 1)[1])
-        def request(path):
+        def request(path, prefix='/remote/'):
             connection = http.client.HTTPConnection('127.0.0.1', port, timeout=20)
-            connection.request('GET', '/remote/' + path)
+            connection.request('GET', prefix + path)
             response = connection.getresponse()
             result = response.status, response.read()
             connection.close()
@@ -48,6 +48,8 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
                      'data/%2e%2e/%2e%2e/index.html']:
             status, _ = request(path)
             assert status in (403, 404), (path, status)
+        status, _ = request('data/%2e%2e/configs.php', prefix='/r%65mote/')
+        assert status in (403, 404), ('encoded remote prefix', status)
         php = r'''chdir("/var/www/localhost/htdocs/remote");
 require "Debug.php"; require "Client.php"; $GLOBALS["CONFIGS"] = require "configs.php";
 foreach (["data/nested/한글.lua" => true, "AI/Util.lua" => true,

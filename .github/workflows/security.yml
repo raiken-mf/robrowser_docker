@@ -55,7 +55,7 @@ jobs:
           fi
           case "$IMAGE" in
             robrowser) paths=(images/robrowser .dockerignore build/dependencies.env) ;;
-            vite)      paths=(images/vite images/robrowser/index.html.template .dockerignore build/dependencies.env) ;;
+            vite)      paths=(images/vite .dockerignore build/dependencies.env) ;;
             rathena)   paths=(images/rathena build/dependencies.env) ;;
             wsproxy)   paths=(images/wsproxy .dockerignore) ;;
           esac
@@ -81,8 +81,6 @@ jobs:
           annotations: |
             index:org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
-            ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
-            ROBROWSER_REF=${{ env.ROBROWSER_REF }}
             REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
             REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}
             ROENGLISH_REPOSITORY=${{ env.ROENGLISH_REPOSITORY }}

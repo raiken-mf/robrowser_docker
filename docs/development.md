@@ -329,5 +329,6 @@ All contributors are expected to follow the project's code of conduct:
 
 The standalone frontend image lives in `images/vite/`; its package manifest and
 lockfile are the active npm dependency overlay. `images/robrowser/` builds only
-Apache/PHP and the RemoteClient/translation content. The historical npm manifests
-under `images/robrowser/` are no longer consumed by either Dockerfile.
+Apache/PHP and the RemoteClient/translation content. The Apache image does not fetch roBrowserLegacy or contain frontend files.
+Its root page is a static service status page; the browser application and its
+configuration template belong exclusively to `images/vite/`.

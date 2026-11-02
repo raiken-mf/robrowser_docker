@@ -342,8 +342,11 @@ automatically.
 Apache's `images/robrowser/repository_override/` is copied into the document root
 after translations (use `remote/data/` and `remote/System/` for translation
 overrides). Vite's `images/vite/repository_override/` is copied into `/app/` after
-npm installation and the default template. To customize the generated index,
-override `index.html.template`; the entrypoints regenerate `index.html` on start.
+npm installation and the default template. Vite alone owns and renders `images/vite/index.html.template`; override its
+`index.html.template` to customize the browser configuration. Apache serves a
+static `images/robrowser/index.html` status page at `/` for existing probes;
+override `index.html` in its own override directory to customize that page.
+Apache does not clone roBrowserLegacy or generate frontend configuration.
 Loose files mounted at `/opt/client_files/data` and `/opt/client_files/System`
 are merged into the Apache translation directories at startup, taking precedence
 without hiding the translated base. GRF resources, BGM and AI remain read-only
@@ -357,6 +360,8 @@ After building local `robrowser:ci` and `vite:ci` images using the pins in
 
 ```bash
 bash scripts/check-roenglish.sh robrowser:ci
+bash scripts/check-image-boundaries.sh robrowser:ci vite:ci
+python3 scripts/check-image-overrides.py
 python3 scripts/check-compose.py robrowser:ci vite:ci
 ```
 
@@ -367,3 +372,22 @@ uses unique project networks and ephemeral loopback host ports, checks PHP and
 Vite, and removes its test containers and networks afterwards. It intentionally
 uses `--pull never` for these local test tags; deployment `pull_policy: always`
 remains unchanged. The game server and database are not started by this web test.
+
+
+### Image source boundaries
+
+Only Vite accepts `ROBROWSER_REPOSITORY` and `ROBROWSER_REF` and clones the
+roBrowserLegacy frontend. Apache accepts only RemoteClient and ROEnglishRE source
+arguments plus `SET_PRERENEWAL`. Its PHP includes and routing come entirely from
+the pinned RemoteClient repository; no frontend checkout is needed. The upstream
+`remote/.htaccess` remains installed, including `ErrorDocument 404 /remote/index.php`.
+
+A request to `/remote/api/health/simple` exercises that fallback and PHP execution.
+It returns 200 with valid GRFs or a JSON health status with 503 when GRFs are absent
+(as in clean CI). The static `/` remains 200 without GRFs and contains no frontend
+script. Frontend configuration is tested on Vite rather than Apache.
+
+`check-image-boundaries.sh` rejects frontend directories/manifests in Apache and
+also checks image build history so a deleted frontend checkout cannot pass the
+filesystem check. Both images retain independent build-time overrides. Changing
+an Apache override does not change the Vite frontend configuration.

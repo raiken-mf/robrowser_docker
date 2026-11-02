@@ -14,7 +14,8 @@ must not apply that snapshot as a single unattended rollout.
 ## Prerequisites
 
 - Confirm both new images passed AMD64/ARM64 vulnerability scans and have SBOMs.
-  Record their exact scanned digests and matching source revisions.
+  Record their exact scanned digests and each component source revision.
+  Only Vite fetches roBrowserLegacy; Apache fetches RemoteClient and ROEnglishRE.
 - Review the actual namespace, existing ConfigMap keys, HOST and all `.env` port
   values with the deployment operator. Do not commit credentials or replace live
   configuration with example values. Preserve custom external port values.

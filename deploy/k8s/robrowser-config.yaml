@@ -1,6 +1,6 @@
 apiVersion: v1
 data:
-  HOST: 127.0.0.1
+  HOST: pi
   PACKETVER: "20211103"
   PORT_FRONTEND: "30000"
   PORT_HTTP: "30080"

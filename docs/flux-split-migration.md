@@ -62,3 +62,11 @@ The old combined roBrowser SHA override must not be paired with the new Vite
 frontend expecting `/remote/`. Keep generated image-update PRs in draft until the
 intended image pairing and current migration stage are verified. Independent
 scheduled dependency automation is not approval for a deployment stage.
+
+
+The prepared ConfigMap in PR #73 now uses the operator-generated preview:
+HOST=pi, PORT_HTTP=30080, PORT_FRONTEND=30000 and PORT_WSPROXY=30599.
+These agree with the reviewed .env/live web settings; PORT_FRONTEND is added
+explicitly for the separate Vite service. Recheck them before an approved rollout.
+This configuration update does not authorize applying the combined migration in
+one unattended step; the NodePort handover stages above remain required.

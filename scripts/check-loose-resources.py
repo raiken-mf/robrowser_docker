@@ -47,7 +47,15 @@ with tempfile.TemporaryDirectory(prefix='remote-resource-test-') as temporary:
                      'data/%2e%2e/%2e%2e/index.html']:
             status, _ = request(path)
             assert status in (403, 404), (path, status)
-        print('PASS Apache/PHP loose resources, precedence, Korean paths, traversal and symlinks')
+        php = r'''chdir("/var/www/localhost/htdocs/remote");
+require "Debug.php"; require "Client.php"; $GLOBALS["CONFIGS"] = require "configs.php";
+foreach (["data/nested/한글.lua" => true, "AI/Util.lua" => true,
+          "data/escape.txt" => false, "data/../System/itemInfo.lua" => false,
+          "data/%252e%252e/configs.php" => false, "/etc/passwd" => false] as $path => $expected) {
+    if ((Client::getFile($path) !== false) !== $expected) { fwrite(STDERR, "FAIL $path\n"); exit(1); }
+}'''
+        subprocess.run(['docker', 'exec', name, 'php', '-r', php], check=True)
+        print('PASS Apache/PHP and resolver: paths, precedence, Korean names, traversal and symlinks')
     finally:
         subprocess.run(['docker', 'stop', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(['docker', 'rm', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

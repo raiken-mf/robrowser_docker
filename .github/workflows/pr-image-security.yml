@@ -82,12 +82,14 @@ jobs:
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
 
-      - name: Scan fixable HIGH and CRITICAL vulnerabilities
+      - name: Report HIGH and CRITICAL vulnerabilities and gate on fixable findings
         if: steps.scope.outputs.changed == 'true'
         run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-            aquasec/trivy:0.76.1 image --timeout 15m --scanners vuln \
-            --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format table pr-image:scan
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock --entrypoint /bin/sh \
+            aquasec/trivy:0.76.1 -ec '
+              trivy image --timeout 15m --scanners vuln --severity HIGH,CRITICAL --exit-code 0 --format table pr-image:scan
+              trivy image --timeout 15m --skip-db-update --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --format table pr-image:scan
+            '
 
   result:
     name: PR image security

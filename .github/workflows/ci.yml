@@ -19,11 +19,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pr-image-security:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pr-image-security.yml
+
   validate:
+    needs: pr-image-security
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      - name: Require PR image security
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCAN_RESULT: ${{ needs.pr-image-security.result }}
+        run: test "$EVENT_NAME" != pull_request || test "$SCAN_RESULT" = success
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           fetch-depth: 0

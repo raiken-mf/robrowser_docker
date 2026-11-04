@@ -49,7 +49,7 @@ additions += ['data/' + name for name in (
     'buyingstoreitemlist.txt', 'cardpostfixnametable.txt', 'indoorrswtable.txt')]
 lua = 'data/luafiles514/lua files/'
 additions += [lua + 'datainfo/' + name + '.lub' for name in (
-    'accessoryid', 'accname', 'spriterobeid', 'spriterobename', 'weapontable', 'tb_cashshop_banner')]
+    'accessoryid', 'accname', 'spriterobeid', 'spriterobename', 'weapontable', 'tb_cashshop_banner', 'npcidentity', 'jobname')]
 additions += [lua + name for name in ('stateicon/efstids.lub', 'stateicon/stateiconimginfo.lub',
                                       'worldviewdata/worldviewdata_table.lub', 'ItemDBNameTbl.lub')]
 for name in additions:

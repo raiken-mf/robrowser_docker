@@ -31,7 +31,7 @@ try {
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $n) fixture("$src/Additions/data/$n", $n);
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $n) fixture("$src/Additions/data/luafiles514/lua files/$n", $n);
     $lua = 'data/luafiles514/lua files';
-    foreach (['accessoryid','accname','spriterobeid','spriterobename','weapontable','tb_cashshop_banner'] as $n) fixture("$src/Additions/$lua/datainfo/$n.lub", $n);
+    foreach (['accessoryid','accname','spriterobeid','spriterobename','weapontable','tb_cashshop_banner','npcidentity','jobname'] as $n) fixture("$src/Additions/$lua/datainfo/$n.lub", $n);
     fixture("$src/Additions/$lua/ItemDBNameTbl.lub", 'item'); fixture("$src/Additions/data/example.gat", 'map');
     fixture("$src/Additions/data/texture/legacy/map/payon.bmp", 'map-bmp'); fixture("$src/Additions/data/texture/legacy/map/sch_lab.bmp", 'excluded');
     fixture("$src/Additions/data/texture/legacy/map/ama_dun01.bmp", 'minimap');

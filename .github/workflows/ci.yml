@@ -158,7 +158,10 @@ jobs:
 
       - name: Verify generated Renewal and Pre-Renewal translations
         if: steps.scope.outputs.relevant == 'true'
-        run: bash scripts/check-roenglish.sh
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua5.1
+          bash scripts/check-roenglish.sh
 
       - name: Smoke-test runtime generation and HTTP via isolated Compose web services
         if: steps.scope.outputs.relevant == 'true'

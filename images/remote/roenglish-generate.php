@@ -96,7 +96,7 @@ try {
     put($files, "$add/SystemEN/PetEvolution.lub", 'SystemEN/PetEvolution.lub');
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $name) put($files, "$add/data/$name", "data/$name");
     $lua = 'data/luafiles514/lua files/';
-    foreach (['accessoryid.lub','accname.lub','spriterobeid.lub','spriterobename.lub','weapontable.lub','tb_cashshop_banner.lub'] as $name) {
+    foreach (['accessoryid.lub','accname.lub','spriterobeid.lub','spriterobename.lub','weapontable.lub','tb_cashshop_banner.lub','npcidentity.lub','jobname.lub'] as $name) {
         $p = $lua . 'datainfo/' . $name; put($files, "$add/$p", $p);
     }
     // These all-in-one files depend on the remaining files from the base

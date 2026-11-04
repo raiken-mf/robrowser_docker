@@ -176,6 +176,13 @@ try:
   translated,_=request('remote',8080,'/remote/SystemEN/PetEvolution.lub')
   assert pet==translated and b'InsertEvolutionRecipeLGU' in pet
  print('PASS pet evolution loose-file precedence and translated fallback')
+ for original,translated in (('CheckAttendance.lub','CheckAttendance.lub'),
+                             ('PrivateAirplane.lub','PrivateAirplane.lub')):
+  actual,_=request('remote',8080,'/remote/System/'+original)
+  if not (client_root/'System'/original).is_file():
+   expected,_=request('remote',8080,'/remote/SystemEN/'+translated)
+   assert actual==expected, original
+ print('PASS attendance and private-airship paths')
  # This nonexistent filesystem path must route through remote/.htaccess to PHP.
  # Missing GRFs produce a semantic 503 in clean CI, not a routing/PHP failure.
  try:

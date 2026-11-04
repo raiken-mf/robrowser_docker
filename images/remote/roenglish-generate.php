@@ -93,7 +93,9 @@ try {
     }
     // Only all-in-one selections with matching roBrowser loaders are copied.
     $add = "$source/Additions";
-    put($files, "$add/SystemEN/PetEvolution.lub", 'SystemEN/PetEvolution.lub');
+    foreach (['PetEvolution.lub','CheckAttendance.lub','PrivateAirplane.lub'] as $name) {
+        put($files, "$add/SystemEN/$name", "SystemEN/$name");
+    }
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $name) put($files, "$add/data/$name", "data/$name");
     $lua = 'data/luafiles514/lua files/';
     foreach (['accessoryid.lub','accname.lub','spriterobeid.lub','spriterobename.lub','weapontable.lub','tb_cashshop_banner.lub','npcidentity.lub','jobname.lub'] as $name) {

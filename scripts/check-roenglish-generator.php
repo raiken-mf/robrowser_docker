@@ -28,6 +28,8 @@ try {
     fixture("$src/Translation/Renewal/data/luafiles514/lua files/hateffectinfo/remove.lub", 'old');
     fixture("$src/Translation/Renewal/data/luafiles514/lua files/selectpackage/selectpackageitem.lub", 'old');
     fixture("$src/Additions/SystemEN/PetEvolution.lub", 'pet');
+    fixture("$src/Additions/SystemEN/CheckAttendance.lub", 'attendance');
+    fixture("$src/Additions/SystemEN/PrivateAirplane.lub", 'airship');
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $n) fixture("$src/Additions/data/$n", $n);
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $n) fixture("$src/Additions/data/luafiles514/lua files/$n", $n);
     $lua = 'data/luafiles514/lua files';

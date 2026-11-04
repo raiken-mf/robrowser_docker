@@ -154,6 +154,25 @@ not imply installation or compatibility.
 | itemInfo per Char Server | 2015-10-29 SystemEN itemInfo and helper. Readme requires the “Load iteminfo with char server” patch and checks server name `Pre-Renewal`. | Readme reports NEMO success for 2015-10-29, WARP failure for 2018-06-20 and 2022-04-06; exact upper supported version is unknown. These claims were not independently tested. |
 | jRO Enchants Display | Four data card tables: card item, postfix, prefix and illustration mapping. | They may replace or conflict with other card tables; choose and validate deliberately. |
 
+For the current runtime selection, `ROENGLISH_ADDONS=compatible` does not
+automatically install any of these groups: none has yet been verified end to
+end with this pinned client and its dependencies. In particular, the six
+Legacy Navigation tables load as Lua, but their monster and distance entries
+do not all match the assumptions of the client's navigation code. WARP
+sessions are patch-tool inputs rather than roBrowser resources. CLS and
+per-character-server itemInfo require client patches, and non-kRO entries
+explicitly require a manual merge. The remaining alternative datasets and
+fonts are not yet sufficiently verified for automatic activation.
+
+The initial `ROENGLISH_ADDITIONS=all` implementation selects the additions
+listed explicitly in `images/remote/roenglish-generate.php`, not every file in
+the upstream Additions tree. Other client-loaded candidates, including
+random-option dependencies and hat effects, require format,
+dependency and version checks before they can safely be enabled. This is an
+open integration gap rather than a claim that the remaining files are
+incompatible. `ROENGLISH_LEGACY_MAPS=1` selects the two upstream all-in-one
+legacy map/minimap choices; `0` leaves those additions out.
+
 ## Other tools and Linux limits
 
 **Verified:** `LuaConverter.bat` invokes bundled `luac.exe` to produce `.lub`;

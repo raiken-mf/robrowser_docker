@@ -28,7 +28,22 @@ for mode in 0 1; do
       local quests = 0
       for _ in pairs(QuestInfoList) do quests = quests + 1 end
       assert(quests == 11363, "quest entries differ: " .. quests)
-      print("PASS Lua 5.1 require/dofile, item descriptions and quests:", items, quests)
+      local starts, ends, needed, rewards = 0, 0, 0, 0
+      InsertStartableMap = function(v) assert(type(v)=="string"); starts=starts+1; return 1 end
+      InsertEndableMap = function(v) assert(type(v)=="string"); ends=ends+1; return 1 end
+      InsertNeedItem = function(v) assert(type(v)=="number"); needed=needed+1; return 1 end
+      dofile("SystemEN/PrivateAirplane.lub"); assert(main()); assert(starts>0 and ends>0 and needed>0)
+      InsertCheckAttendanceConfig = function(_,a,b) assert(type(a)=="number" and type(b)=="number"); return 1 end
+      InsertCheckAttendanceReward = function(a,b,c) assert(type(a)=="number" and type(b)=="number" and type(c)=="number"); rewards=rewards+1; return 1 end
+      dofile("SystemEN/CheckAttendance.lub"); assert(main()); assert(rewards>0)
+      local recipes, feeds = 0, 0
+      InsertEvolutionRecipeLGU = function(a,b,c,d) assert(type(a)=="number" and type(b)=="number" and type(c)=="number" and type(d)=="number"); recipes=recipes+1 end
+      InsertPetAutoFeeding = function(a) assert(type(a)=="number"); feeds=feeds+1 end
+      dofile("SystemEN/PetEvolution.lub"); main(); assert(recipes==206 and feeds==53)
+      local townCalls = 0
+      AddTownInfo = function() townCalls=townCalls+1 end
+      dofile("SystemEN/Towninfo.lub"); assert(main()==false and townCalls==1, "TownInfo callback limitation changed")
+      print("PASS Lua 5.1 item descriptions, quests, airship and attendance:", items, quests, starts, ends, needed, rewards)
     ')
   fi
 done

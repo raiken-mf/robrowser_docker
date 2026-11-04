@@ -43,7 +43,7 @@ for date in ('2017-06-14', '2017-12-13', '2018-06-20', '2019-06-05',
     specific = root / ('Pre-Renewal' if mode == '1' else 'Renewal')
     compatibility_files += layer(specific if specific.is_dir() else root)
 
-additions = ['SystemEN/PetEvolution.lub']
+additions = ['SystemEN/PetEvolution.lub', 'SystemEN/CheckAttendance.lub', 'SystemEN/PrivateAirplane.lub']
 additions += ['data/' + name for name in (
     'mp3nametable.txt', 'resnametable.txt', 'num2cardillustnametable.txt',
     'buyingstoreitemlist.txt', 'cardpostfixnametable.txt', 'indoorrswtable.txt')]

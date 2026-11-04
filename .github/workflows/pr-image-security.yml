@@ -71,6 +71,7 @@ jobs:
           load: true
           tags: pr-image:scan
           cache-from: type=gha,scope=ci-${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,scope=ci-${{ matrix.image }}-${{ matrix.arch }},mode=max,ignore-error=true
           build-args: |
             REMOTECLIENT_REPOSITORY=${{ env.REMOTECLIENT_REPOSITORY }}
             REMOTECLIENT_REF=${{ env.REMOTECLIENT_REF }}

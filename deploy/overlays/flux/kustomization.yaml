@@ -10,10 +10,10 @@ resources:
 # Deployment remains blocked until its generated PR supplies scanned SHA tags.
 images:
 - name: ghcr.io/raiken-mf/rathena
-  newTag: sha-fa736e36776c09cf35de30f6b38d05d87c95a60e
+  newTag: sha-b893f028b321da2e2e62d6f0cd8723ac9299a431
 - name: ghcr.io/raiken-mf/remote
-  newTag: sha-fa736e36776c09cf35de30f6b38d05d87c95a60e
+  newTag: sha-b893f028b321da2e2e62d6f0cd8723ac9299a431
 - name: ghcr.io/raiken-mf/robrowser
-  newTag: sha-fa736e36776c09cf35de30f6b38d05d87c95a60e
+  newTag: sha-b893f028b321da2e2e62d6f0cd8723ac9299a431
 - name: ghcr.io/raiken-mf/wsproxy
   newTag: sha-7124e3a6237808a845e8accfabbdcc5a1f0e1dd4

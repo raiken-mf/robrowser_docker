@@ -30,9 +30,11 @@ COPY --chown=vite:vite images/robrowser/package-lock.json /app/package-lock.json
 
 RUN npm ci && npm cache clean --force
 
-# Preserve current development-server behaviour.
+# Allow configured hosts and proxy client assets through the frontend origin.
 RUN grep -q 'server: {' vite.config.js \
-    && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js
+    && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js \
+    && grep -q 'const _proxy = {' vite.config.js \
+    && sed -i '/const _proxy = {/a\  "/remote/": { target: "http://remote:8080", changeOrigin: true },' vite.config.js
 
 # The frontend configuration template belongs only to Vite.
 COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template

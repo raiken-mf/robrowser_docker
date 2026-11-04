@@ -186,7 +186,7 @@ jobs:
           docker exec remote-ci test -f /var/www/localhost/htdocs/remote/.htaccess
           curl -fsS http://127.0.0.1:8080/ | grep -Fq "RemoteClient service"
           curl -fsS http://127.0.0.1:3000/ -o /tmp/remote-index.html
-          grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/remote-index.html
+          grep -Fq 'remoteClient:  window.location.origin + "/remote/"' /tmp/remote-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/remote-index.html
           grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/remote-index.html
           url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'

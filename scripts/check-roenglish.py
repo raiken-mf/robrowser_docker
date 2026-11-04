@@ -26,6 +26,8 @@ for key, digest in expected.items():
     path = installed / key
     assert path.is_file(), f"Missing installed translation: {key}"
     assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, f"Checksum mismatch: {key}"
+pet = pathlib.Path('SystemEN/PetEvolution.lub')
+assert (installed / pet).read_bytes() == (source / 'Additions' / pet).read_bytes(), 'PetEvolution mismatch'
 if mode == "1":
     assert changed > 0, "No differing override files tested"
 print(f"PASS mode={mode}: {len(expected)} SHA-256 checks, "

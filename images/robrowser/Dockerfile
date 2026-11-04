@@ -44,9 +44,9 @@ COPY --chown=vite:vite images/robrowser/repository_override/ /app/
 
 COPY --chown=vite:vite --chmod=755 images/robrowser/entrypoint.sh /entrypoint.sh
 
-# Match the Apache image's explicit zlib security update. Keep runtime non-root.
+# Keep the runtime non-root and install patched zlib and libexpat packages.
 USER root
-RUN apk upgrade --no-cache zlib
+RUN apk upgrade --no-cache zlib libexpat
 USER vite
 
 EXPOSE 3000

@@ -18,7 +18,7 @@ def output(*args):
     return subprocess.check_output(args, text=True)
 config=json.loads(output('docker','compose','--env-file',str(root/'.env'),'-f',str(root/'deploy/compose/docker-compose-common.yml'),'config','--format','json'))
 services={}
-allowed={'HOST','PORT_HTTP','PORT_FRONTEND','PORT_WSPROXY','PACKETVER','PACKET_OBFUSCATION_KEY1','PACKET_OBFUSCATION_KEY2','PACKET_OBFUSCATION_KEY3','ROBROWSER_ROLE','GRF_ENCODING','PATH_MAPPING_ENABLED','CACHE_ENABLED','CACHE_MAX_FILES','CACHE_MAX_MEMORY_MB'}
+allowed={'HOST','PORT_HTTP','PORT_FRONTEND','PORT_WSPROXY','PACKETVER','SET_PRERENEWAL','ROENGLISH_ADDITIONS','ROENGLISH_ADDONS','ROENGLISH_LEGACY_MAPS','PACKET_OBFUSCATION_KEY1','PACKET_OBFUSCATION_KEY2','PACKET_OBFUSCATION_KEY3','ROBROWSER_ROLE','GRF_ENCODING','PATH_MAPPING_ENABLED','CACHE_ENABLED','CACHE_MAX_FILES','CACHE_MAX_MEMORY_MB'}
 for name,port,image in [('remote',8080,sys.argv[1] if len(sys.argv)>1 else 'remote:ci'),('robrowser',3000,sys.argv[2] if len(sys.argv)>2 else 'robrowser:ci')]:
  service=config['services'][name]
  for key in ('container_name','build','depends_on','tty'): service.pop(key,None)
@@ -113,8 +113,16 @@ try:
  fixture.mkdir(mode=0o755)
  pathlib.Path(workdir.name).chmod(0o755)
  (fixture/'Util.lua').write_bytes(b'-- loose AI fixture\n')
+ data_fixture=pathlib.Path(workdir.name)/'loose-data'
+ system_fixture=pathlib.Path(workdir.name)/'loose-systemen'
+ data_fixture.mkdir(mode=0o755)
+ system_fixture.mkdir(mode=0o755)
+ (data_fixture/'resnametable.txt').write_bytes(b'user data override\n')
+ (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
  loose=output('docker','run','-d','--rm','-p','127.0.0.1::8080',
               '--mount',f'type=bind,src={fixture},dst=/opt/client_files/AI,readonly',
+              '--mount',f'type=bind,src={data_fixture},dst=/opt/client_files/data,readonly',
+              '--mount',f'type=bind,src={system_fixture},dst=/opt/client_files/SystemEN,readonly',
               services['remote']['image']).strip()
  try:
   loose_address=output('docker','port',loose,'8080').strip()
@@ -127,9 +135,19 @@ try:
     time.sleep(1)
   else:
    raise RuntimeError('Loose AI fixture server failed to start')
+  def verify_overrides():
+   for path,expected in (('/remote/data/resnametable.txt',b'user data override\n'),
+                         ('/remote/SystemEN/itemInfo_C.lua',b'-- user SystemEN override\n')):
+    with urllib.request.urlopen('http://'+loose_address+path,timeout=10) as res:
+     assert res.status==200 and res.read()==expected, path
+  verify_overrides()
+  run('docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php')
+  verify_overrides()
+  assert (data_fixture/'resnametable.txt').read_bytes()==b'user data override\n'
+  assert (system_fixture/'itemInfo_C.lua').read_bytes()==b'-- user SystemEN override\n'
  finally:
   run('docker','stop',loose,stdout=subprocess.DEVNULL)
- print('PASS loose AI fixture takes precedence over redirect')
+ print('PASS loose AI, data and SystemEN overrides; repeated initialization preserves mounts')
  frontend=output(*base,'port','robrowser','3000').strip()
  front_host,front_port=frontend.rsplit(':',1)
  connection=http.client.HTTPConnection(front_host,int(front_port),timeout=10)

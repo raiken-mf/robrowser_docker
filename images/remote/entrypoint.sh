@@ -13,6 +13,8 @@ esac
 
 ROOT="/var/www/localhost/htdocs"
 
+php /usr/local/bin/roenglish-startup.php
+
 # Generate encoding mappings when client resources are mounted.
 if [ -f "$ROOT/remote/tools/convert-encoding.php" ] && \
    [ -f "/opt/client_files/resources/DATA.INI" ]; then

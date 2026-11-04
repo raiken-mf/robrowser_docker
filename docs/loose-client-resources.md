@@ -8,8 +8,9 @@ existing `resources` mount supplies them. Its original PHP fallback accepts
 not provide `SYSTEM_PATH`, `SYSTEMEN_PATH`, `AI_PATH`, `DATA_OVERRIDE_PATH`,
 or a `System` to `SystemEN` alias.
 
-The image installs ROEnglishRE's original `SystemEN` tree once, at its original
-path. Apache can serve existing static `SystemEN/` files directly. The existing
+The image retains the pinned ROEnglishRE source and generates a runtime tree
+from `PACKETVER`, `SET_PRERENEWAL` and the `ROENGLISH_*` options. Apache serves
+the selected `SystemEN/` and `data/` files. The existing
 roBrowser `customItemInfo` option selects `SystemEN/itemInfo.lua`, which loads
 its original nested `SystemEN` files. `System/` is a separate symlink to the
 read-only client-data mount, so real original System files remain accessible. Missing `SystemEN/`, `System/` and `AI/` files are not resolved from GRFs
@@ -25,11 +26,12 @@ The image also installs ROEnglishRE's `PetEvolution.lub` once in `SystemEN/`.
 Apache serves it for a missing `System/PetEvolutionCln.lub`; a loose original
 takes priority. Other `System/` requests are not mapped to `SystemEN/`.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
-The image does not copy external PVC `data/` files into its own tree at
-startup; those files cannot be overlaid together with baked files using a
-supported PHP setting. No copies or changes to original client
-files are made. If those overlays or virtual aliases are required, the
-unmodified software does not provide them and a separate decision is needed.
+At startup, regular loose files in the readonly client mount's `data/` and
+`SystemEN/` are overlaid on the generated tree, without modifying the mount.
+The browser may itself resolve a file from its local GRF before requesting the
+RemoteClient, so server-side overlays cannot override every browser-local file.
+The exact pinned upstream generator rules, known script discrepancies and
+addon inventory are recorded in [the upstream inventory](roenglish-upstream-inventory.md).
 
 The pinned client's TownInfo callback returns no success value and replaces
 each map's entries. The supplied English Towninfo stops after its first callback;

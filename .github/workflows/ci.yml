@@ -149,13 +149,18 @@ jobs:
         if: steps.scope.outputs.relevant == 'true'
         run: python3 scripts/check-api-module.py robrowser:ci
 
-      - name: Verify Renewal and Pre-Renewal installed translations
+      - name: Run ROEnglish generator fixtures
         if: steps.scope.outputs.relevant == 'true'
-        env:
-          ROENGLISH_BUILDX: "1"
+        run: |
+          docker run --rm --entrypoint php \
+            --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
+            remote:ci /repo/scripts/check-roenglish-generator.php
+
+      - name: Verify generated Renewal and Pre-Renewal translations
+        if: steps.scope.outputs.relevant == 'true'
         run: bash scripts/check-roenglish.sh
 
-      - name: Smoke-test isolated Compose web services
+      - name: Smoke-test runtime generation and HTTP via isolated Compose web services
         if: steps.scope.outputs.relevant == 'true'
         run: python3 scripts/check-compose.py
 
@@ -175,7 +180,7 @@ jobs:
         run: |
           set -euo pipefail
           docker run -d --name remote-ci \
-            -e ROBROWSER_ROLE=web \
+            -e ROBROWSER_ROLE=web -e PACKETVER=20211103 -e ROENGLISH_LEGACY_MAPS=0 \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
             -p 8080:8080 remote:ci
           docker run -d --name robrowser-ci \

@@ -68,7 +68,7 @@ services:
       dockerfile: images/robrowser/Dockerfile
       args:
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
-        ROBROWSER_REF: ${ROBROWSER_REF:-7181f0f54f9785829839bb15459822ac511c58ab}
+        ROBROWSER_REF: ${ROBROWSER_REF:-ed8570e8bbc7ffe1285c82ec7166c01703a73277}
     restart: always
     env_file: ../../.env
     environment:

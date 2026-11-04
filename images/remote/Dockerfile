@@ -58,35 +58,11 @@ RUN test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/remote && \
     git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}"
 
-# Fetch ROEnglishRE translations.
-# Renewal is the base; Pre-Renewal overrides it when enabled.
-ARG SET_PRERENEWAL=0
-RUN set -eu; \
-    git clone "${ROENGLISH_REPOSITORY}" /opt/translation; \
-    git -C /opt/translation checkout --detach "${ROENGLISH_REF}"; \
-    test -d /opt/translation/Translation; \
-    mkdir -p /var/www/localhost/htdocs/remote/data \
-             /var/www/localhost/htdocs/remote/SystemEN; \
-    case "${SET_PRERENEWAL}" in 0|1) ;; *) echo "SET_PRERENEWAL must be 0 or 1" >&2; exit 1 ;; esac; \
-    layers="Renewal"; \
-    if [ "${SET_PRERENEWAL}" = "1" ]; then \
-        layers="$layers Pre-Renewal"; \
-    fi; \
-    for layer in $layers; do \
-        src="/opt/translation/Translation/$layer"; \
-        test -d "$src/data"; \
-        test -d "$src/SystemEN"; \
-        if [ -d "$src/data" ]; then \
-            cp -a "$src/data/." /var/www/localhost/htdocs/remote/data/; \
-        fi; \
-        if [ -d "$src/SystemEN" ]; then \
-            cp -a "$src/SystemEN/." /var/www/localhost/htdocs/remote/SystemEN/; \
-        elif [ -d "$src/system" ]; then \
-            cp -a "$src/system/." /var/www/localhost/htdocs/remote/SystemEN/; \
-        fi; \
-    done; \
-    cp /opt/translation/Additions/SystemEN/PetEvolution.lub /var/www/localhost/htdocs/remote/SystemEN/PetEvolution.lub; \
-    rm -rf /opt/translation
+# Keep the complete pinned source tree for runtime selection.
+RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
+    git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
+    test -d /opt/translation/Translation && \
+    rm -rf /opt/translation/.git
 
 # Protect non-public application files and mounted archives with Apache.
 COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
@@ -104,13 +80,27 @@ RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files
 # Static service status, custom overrides, and startup entrypoint
 COPY images/remote/index.html /var/www/localhost/htdocs/index.html
 COPY images/remote/repository_override/ /var/www/localhost/htdocs/
+COPY images/remote/roenglish-generate.php /usr/local/bin/roenglish-generate.php
+COPY images/remote/roenglish-startup.php /usr/local/bin/roenglish-startup.php
+
+# Keep the existing image files once, outside the document root. Public paths
+# follow the one atomically selected runtime generation.
+RUN set -eu; \
+    root=/var/www/localhost/htdocs/remote; \
+    mkdir -p /opt/remote-base /opt/remote-runtime; \
+    for name in data SystemEN; do \
+        test ! -L "$root/$name"; \
+        mkdir -p "$root/$name"; \
+        mv "$root/$name" /opt/remote-base/; \
+        ln -s "/opt/remote-runtime/current/$name" "$root/$name"; \
+    done
 COPY images/remote/entrypoint.sh /entrypoint.sh
 
 # Create non-root user and set permissions for runtime directories
 RUN addgroup -g 1000 robrowser && \
     adduser -u 1000 -G robrowser -D robrowser && \
     mkdir -p /run/apache2 /var/log/apache2 && \
-    chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /run/apache2 /var/log/apache2 && \
+    chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /opt/remote-runtime /run/apache2 /var/log/apache2 && \
     chmod 755 /entrypoint.sh
 
 RUN rm -rf /var/www/localhost/htdocs/.git /var/www/localhost/htdocs/remote/.git \

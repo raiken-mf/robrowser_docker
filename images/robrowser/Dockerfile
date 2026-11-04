@@ -30,9 +30,11 @@ COPY --chown=vite:vite images/robrowser/package-lock.json /app/package-lock.json
 
 RUN npm ci && npm cache clean --force
 
-# Preserve current development-server behaviour.
+# Allow configured hosts and proxy client assets through the frontend origin.
 RUN grep -q 'server: {' vite.config.js \
-    && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js
+    && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js \
+    && grep -q 'const _proxy = {' vite.config.js \
+    && sed -i '/const _proxy = {/a\  "/remote/": { target: "http://remote:8080", changeOrigin: true },' vite.config.js
 
 # The frontend configuration template belongs only to Vite.
 COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template
@@ -42,9 +44,9 @@ COPY --chown=vite:vite images/robrowser/repository_override/ /app/
 
 COPY --chown=vite:vite --chmod=755 images/robrowser/entrypoint.sh /entrypoint.sh
 
-# Match the Apache image's explicit zlib security update. Keep runtime non-root.
+# Keep the runtime non-root and install patched zlib and libexpat packages.
 USER root
-RUN apk upgrade --no-cache zlib
+RUN apk upgrade --no-cache zlib libexpat
 USER vite
 
 EXPOSE 3000

@@ -19,11 +19,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  pr-image-security:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/pr-image-security.yml
+
   validate:
+    needs: pr-image-security
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      - name: Require PR image security
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCAN_RESULT: ${{ needs.pr-image-security.result }}
+        run: test "$EVENT_NAME" != pull_request || test "$SCAN_RESULT" = success
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           fetch-depth: 0
@@ -186,7 +200,7 @@ jobs:
           docker exec remote-ci test -f /var/www/localhost/htdocs/remote/.htaccess
           curl -fsS http://127.0.0.1:8080/ | grep -Fq "RemoteClient service"
           curl -fsS http://127.0.0.1:3000/ -o /tmp/remote-index.html
-          grep -Fq 'remoteClient:  "http://ro.example.test:30080/remote/"' /tmp/remote-index.html
+          grep -Fq 'remoteClient:  window.location.origin + "/remote/"' /tmp/remote-index.html
           grep -Fq 'address:     "ragnarok-login"' /tmp/remote-index.html
           grep -Fq 'socketProxy: "ws://ro.example.test:30599/"' /tmp/remote-index.html
           url='http://127.0.0.1:3000/src/Renderer/GR2/GR2ModelRenderer.js'

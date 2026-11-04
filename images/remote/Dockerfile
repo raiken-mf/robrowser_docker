@@ -85,6 +85,7 @@ RUN set -eu; \
             cp -a "$src/system/." /var/www/localhost/htdocs/remote/SystemEN/; \
         fi; \
     done; \
+    cp /opt/translation/Additions/SystemEN/PetEvolution.lub /var/www/localhost/htdocs/remote/SystemEN/PetEvolution.lub; \
     rm -rf /opt/translation
 
 # Protect non-public application files and mounted archives with Apache.

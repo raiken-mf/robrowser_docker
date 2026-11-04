@@ -262,7 +262,7 @@ jobs:
         run: docker rm -f wsproxy-ci || true
 
   security:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success'
     needs: validate
     permissions:
       contents: read
@@ -270,7 +270,7 @@ jobs:
     uses: ./.github/workflows/security.yml
 
   publish:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success' && needs.security.result == 'success'
     needs: [validate, security]
     permissions:
       actions: read

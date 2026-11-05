@@ -97,6 +97,11 @@ try {
         put($files, "$add/SystemEN/$name", "SystemEN/$name");
     }
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $name) put($files, "$add/data/$name", "data/$name");
+    // The browser requests this exact lowercase URL. Apache may serve the
+    // loose file directly, without RemoteClient's case-insensitive lookup.
+    $fog = 'data/fogparametertable.txt';
+    put($files, "$add/data/fogParameterTable.txt", $fog);
+    $files[$fog][1] = $fog;
     $lua = 'data/luafiles514/lua files/';
     foreach (['accessoryid.lub','accname.lub','spriterobeid.lub','spriterobename.lub','weapontable.lub','tb_cashshop_banner.lub','npcidentity.lub','jobname.lub'] as $name) {
         $p = $lua . 'datainfo/' . $name; put($files, "$add/$p", $p);

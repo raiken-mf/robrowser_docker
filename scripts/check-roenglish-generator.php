@@ -30,7 +30,7 @@ try {
     fixture("$src/Additions/SystemEN/PetEvolution.lub", 'pet');
     fixture("$src/Additions/SystemEN/CheckAttendance.lub", 'attendance');
     fixture("$src/Additions/SystemEN/PrivateAirplane.lub", 'airship');
-    foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $n) fixture("$src/Additions/data/$n", $n);
+    foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt','fogParameterTable.txt'] as $n) fixture("$src/Additions/data/$n", $n);
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $n) fixture("$src/Additions/data/luafiles514/lua files/$n", $n);
     $lua = 'data/luafiles514/lua files';
     foreach (['accessoryid','accname','spriterobeid','spriterobename','weapontable','tb_cashshop_banner','npcidentity','jobname'] as $n) fixture("$src/Additions/$lua/datainfo/$n.lub", $n);
@@ -92,10 +92,16 @@ try {
     check(is_file("$dst/$lua/ItemDBNameTbl.lub"), 'item table threshold'); check(is_file("$dst/data/example.gat"), 'legacy map');
     check(is_file("$dst/data/texture/legacy/map/ama_dun01.bmp") && !file_exists("$dst/data/texture/legacy/map/sch_lab.bmp"), 'explicit minimaps');
     foreach (['mp3nametable.txt','resnametable.txt','num2cardillustnametable.txt','buyingstoreitemlist.txt','cardpostfixnametable.txt','indoorrswtable.txt'] as $n) check(file_get_contents("$dst/data/$n") === $n, "text table $n");
+    check(file_get_contents("$dst/data/fogparametertable.txt") === 'fogParameterTable.txt', 'lowercase fog path without base file');
+    check(!file_exists("$dst/data/fogParameterTable.txt"), 'mixed-case fog path');
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub','datainfo/tb_cashshop_banner.lub'] as $n) check(is_file("$dst/$lua/$n"), "lua addition $n");
     $first = snapshot($dst); $other = "$root/other"; mkdir($other);
     [$status] = runGenerator($src, $other, ['PACKETVER'=>'20250618','ROENGLISH_LEGACY_MAPS'=>'1']);
     check($status === 0 && $first === snapshot($other), 'non-reproducible output');
+    fixture("$src/Translation/Renewal/data/FogParameterTable.txt", 'old fog');
+    erase($other); mkdir($other);
+    [$status] = runGenerator($src, $other, ['PACKETVER'=>'20250618']);
+    check($status === 0 && file_get_contents("$other/data/fogparametertable.txt") === 'fogParameterTable.txt' && !file_exists("$other/data/FogParameterTable.txt"), 'lowercase fog path overrides mixed-case base');
     [$code] = runGenerator($src, $dst, []); check($code !== 0 && is_file("$dst/data/example.gat"), 'nonempty target accepted');
     erase($dst); mkdir($dst);
     foreach ([['PACKETVER'=>'20120409'], ['PACKETVER'=>'20120410'], ['PACKETVER'=>'20230230'], ['ROENGLISH_ADDONS'=>'all'], ['ROENGLISH_LEGACY_MAPS'=>'yes']] as $env) {

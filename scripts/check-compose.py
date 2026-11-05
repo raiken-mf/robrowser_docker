@@ -160,10 +160,12 @@ try:
   response.read()
  connection.close()
  for asset in ('/remote/SystemEN/itemInfo.lua', '/remote/SystemEN/OngoingQuests.lub',
-               '/remote/System/PetEvolutionCln.lub'):
+               '/remote/System/PetEvolutionCln.lub', '/remote/data/fogparametertable.txt'):
   via_frontend,_=request('robrowser',3000,asset)
   direct,_=request('remote',8080,asset)
   assert via_frontend==direct, asset
+  if asset.endswith('/fogparametertable.txt') and not (client_root/'data'/'fogparametertable.txt').is_file():
+   assert b'2@exds.rsw#' in direct, 'unexpected fog table'
  for asset in ('/remote/resources/DATA.INI', '/remote/configs.php', '/remote/data/%252e%252e/resources/DATA.INI'):
   try:
    urllib.request.urlopen('http://'+frontend+asset,timeout=5)

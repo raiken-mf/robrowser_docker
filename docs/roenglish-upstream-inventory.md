@@ -7,6 +7,11 @@ that the upstream Windows scripts were executed or the resources tested in a
 client. “Unclear” identifies intent, runtime behavior, or compatibility that the
 source inspection does not establish.
 
+The detailed selection and compatibility reviews are in the
+[Additions audit](roenglish-additions-audit.md) and the
+[Addon audit](roenglish-addon-audit.md). Both identify remaining unverified
+components; neither audit asserts complete browser compatibility.
+
 ## Integration before the runtime-generation work
 
 **Verified at baseline `7a53448`:** `images/remote/Dockerfile` copied `Translation/Renewal/data` and

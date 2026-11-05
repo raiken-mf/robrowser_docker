@@ -145,6 +145,15 @@ jobs:
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
 
+      - name: Test roBrowser Lua module loader
+        if: steps.scope.outputs.relevant == 'true'
+        run: |
+          docker run --rm --entrypoint sh robrowser:ci -c '
+            set -eu
+            npm install --no-save --package-lock=false --ignore-scripts vitest-canvas-mock@1.2.0
+            npm test -- --globals tests/core/LuaModuleLoader.test.js
+          '
+
       - name: Regress cache-busted iframe HTML and Vite module handshake
         if: steps.scope.outputs.relevant == 'true'
         run: python3 scripts/check-api-module.py robrowser:ci

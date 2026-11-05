@@ -54,6 +54,9 @@ additions += [lua + name for name in ('stateicon/efstids.lub', 'stateicon/statei
                                       'worldviewdata/worldviewdata_table.lub', 'ItemDBNameTbl.lub')]
 for name in additions:
     put(source / 'Additions' / name, pathlib.Path(name))
+fog = pathlib.Path('data/fogparametertable.txt')
+expected[str(fog)] = (fog, source / 'Additions/data/fogParameterTable.txt')
+assert expected[str(fog)][1].is_file(), 'Missing upstream fog table'
 
 actual = {str(p.relative_to(installed)).lower(): p for p in installed.rglob('*') if p.is_file()}
 assert len(actual) == sum(1 for p in installed.rglob('*') if p.is_file()), 'Case-colliding output files'
@@ -63,4 +66,4 @@ for key, (relative, upstream) in expected.items():
     assert path.relative_to(installed) == relative, f'Output spelling mismatch: {relative}'
     assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(upstream.read_bytes()).digest(), f'Checksum mismatch: {relative}'
 print(f'PASS mode={mode}, PACKETVER=20211103: {len(expected)} output checksums, '
-      f'{compatibility_files} compatibility inputs, {len(additions)} additions including PetEvolution')
+      f'{compatibility_files} compatibility inputs, {len(additions) + 1} additions including PetEvolution')

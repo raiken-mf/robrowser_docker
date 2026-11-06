@@ -114,6 +114,20 @@ try {
         $p = $lua . $name; put($files, "$add/$p", $p);
     }
     if ($date >= '20211028') { $p = $lua . 'ItemDBNameTbl.lub'; put($files, "$add/$p", $p); }
+    $footprintData = null;
+    $footprintTarget = $lua . 'hateffectinfo/footprinteffectinfo.lub';
+    if ($date >= '20240417') {
+        foreach (['HatEffectIDs.lub', 'HatEffectInfo.lub', 'FootPrintEffectInfo.lub'] as $name) {
+            $rel = $lua . 'hateffectinfo/' . strtolower($name);
+            put($files, "$add/{$lua}hateffectinfo/$name", $rel);
+            $files[$rel][1] = $rel;
+        }
+        // Correct only the known pinned source, before creating any output.
+        $footprintData = file_get_contents($files[$footprintTarget][0]);
+        if ($footprintData === false || hash('sha256', $footprintData) !== '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c') fail('Unexpected FootPrintEffectInfo.lub SHA-256');
+        $footprintData = str_replace('Type = STR = 4', 'Type = STR', $footprintData, $count);
+        if ($count !== 5) fail('Unexpected FootPrintEffectInfo.lub replacement count');
+    }
     if ($legacy === '1') {
         // The two all-in-one menu choices: root maps and their explicit BMPs,
         // followed by the separately enumerated legacy minimaps.
@@ -128,10 +142,17 @@ try {
     foreach ($files as [$src, $rel]) {
         $dest = "$target/$rel"; $parent = dirname($dest);
         if (!is_dir($parent) && !mkdir($parent, 0755, true) && !is_dir($parent)) fail("Cannot create $parent");
-        $in = fopen($src, 'rb'); $out = fopen($dest, 'xb');
-        if ($in === false || $out === false) fail("Cannot copy $rel");
-        if (stream_copy_to_stream($in, $out) === false || !fclose($out)) fail("Cannot write $rel");
-        fclose($in); chmod($dest, 0644);
+        $out = fopen($dest, 'xb');
+        if ($out === false) fail("Cannot write $rel");
+        if ($rel === $footprintTarget && $footprintData !== null) {
+            if (fwrite($out, $footprintData) !== strlen($footprintData)) fail("Cannot write $rel");
+        } else {
+            $in = fopen($src, 'rb');
+            if ($in === false || stream_copy_to_stream($in, $out) === false) fail("Cannot copy $rel");
+            fclose($in);
+        }
+        if (!fclose($out)) fail("Cannot write $rel");
+        chmod($dest, 0644);
     }
     fwrite(STDOUT, "Generated " . count($files) . " files; generator selection {$dates[$index-1]} ($selectedMode).\n");
 } catch (Throwable $e) { fwrite(STDERR, 'Error: ' . $e->getMessage() . "\n"); exit(1); }

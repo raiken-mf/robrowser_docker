@@ -181,6 +181,19 @@ open integration gap rather than a claim that the remaining files are
 incompatible. `ROENGLISH_LEGACY_MAPS=1` selects the two upstream all-in-one
 legacy map/minimap choices; `0` leaves those additions out.
 
+For the upstream HatEffect addition (selected by the Windows generator from
+2024-04-17), the pinned `HatEffectIDs.lub` and `HatEffectInfo.lub` execute
+under Lua 5.1 and define 290 IDs and 265 effects. The same source directory's
+`FootPrintEffectInfo.lub` does not parse: its first invalid assignment is at
+line 214, and `Type = STR = 4` occurs five times. The pinned client loads the
+footprint file after the other two. From 2024-04-17 the generator supplies those
+three client paths and repairs the five assignments only in its generated copy.
+It checks the exact source SHA-256 and replacement count before writing; an
+unexpected source fails generation explicitly. The original source is unchanged.
+The corrected copy executes with 25 footprint entries. Correct display still
+depends on the server's IDs and on effect assets in the client GRFs. Tests
+check the date boundary, source immutability, Lua execution and HTTP paths.
+
 ## Other tools and Linux limits
 
 **Verified:** `LuaConverter.bat` invokes bundled `luac.exe` to produce `.lub`;

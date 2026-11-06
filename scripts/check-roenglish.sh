@@ -56,9 +56,37 @@ for mode in 0 1; do
     ')
   fi
 done
-# Audit alternative datasets without activating or modifying the pinned sources.
+mkdir "$workdir/output-hat"
+docker run --rm --user "$(id -u):$(id -g)" --entrypoint php \
+  -e PACKETVER=20240417 -e SET_PRERENEWAL=0 \
+  -e ROENGLISH_ADDITIONS=all -e ROENGLISH_ADDONS=compatible -e ROENGLISH_LEGACY_MAPS=0 \
+  --mount "type=bind,src=$workdir/source,dst=/source,readonly" \
+  --mount "type=bind,src=$workdir/output-hat,dst=/output" \
+  "$image" /usr/local/bin/roenglish-generate.php /source /output
+(cd "$workdir/output-hat" && lua5.1 -e '
+  local path = "data/luafiles514/lua files/hateffectinfo/"
+  dofile(path .. "hateffectids.lub")
+  dofile(path .. "hateffectinfo.lub")
+  dofile(path .. "footprinteffectinfo.lub")
+  local ids, effects, footprints = 0, 0, 0
+  for key, value in pairs(HatEFID) do assert(type(key)=="string" and type(value)=="number"); ids=ids+1 end
+  for key, value in pairs(hatEffectTable) do assert(type(key)=="number" and type(value)=="table"); effects=effects+1 end
+  for key, value in pairs(FootPrintEffectTable) do assert(type(key)=="number" and type(value)=="table"); footprints=footprints+1 end
+  assert(ids==290 and effects==265 and footprints==25)
+  print("PASS generated hat effects and footprints:", ids, effects, footprints)
+')
+# Audit unsupported and alternative datasets without modifying the pinned sources.
 (cd "$workdir/source" && lua5.1 -e '
   package.path = "Translation/Renewal/?.lua;" .. package.path
+  local hats = "Additions/data/luafiles514/lua files/hateffectinfo/"
+  dofile(hats .. "HatEffectIDs.lub")
+  dofile(hats .. "HatEffectInfo.lub")
+  local ids, effects = 0, 0
+  for _ in pairs(HatEFID) do ids = ids + 1 end
+  for _ in pairs(hatEffectTable) do effects = effects + 1 end
+  assert(ids == 290 and effects == 265, "hat effect tables differ")
+  local footprint, reason = loadfile(hats .. "FootPrintEffectInfo.lub")
+  assert(footprint == nil and reason:find("near", 1, true), "footprint source limitation changed")
   local root = "Addons/Stateiconimginfo Patch/"
   dofile(root .. "efstids.lub")
   dofile(root .. "stateiconinfo.lub")
@@ -73,5 +101,5 @@ done
     count = count + 1
   end
   assert(count == 625, "legacy signboard count differs: " .. count)
-  print("PASS addon Lua audit: stateicon IDs and signboard fields", count)
+  print("PASS source Lua audit: hat effects, stateicon IDs and signboard fields", count)
 ')

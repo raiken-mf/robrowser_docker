@@ -125,6 +125,7 @@ try:
  fog_override.write_bytes(b'user fog override\n')
  (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
  loose=output('docker','run','-d','--rm','-p','127.0.0.1::8080',
+              '-e','PACKETVER=20240417',
               '--mount',f'type=bind,src={fixture},dst=/opt/client_files/AI,readonly',
               '--mount',f'type=bind,src={data_fixture},dst=/opt/client_files/data,readonly',
               '--mount',f'type=bind,src={system_fixture},dst=/opt/client_files/SystemEN,readonly',
@@ -148,6 +149,12 @@ try:
     with urllib.request.urlopen('http://'+loose_address+path,timeout=10) as res:
      assert res.status==200 and res.read()==expected, path
   verify_overrides()
+  for name,marker in (('hateffectids.lub',b'HatEFID'),
+                      ('hateffectinfo.lub',b'hatEffectTable'),
+                      ('footprinteffectinfo.lub',b'FootPrintEffectTable')):
+   url='http://'+loose_address+'/remote/data/luafiles514/lua%20files/hateffectinfo/'+name
+   with urllib.request.urlopen(url,timeout=10) as res:
+    assert res.status==200 and marker in res.read(), name
   conflict=data_fixture/'fogparametertable.txt'
   conflict.write_bytes(b'conflicting override\n')
   try:

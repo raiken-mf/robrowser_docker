@@ -37,6 +37,20 @@ try {
     fixture("$src/Translation/Renewal/$lua/datainfo/addrandomoptionnametable.lub", 'random-options');
     fixture("$src/Translation/Renewal/$lua/datainfo/enumvar.lub", 'base-enum');
     fixture("$src/Additions/$lua/datainfo/enumvar.lub", 'additions-enum');
+    $hat = "$lua/hateffectinfo";
+    $upstreamHat = "/opt/translation/Additions/$hat";
+    foreach (['HatEffectIDs.lub', 'HatEffectInfo.lub', 'FootPrintEffectInfo.lub'] as $name) {
+        $content = @file_get_contents("$upstreamHat/$name");
+        check($content !== false, "missing pinned hat effect fixture: $name");
+        fixture("$src/Additions/$hat/$name", $content);
+    }
+    $footprintSource = "$src/Additions/$hat/FootPrintEffectInfo.lub";
+    $footprintOriginal = file_get_contents($footprintSource);
+    check(hash('sha256', $footprintOriginal) === '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c', 'pinned footprint hash');
+    $footprintExpected = str_replace('Type = STR = 4', 'Type = STR', $footprintOriginal, $replacementCount);
+    check($replacementCount === 5, 'pinned footprint replacement count');
+    fixture("$src/Translation/Compatibility/2024-04-03/$hat/HatEffectIDs.lub", 'compat-id');
+    fixture("$src/Translation/Compatibility/2024-04-03/$hat/HatEffectInfo.lub", 'compat-info');
     fixture("$src/Additions/$lua/ItemDBNameTbl.lub", 'item'); fixture("$src/Additions/data/example.gat", 'map');
     fixture("$src/Additions/data/texture/legacy/map/payon.bmp", 'map-bmp'); fixture("$src/Additions/data/texture/legacy/map/sch_lab.bmp", 'excluded');
     fixture("$src/Additions/data/texture/legacy/map/ama_dun01.bmp", 'minimap');
@@ -81,6 +95,25 @@ try {
         check($status === 0 && is_file("$dst/$lua/ItemDBNameTbl.lub") === $present, "item threshold $threshold");
         erase($dst); mkdir($dst);
     }
+    foreach (['0', '1'] as $hatMode) {
+        [$status] = runGenerator($src, $dst, ['PACKETVER'=>'20240416', 'SET_PRERENEWAL'=>$hatMode]);
+        check($status === 0 && !is_dir("$dst/$hat"), "hat effect before threshold mode $hatMode");
+        erase($dst); mkdir($dst);
+        [$status] = runGenerator($src, $dst, ['PACKETVER'=>'20240417', 'SET_PRERENEWAL'=>$hatMode]);
+        check($status === 0, "hat effect threshold mode $hatMode");
+        $hatFiles = scandir("$dst/$hat");
+        check($hatFiles === ['.', '..', 'footprinteffectinfo.lub', 'hateffectids.lub', 'hateffectinfo.lub'], "hat effect lowercase paths mode $hatMode");
+        foreach (['HatEffectIDs.lub', 'HatEffectInfo.lub'] as $name) {
+            check(file_get_contents("$dst/$hat/" . strtolower($name)) === file_get_contents("$upstreamHat/$name"), "hat effect override $name mode $hatMode");
+        }
+        check(file_get_contents("$dst/$hat/footprinteffectinfo.lub") === $footprintExpected, "corrected footprint mode $hatMode");
+        check(file_get_contents($footprintSource) === $footprintOriginal, "footprint source modified mode $hatMode");
+        erase($dst); mkdir($dst);
+    }
+    file_put_contents($footprintSource, $footprintOriginal . ' ');
+    [$status, , $err] = runGenerator($src, $dst, ['PACKETVER'=>'20240417']);
+    check($status !== 0 && str_contains($err, 'FootPrintEffectInfo.lub SHA-256') && count(scandir($dst)) === 2, 'unexpected footprint source accepted or target modified');
+    file_put_contents($footprintSource, $footprintOriginal);
     [$code] = runGenerator($src, $dst, ['PACKETVER'=>'20171212','SET_PRERENEWAL'=>'1']);
     check($code === 0, '2017 generation failed'); check(file_get_contents("$dst/data/base.txt") === 'pre', 'pre layer');
     check(is_file("$dst/data/markers/2017-06-14"), 'selected date missing'); check(!file_exists("$dst/data/markers/2017-12-13"), 'future date included');

@@ -188,7 +188,8 @@ under Lua 5.1 and define 290 IDs and 265 effects. The same source directory's
 line 214, and `Type = STR = 4` occurs five times. The pinned client loads the
 footprint file after the other two. From 2024-04-17 the generator supplies those
 three client paths and repairs the five assignments only in its generated copy.
-It checks the exact source SHA-256 and replacement count before writing; an
+It checks the source SHA-256 after CRLF-to-LF normalization and the replacement
+count before writing, preserving the source line endings; an
 unexpected source fails generation explicitly. The original source is unchanged.
 The corrected copy executes with 25 footprint entries. Correct display still
 depends on the server's IDs and on effect assets in the client GRFs. Tests

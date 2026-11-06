@@ -124,7 +124,9 @@ try {
         }
         // Correct only the known pinned source, before creating any output.
         $footprintData = file_get_contents($files[$footprintTarget][0]);
-        if ($footprintData === false || hash('sha256', $footprintData) !== '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c') fail('Unexpected FootPrintEffectInfo.lub SHA-256');
+        // Upstream's .gitattributes checks out .lub files with CRLF; verify
+        // the canonical Git-blob bytes while preserving the checkout's bytes.
+        if ($footprintData === false || hash('sha256', str_replace("\r\n", "\n", $footprintData)) !== '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c') fail('Unexpected FootPrintEffectInfo.lub SHA-256');
         $footprintData = str_replace('Type = STR = 4', 'Type = STR', $footprintData, $count);
         if ($count !== 5) fail('Unexpected FootPrintEffectInfo.lub replacement count');
     }

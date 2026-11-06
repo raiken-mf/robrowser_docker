@@ -46,7 +46,7 @@ try {
     }
     $footprintSource = "$src/Additions/$hat/FootPrintEffectInfo.lub";
     $footprintOriginal = file_get_contents($footprintSource);
-    check(hash('sha256', $footprintOriginal) === '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c', 'pinned footprint hash');
+    check(hash('sha256', str_replace("\r\n", "\n", $footprintOriginal)) === '6545830dc4b436c5a240d1c087fcda900119747a843ab14b6e4c22ebdb10221c', 'pinned footprint hash');
     $footprintExpected = str_replace('Type = STR = 4', 'Type = STR', $footprintOriginal, $replacementCount);
     check($replacementCount === 5, 'pinned footprint replacement count');
     fixture("$src/Translation/Compatibility/2024-04-03/$hat/HatEffectIDs.lub", 'compat-id');
@@ -110,6 +110,12 @@ try {
         check(file_get_contents($footprintSource) === $footprintOriginal, "footprint source modified mode $hatMode");
         erase($dst); mkdir($dst);
     }
+    $lfFootprint = str_replace("\r\n", "\n", $footprintOriginal);
+    $alternate = str_contains($footprintOriginal, "\r\n") ? $lfFootprint : str_replace("\n", "\r\n", $lfFootprint);
+    file_put_contents($footprintSource, $alternate);
+    [$status] = runGenerator($src, $dst, ['PACKETVER'=>'20240417']);
+    check($status === 0 && file_get_contents("$dst/$hat/footprinteffectinfo.lub") === str_replace('Type = STR = 4', 'Type = STR', $alternate) && file_get_contents($footprintSource) === $alternate, 'alternate line endings');
+    erase($dst); mkdir($dst);
     file_put_contents($footprintSource, $footprintOriginal . ' ');
     [$status, , $err] = runGenerator($src, $dst, ['PACKETVER'=>'20240417']);
     check($status !== 0 && str_contains($err, 'FootPrintEffectInfo.lub SHA-256') && count(scandir($dst)) === 2, 'unexpected footprint source accepted or target modified');

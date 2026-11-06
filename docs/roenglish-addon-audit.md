@@ -65,6 +65,11 @@ grundsätzlich ein Kandidat, aber Karten, Koordinaten und referenzierte Assets
 sind noch nicht gegen ein konkretes Server-/GRF-Paar geprüft. Die vom Client
 angefragte Großschreibung muss zudem mit dem Vorrang vorhandener loser Dateien
 zusammenpassen.
+Die zusätzlichen 624 Einträge enthalten serverabhängige Angaben, etwa einen
+„Eden Warper“ in `prontera` bei `(124,76)` und Level-180-Zugangshinweise in
+`ein_dun02` bei `(16,250)` und `odin_tem03` bei `(276,236)`. Die Datei liefert
+keine belegte Clientdatumsgrenze. Daher wäre ihre automatische Aktivierung für
+alle Server und `PACKETVER`-Werte eine unbelegte Datenentscheidung.
 
 - Der vollständige Upstream-Baum wurde bei obiger SHA ausgecheckt und die Dateiliste, Readmes, CLS-Auswahl, repräsentative Datenstrukturen und Client-Loader wurden lesend geprüft. Die lokale roBrowser-Revision wurde mit dem Compose-Pin abgeglichen. Der Checkout lag außerhalb des Arbeitsbaums; Forks wurden nicht verändert.
 - Konkrete Negativbefunde sind die oben zitierten Navigationswerte und Verbraucher sowie die `tbl`-Extraktion statt `main(server_name)`. Dass ein Dateiname geladen wird, beweist weder vollständige Ausführung noch richtige Darstellung.

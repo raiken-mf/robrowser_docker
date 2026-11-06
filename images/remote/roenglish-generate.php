@@ -61,7 +61,7 @@ function dropPrefix(array &$files, string $path): void {
 function normalizeDirectories(array &$files): void {
     $fold = static fn(string $s): string => strtr($s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
     $dirs = [];
-    foreach (['data', 'SystemEN', 'data/luafiles514', 'data/luafiles514/lua files', 'data/luafiles514/lua files/hateffectinfo'] as $path) {
+    foreach (['data', 'SystemEN', 'data/luafiles514', 'data/luafiles514/lua files', 'data/luafiles514/lua files/hateffectinfo', 'data/luafiles514/lua files/skillinfoz'] as $path) {
         $dirs[$fold($path)] = $path;
     }
     foreach ($files as $key => &$entry) {
@@ -135,6 +135,14 @@ try {
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $name) {
         $p = $lua . $name; put($files, "$add/$p", $p);
     }
+    $jobTarget = $lua . 'skillinfoz/jobinheritlist.lub';
+    put($files, "$add/$jobTarget", $jobTarget);
+    $files[$jobTarget][1] = $jobTarget;
+    $jobData = file_get_contents($files[$jobTarget][0]);
+    // Hash canonical Git-blob bytes, but preserve the checkout's line endings.
+    if ($jobData === false || hash('sha256', str_replace("\r\n", "\n", $jobData)) !== 'df68d3833de2aeda496fb92e49e5c34fddff2aa63b01a0573c8a6f6d2ec86e40') fail('Unexpected jobinheritlist.lub SHA-256');
+    $jobData = str_replace('JOBID = {', 'JOBID = { JT_DRUID = 4351, JT_DRUID_B = 4352, JT_KARNOS = 4353, JT_KARNOS_B = 4354, JT_ALITEA = 4355,', $jobData, $count);
+    if ($count !== 1) fail('Unexpected jobinheritlist.lub replacement count');
     if ($date >= '20211028') { $p = $lua . 'ItemDBNameTbl.lub'; put($files, "$add/$p", $p); }
     $footprintData = null;
     $footprintTarget = $lua . 'hateffectinfo/footprinteffectinfo.lub';
@@ -169,7 +177,9 @@ try {
         if (!is_dir($parent) && !mkdir($parent, 0755, true) && !is_dir($parent)) fail("Cannot create $parent");
         $out = fopen($dest, 'xb');
         if ($out === false) fail("Cannot write $rel");
-        if ($rel === $footprintTarget && $footprintData !== null) {
+        if ($rel === $jobTarget) {
+            if (fwrite($out, $jobData) !== strlen($jobData)) fail("Cannot write $rel");
+        } elseif ($rel === $footprintTarget && $footprintData !== null) {
             if (fwrite($out, $footprintData) !== strlen($footprintData)) fail("Cannot write $rel");
         } else {
             $in = fopen($src, 'rb');

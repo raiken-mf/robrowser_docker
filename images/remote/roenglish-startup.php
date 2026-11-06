@@ -24,6 +24,35 @@ function overlayKey(string $name): string {
     return strtr($name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
 }
 
+// Snapshot only the loose System files needed by the Apache fallback rules.
+function snapshotLooseSystem(string $stage): void {
+    $source = '/opt/client_files/System';
+    if (is_link($source) || !is_dir($source)) return;
+    $wanted = [
+        'petevolutioncln.lub' => 'PetEvolutionCln.lub',
+        'checkattendance.lub' => 'CheckAttendance.lub',
+        'privateairplane.lub' => 'PrivateAirplane.lub',
+        'privateairplane_true.lub' => 'PrivateAirplane_True.lub',
+    ];
+    $found = [];
+    foreach (new DirectoryIterator($source) as $item) {
+        if ($item->isDot()) continue;
+        $name = $item->getFilename();
+        $key = overlayKey($name);
+        if (!isset($wanted[$key]) || is_link($item->getPathname()) || !$item->isFile()) continue;
+        if (isset($found[$key])) throw new RuntimeException("Ambiguous loose System files in $source: " . bin2hex($found[$key]) . ' / ' . bin2hex($name) . ' (hex filenames)');
+        $found[$key] = $name;
+    }
+    if (!$found) return;
+    $destination = "$stage/loose-System";
+    if (!mkdir($destination, 0755)) throw new RuntimeException("Cannot create $destination");
+    foreach ($found as $key => $name) {
+        $src = "$source/$name";
+        $dst = "$destination/{$wanted[$key]}";
+        if (is_link($src) || !is_file($src) || !copy($src, $dst) || !chmod($dst, 0644)) throw new RuntimeException("Cannot copy loose System file: $src");
+    }
+}
+
 // Only regular files and directories enter the public generation. Never follow links.
 function overlay(string $source, string $destination): void {
     if (is_link($source) || !is_dir($source)) return;
@@ -125,6 +154,7 @@ try {
         overlay("/opt/remote-base/$name", "$stage/$name");
         overlay("/opt/client_files/$name", "$stage/$name");
     }
+    snapshotLooseSystem($stage);
     $manifestPath = "$runtime/.manifest-$id";
     $record = json_encode(inventory($stage), JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
     $handle = fopen($manifestPath, 'x');

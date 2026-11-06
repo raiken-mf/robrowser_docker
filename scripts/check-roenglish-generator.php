@@ -43,6 +43,16 @@ try {
     fixture("$src/Translation/Renewal/$lua/datainfo/addrandomoptionnametable.lub", 'random-options');
     fixture("$src/Translation/Renewal/$lua/datainfo/enumvar.lub", 'base-enum');
     fixture("$src/Additions/$lua/datainfo/enumvar.lub", 'additions-enum');
+    $job = "$lua/skillinfoz/jobinheritlist.lub";
+    $jobOriginal = @file_get_contents("/opt/translation/Additions/$job");
+    check($jobOriginal !== false, 'missing pinned job inheritance fixture');
+    check(hash('sha256', str_replace("\r\n", "\n", $jobOriginal)) === 'df68d3833de2aeda496fb92e49e5c34fddff2aa63b01a0573c8a6f6d2ec86e40', 'pinned job inheritance hash');
+    $jobSource = "$src/Additions/$job";
+    fixture($jobSource, $jobOriginal);
+    $jobExpected = str_replace('JOBID = {', 'JOBID = { JT_DRUID = 4351, JT_DRUID_B = 4352, JT_KARNOS = 4353, JT_KARNOS_B = 4354, JT_ALITEA = 4355,', $jobOriginal, $jobCount);
+    check($jobCount === 1, 'pinned job inheritance replacement count');
+    fixture("$src/Translation/Renewal/$lua/Skillinfoz/jobinheritlist.lub", 'base-job');
+    fixture("$src/Translation/Renewal/$lua/Skillinfoz/other.lub", 'other-job');
     $hat = "$lua/hateffectinfo";
     $upstreamHat = "/opt/translation/Additions/$hat";
     foreach (['HatEffectIDs.lub', 'HatEffectInfo.lub', 'FootPrintEffectInfo.lub'] as $name) {
@@ -89,6 +99,7 @@ try {
         foreach ($samples as $sample) {
             [$status, $out] = runGenerator($src, $dst, ['PACKETVER'=>$sample, 'SET_PRERENEWAL'=>'1']);
             check($status === 0 && str_contains($out, "selection $selected "), "date mapping $sample");
+            check(file_get_contents("$dst/$job") === $jobExpected && file_get_contents($jobSource) === $jobOriginal && file_get_contents("$dst/$lua/skillinfoz/other.lub") === 'other-job' && !is_dir("$dst/$lua/Skillinfoz"), "job inheritance output and directory casing $sample");
             check(file_get_contents("$dst/$lua/datainfo/enumvar.lub") === 'additions-enum' && file_get_contents("$dst/$lua/datainfo/addrandomoptionnametable.lub") === 'random-options', "random option pair $sample");
             if ($i !== 2 && $selected !== '2018-06-20') check(is_file("$dst/data/markers/$selected"), "selected overlay $sample");
             $expectedPrevious = $i >= 4;
@@ -116,6 +127,16 @@ try {
         check(file_get_contents($footprintSource) === $footprintOriginal, "footprint source modified mode $hatMode");
         erase($dst); mkdir($dst);
     }
+    $lfJob = str_replace("\r\n", "\n", $jobOriginal);
+    $alternateJob = str_contains($jobOriginal, "\r\n") ? $lfJob : str_replace("\n", "\r\n", $lfJob);
+    file_put_contents($jobSource, $alternateJob);
+    [$status] = runGenerator($src, $dst, ['PACKETVER'=>'20180620']);
+    check($status === 0 && file_get_contents("$dst/$job") === str_replace('JOBID = {', 'JOBID = { JT_DRUID = 4351, JT_DRUID_B = 4352, JT_KARNOS = 4353, JT_KARNOS_B = 4354, JT_ALITEA = 4355,', $alternateJob) && file_get_contents($jobSource) === $alternateJob, 'job inheritance alternate line endings');
+    erase($dst); mkdir($dst);
+    file_put_contents($jobSource, $jobOriginal . ' ');
+    [$status, , $err] = runGenerator($src, $dst, []);
+    check($status !== 0 && str_contains($err, 'jobinheritlist.lub SHA-256') && count(scandir($dst)) === 2, 'unexpected job inheritance source accepted or target modified');
+    file_put_contents($jobSource, $jobOriginal);
     $lfFootprint = str_replace("\r\n", "\n", $footprintOriginal);
     $alternate = str_contains($footprintOriginal, "\r\n") ? $lfFootprint : str_replace("\n", "\r\n", $lfFootprint);
     file_put_contents($footprintSource, $alternate);

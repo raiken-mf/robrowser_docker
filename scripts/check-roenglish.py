@@ -51,7 +51,8 @@ lua = 'data/luafiles514/lua files/'
 additions += [lua + 'datainfo/' + name + '.lub' for name in (
     'accessoryid', 'accname', 'spriterobeid', 'spriterobename', 'weapontable', 'tb_cashshop_banner', 'npcidentity', 'jobname', 'enumvar')]
 additions += [lua + name for name in ('stateicon/efstids.lub', 'stateicon/stateiconimginfo.lub',
-                                      'worldviewdata/worldviewdata_table.lub', 'ItemDBNameTbl.lub')]
+                                      'worldviewdata/worldviewdata_table.lub', 'ItemDBNameTbl.lub',
+                                      'skillinfoz/jobinheritlist.lub')]
 for name in additions:
     put(source / 'Additions' / name, pathlib.Path(name))
 fog = pathlib.Path('data/fogparametertable.txt')
@@ -64,6 +65,11 @@ assert actual.keys() == expected.keys(), f'Output file set differs: missing={exp
 for key, (relative, upstream) in expected.items():
     path = actual[key]
     assert path.relative_to(installed) == relative, f'Output spelling mismatch: {relative}'
-    assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(upstream.read_bytes()).digest(), f'Checksum mismatch: {relative}'
+    content = upstream.read_bytes()
+    if key == lua + 'skillinfoz/jobinheritlist.lub':
+        assert hashlib.sha256(content.replace(b'\r\n', b'\n')).hexdigest() == 'df68d3833de2aeda496fb92e49e5c34fddff2aa63b01a0573c8a6f6d2ec86e40'
+        assert content.count(b'JOBID = {') == 1
+        content = content.replace(b'JOBID = {', b'JOBID = { JT_DRUID = 4351, JT_DRUID_B = 4352, JT_KARNOS = 4353, JT_KARNOS_B = 4354, JT_ALITEA = 4355,', 1)
+    assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(content).digest(), f'Checksum mismatch: {relative}'
 print(f'PASS mode={mode}, PACKETVER=20211103: {len(expected)} output checksums, '
       f'{compatibility_files} compatibility inputs, {len(additions) + 1} additions including PetEvolution')

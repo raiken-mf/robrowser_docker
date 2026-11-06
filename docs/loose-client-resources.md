@@ -26,6 +26,12 @@ The image also installs ROEnglishRE's `PetEvolution.lub` once in `SystemEN/`.
 Apache serves it for a missing `System/PetEvolutionCln.lub`; a loose original
 takes priority. Similar targeted fallbacks serve CheckAttendance and
 PrivateAirplane when their loose System files are absent.
+At startup the image snapshots these four specific regular System files for
+case-insensitive fallback matching; files with the exact requested spelling
+use the same snapshot for consistent contents. An existing exact path remains
+accessible from the mount if no regular-file snapshot exists. Snapshots are
+refreshed on initialization, and ambiguous case variants fail initialization
+explicitly.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
 At startup, regular loose files in the readonly client mount's `data/` and
 `SystemEN/` are overlaid on the generated tree, without modifying the mount.

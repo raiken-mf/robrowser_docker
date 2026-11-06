@@ -16,6 +16,15 @@ for mode in 0 1; do
     --mount "type=bind,src=$workdir/output-$mode,dst=/output" \
     "$image" /usr/local/bin/roenglish-generate.php /source /output
   python3 scripts/check-roenglish.py "$workdir/source" "$workdir/output-$mode" "$mode"
+  (cd "$workdir/output-$mode" && lua5.1 -e '
+    dofile("data/luafiles514/lua files/skillinfoz/jobinheritlist.lub")
+    local count = 0
+    for id, parent in pairs(JOB_INHERIT_LIST) do
+      if type(id)=="number" then assert(type(parent)=="number"); count=count+1 end
+    end
+    assert(count==148 and JOB_INHERIT_LIST[4353]==4351 and JOB_INHERIT_LIST[4355]==4353)
+    print("PASS Lua job inheritance:", count)
+  ')
   if [ "$mode" = 0 ]; then
     (cd "$workdir/output-$mode" && lua5.1 -e '
       dofile("SystemEN/itemInfo.lua")

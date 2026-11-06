@@ -181,6 +181,16 @@ open integration gap rather than a claim that the remaining files are
 incompatible. `ROENGLISH_LEGACY_MAPS=1` selects the two upstream all-in-one
 legacy map/minimap choices; `0` leaves those additions out.
 
+The client also loads `skillinfoz/jobinheritlist.lub` before its skill tree.
+The pinned Additions source references five undefined job constants and stops
+under Lua 5.1. The generator supplies these five values from the pinned
+roBrowser's `JobConst.js` only in a generated copy, after checking the exact
+canonical source hash and one expected insertion point. The source and user
+overrides are left untouched. The resulting inheritance table has 148 numeric
+entries; the tests exercise both Renewal modes and the client's HTTP path.
+The chosen skill-tree data and displayed skills remain dependent on the loaded
+client and server data; this does not establish every version's full UI behavior.
+
 For the upstream HatEffect addition (selected by the Windows generator from
 2024-04-17), the pinned `HatEffectIDs.lub` and `HatEffectInfo.lub` execute
 under Lua 5.1 and define 290 IDs and 265 effects. The same source directory's

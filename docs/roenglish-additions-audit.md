@@ -18,6 +18,16 @@ PetEvolution wird als `System/PetEvolutionCln.lub` über System-Aliase angefragt
 
 ## Vorhandene Teiltests und Implementierung
 
+Die ausgewählte Additions-WorldMap-Tabelle und die Renewal-Sprachdatei der
+gepinnten Revision passen nicht vollständig zusammen: Die sechs Schlüssel
+`MSI_2_CH1_ZERO1` bis `MSI_2_CH1_ZERO4`, `MSI_102_CH1_FILD1` und `MSI_DUN51`
+fehlen in den untersuchten Worldviewdata-Sprachdateien dieser Revision. Bei
+vorhandener Tabelle `WORLD_MSGID` ergibt das `nil` für den jeweiligen Namen;
+der gepinnte roBrowser-Loader ersetzt diesen Wert durch einen leeren String.
+Betroffene Karteneinträge können daher ohne Anzeigenamen erscheinen. Für die
+fehlenden Texte wurde keine verlässliche Quelle gefunden; sie werden nicht
+erfunden. Die tatsächliche Darstellung hängt auch von den geladenen GRFs ab.
+
 `scripts/check-roenglish-generator.php` prüft mit synthetischen Fixtures unter anderem sechs Texttabellen, `stateicon/efstids`, `stateiconimginfo`, `worldviewdata_table`, Cash-Shop-Banner, die ItemDBNameTbl-Grenze und ein `.gat`-Beispiel. `scripts/check-roenglish.py` vergleicht ausgewählte Additions-Dateien; `scripts/check-roenglish.sh` prüft PetEvolution mit Lua; `scripts/check-compose.py` prüft unter anderem die PetEvolution-Weiterleitung. Die aktuelle [CI-Konfiguration](../.github/workflows/ci.yml) führt diese vorhandenen Generator-Fixtures, die Übersetzungsprüfung einschließlich `check-roenglish.py` und den Compose-Smoke-Test aus, wenn der Scope als relevant erkannt wird. Ein konkretes CI-Laufergebnis wurde für diese Bestandsaufnahme nicht überprüft. Diese Tests belegen keine vollständige Menüäquivalenz oder Client-Laufzeit. `images/remote/roenglish-generate.php` implementiert eine explizite Teilmenge; dessen `all` entspricht nicht der vollständigen Batch-Auswahl.
 
 ## Data

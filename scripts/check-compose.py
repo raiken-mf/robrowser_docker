@@ -45,11 +45,14 @@ try:
  def request(name,port,path='/'):
   addr=output(*base,'port',name,str(port)).strip()
   url='http://'+addr+path
+  last_error=None
   for _ in range(60):
    try:
     with urllib.request.urlopen(url,timeout=5) as response: return response.read(), response.headers
-   except Exception: time.sleep(1)
-  raise RuntimeError(f'HTTP readiness failed for {name}')
+   except (urllib.error.URLError, OSError, TimeoutError) as error:
+    last_error=error
+    time.sleep(1)
+  raise RuntimeError(f'HTTP readiness failed for {name} ({url}): {last_error}')
  for name,port in [('remote',8080),('robrowser',3000)]:
   assert output(*base,'exec','-T',name,'id','-u').strip()=='1000'
   if name=='robrowser':
@@ -292,6 +295,10 @@ try:
    print('PASS GRF AI utility through frontend and direct RemoteClient')
  print('PASS cross-container RemoteClient loose-file request and CORS')
  print('PASS repository_override payloads, loose-file mounts; Apache has no Node/npm')
+except Exception:
+ subprocess.run([*base,'ps','-a'],check=False)
+ subprocess.run([*base,'logs','--no-color'],check=False)
+ raise
 finally:
  run(*base,'down','--remove-orphans')
  workdir.cleanup()

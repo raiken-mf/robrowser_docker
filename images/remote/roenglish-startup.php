@@ -19,14 +19,34 @@ function discardOwned(string $path): void {
     if (!rmdir($path)) throw new RuntimeException("Cannot remove $path");
 }
 
+// Fold ASCII only; filenames may contain arbitrary non-UTF-8 bytes.
+function overlayKey(string $name): string {
+    return strtr($name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+}
+
 // Only regular files and directories enter the public generation. Never follow links.
 function overlay(string $source, string $destination): void {
     if (is_link($source) || !is_dir($source)) return;
+    $targets = [];
+    foreach (new DirectoryIterator($destination) as $item) {
+        if ($item->isDot()) continue;
+        $name = $item->getFilename();
+        $key = overlayKey($name);
+        if (isset($targets[$key])) throw new RuntimeException("Ambiguous overlay destination in $destination: " . bin2hex($targets[$key]) . ' / ' . bin2hex($name) . ' (hex filenames)');
+        $targets[$key] = $name;
+    }
+    $seen = [];
     foreach (new DirectoryIterator($source) as $item) {
         if ($item->isDot() || strcasecmp($item->getFilename(), '.htaccess') === 0) continue;
         $src = $item->getPathname();
-        $dst = $destination . '/' . $item->getFilename();
         if (is_link($src)) continue;
+        if (!$item->isDir() && !$item->isFile()) continue;
+        $name = $item->getFilename();
+        $key = overlayKey($name);
+        if (isset($seen[$key])) throw new RuntimeException("Ambiguous overlay source in $source: " . bin2hex($seen[$key]) . ' / ' . bin2hex($name) . ' (hex filenames)');
+        $seen[$key] = $name;
+        $dst = $destination . '/' . ($targets[$key] ?? $name);
+        $targets[$key] = $targets[$key] ?? $name;
         if ($item->isDir()) {
             if (is_link($dst) || (file_exists($dst) && !is_dir($dst))) throw new RuntimeException("Overlay type conflict: $dst");
             if (!is_dir($dst) && !mkdir($dst, 0755)) throw new RuntimeException("Cannot create $dst");
@@ -40,8 +60,13 @@ function overlay(string $source, string $destination): void {
 
 function validateGenerated(string $path): void {
     if (is_link($path) || !is_dir($path)) throw new RuntimeException("Unsafe generated directory: $path");
+    $seen = [];
     foreach (new DirectoryIterator($path) as $item) {
         if ($item->isDot()) continue;
+        $name = $item->getFilename();
+        $key = overlayKey($name);
+        if (isset($seen[$key])) throw new RuntimeException("Ambiguous generated entries in $path: " . bin2hex($seen[$key]) . ' / ' . bin2hex($name) . ' (hex filenames)');
+        $seen[$key] = $name;
         $p = $item->getPathname();
         if (is_link($p) || (!$item->isDir() && !$item->isFile()) || strcasecmp($item->getFilename(), '.htaccess') === 0) {
             throw new RuntimeException("Unsafe generated entry: $p");

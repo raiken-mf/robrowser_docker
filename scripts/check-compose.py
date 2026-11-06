@@ -118,9 +118,11 @@ try:
  data_fixture.mkdir(mode=0o755)
  system_fixture.mkdir(mode=0o755)
  (data_fixture/'resnametable.txt').write_bytes(b'user data override\n')
- enum_override=data_fixture/'luafiles514'/'lua files'/'datainfo'/'enumvar.lub'
+ enum_override=data_fixture/'luafiles514'/'lua files'/'datainfo'/'EnumVar.lub'
  enum_override.parent.mkdir(mode=0o755, parents=True)
  enum_override.write_bytes(b'-- user enum override\n')
+ fog_override=data_fixture/'FogParameterTable.txt'
+ fog_override.write_bytes(b'user fog override\n')
  (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
  loose=output('docker','run','-d','--rm','-p','127.0.0.1::8080',
               '--mount',f'type=bind,src={fixture},dst=/opt/client_files/AI,readonly',
@@ -141,14 +143,25 @@ try:
   def verify_overrides():
    for path,expected in (('/remote/data/resnametable.txt',b'user data override\n'),
                          ('/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',b'-- user enum override\n'),
+                         ('/remote/data/fogparametertable.txt',b'user fog override\n'),
                          ('/remote/SystemEN/itemInfo_C.lua',b'-- user SystemEN override\n')):
     with urllib.request.urlopen('http://'+loose_address+path,timeout=10) as res:
      assert res.status==200 and res.read()==expected, path
   verify_overrides()
+  conflict=data_fixture/'fogparametertable.txt'
+  conflict.write_bytes(b'conflicting override\n')
+  try:
+   failed=subprocess.run(['docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php'],
+                         capture_output=True,text=True)
+   assert failed.returncode != 0 and 'Ambiguous overlay source' in failed.stderr, failed.stderr
+   verify_overrides()  # failed generation must not replace the published one
+  finally:
+   conflict.unlink()
   run('docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php')
   verify_overrides()
   assert (data_fixture/'resnametable.txt').read_bytes()==b'user data override\n'
   assert enum_override.read_bytes()==b'-- user enum override\n'
+  assert fog_override.read_bytes()==b'user fog override\n'
   assert (system_fixture/'itemInfo_C.lua').read_bytes()==b'-- user SystemEN override\n'
  finally:
   run('docker','stop',loose,stdout=subprocess.DEVNULL)

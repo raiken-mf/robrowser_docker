@@ -24,10 +24,14 @@ handler reads the original request URI, so it searches for `AI/Util.lua`
 instead of the GRF's `data/ai/util.lua`.
 The image also installs ROEnglishRE's `PetEvolution.lub` once in `SystemEN/`.
 Apache serves it for a missing `System/PetEvolutionCln.lub`; a loose original
-takes priority. Other `System/` requests are not mapped to `SystemEN/`.
+takes priority. Similar targeted fallbacks serve CheckAttendance and
+PrivateAirplane when their loose System files are absent.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
 At startup, regular loose files in the readonly client mount's `data/` and
 `SystemEN/` are overlaid on the generated tree, without modifying the mount.
+Matching ASCII names are overlaid without regard to letter case, retaining the
+generated path spelling. Ambiguous names differing only in ASCII letter case
+within one source or destination directory fail initialization explicitly.
 The browser may itself resolve a file from its local GRF before requesting the
 RemoteClient, so server-side overlays cannot override every browser-local file.
 The exact pinned upstream generator rules, known script discrepancies and

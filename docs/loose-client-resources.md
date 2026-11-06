@@ -8,8 +8,9 @@ existing `resources` mount supplies them. Its original PHP fallback accepts
 not provide `SYSTEM_PATH`, `SYSTEMEN_PATH`, `AI_PATH`, `DATA_OVERRIDE_PATH`,
 or a `System` to `SystemEN` alias.
 
-The image installs ROEnglishRE's original `SystemEN` tree once, at its original
-path. Apache can serve existing static `SystemEN/` files directly. The existing
+The image retains the pinned ROEnglishRE source and generates a runtime tree
+from `PACKETVER`, `SET_PRERENEWAL` and the `ROENGLISH_*` options. Apache serves
+the selected `SystemEN/` and `data/` files. The existing
 roBrowser `customItemInfo` option selects `SystemEN/itemInfo.lua`, which loads
 its original nested `SystemEN` files. `System/` is a separate symlink to the
 read-only client-data mount, so real original System files remain accessible. Missing `SystemEN/`, `System/` and `AI/` files are not resolved from GRFs
@@ -23,13 +24,27 @@ handler reads the original request URI, so it searches for `AI/Util.lua`
 instead of the GRF's `data/ai/util.lua`.
 The image also installs ROEnglishRE's `PetEvolution.lub` once in `SystemEN/`.
 Apache serves it for a missing `System/PetEvolutionCln.lub`; a loose original
-takes priority. Other `System/` requests are not mapped to `SystemEN/`.
+takes priority. Similar targeted fallbacks serve CheckAttendance and
+PrivateAirplane when their loose System files are absent.
+At startup the image snapshots these four specific regular System files for
+case-insensitive fallback matching; files with the exact requested spelling
+use the same snapshot for consistent contents. An existing exact path remains
+accessible from the mount if no regular-file snapshot exists. Snapshots are
+refreshed on initialization, and ambiguous case variants fail initialization
+explicitly.
 Existing `AI` and `BGM` mounts are exposed by the image's existing symlinks.
-The image does not copy external PVC `data/` files into its own tree at
-startup; those files cannot be overlaid together with baked files using a
-supported PHP setting. No copies or changes to original client
-files are made. If those overlays or virtual aliases are required, the
-unmodified software does not provide them and a separate decision is needed.
+At startup, regular loose files in the readonly client mount's `data/` and
+`SystemEN/` are overlaid on the generated tree, without modifying the mount.
+Matching ASCII names are overlaid without regard to letter case, retaining the
+generated path spelling. Ambiguous names differing only in ASCII letter case
+within one source or destination directory fail initialization explicitly.
+The generator also consolidates ASCII-case variants of directory names from
+different upstream layers, so their files remain available in one directory;
+non-ASCII filename bytes are left unchanged.
+The browser may itself resolve a file from its local GRF before requesting the
+RemoteClient, so server-side overlays cannot override every browser-local file.
+The exact pinned upstream generator rules, known script discrepancies and
+addon inventory are recorded in [the upstream inventory](roenglish-upstream-inventory.md).
 
 The pinned client's TownInfo callback returns no success value and replaces
 each map's entries. The supplied English Towninfo stops after its first callback;

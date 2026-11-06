@@ -154,7 +154,10 @@ try:
                       ('footprinteffectinfo.lub',b'FootPrintEffectTable')):
    url='http://'+loose_address+'/remote/data/luafiles514/lua%20files/hateffectinfo/'+name
    with urllib.request.urlopen(url,timeout=10) as res:
-    assert res.status==200 and marker in res.read(), name
+    content=res.read()
+    assert res.status==200 and marker in content, name
+    if name=='footprinteffectinfo.lub':
+     assert b'Type = STR = 4' not in content, 'invalid footprint source served'
   conflict=data_fixture/'fogparametertable.txt'
   conflict.write_bytes(b'conflicting override\n')
   try:

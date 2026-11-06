@@ -34,6 +34,9 @@ try {
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $n) fixture("$src/Additions/data/luafiles514/lua files/$n", $n);
     $lua = 'data/luafiles514/lua files';
     foreach (['accessoryid','accname','spriterobeid','spriterobename','weapontable','tb_cashshop_banner','npcidentity','jobname'] as $n) fixture("$src/Additions/$lua/datainfo/$n.lub", $n);
+    fixture("$src/Translation/Renewal/$lua/datainfo/addrandomoptionnametable.lub", 'random-options');
+    fixture("$src/Translation/Renewal/$lua/datainfo/enumvar.lub", 'base-enum');
+    fixture("$src/Additions/$lua/datainfo/enumvar.lub", 'additions-enum');
     fixture("$src/Additions/$lua/ItemDBNameTbl.lub", 'item'); fixture("$src/Additions/data/example.gat", 'map');
     fixture("$src/Additions/data/texture/legacy/map/payon.bmp", 'map-bmp'); fixture("$src/Additions/data/texture/legacy/map/sch_lab.bmp", 'excluded');
     fixture("$src/Additions/data/texture/legacy/map/ama_dun01.bmp", 'minimap');
@@ -66,6 +69,7 @@ try {
         foreach ($samples as $sample) {
             [$status, $out] = runGenerator($src, $dst, ['PACKETVER'=>$sample, 'SET_PRERENEWAL'=>'1']);
             check($status === 0 && str_contains($out, "selection $selected "), "date mapping $sample");
+            check(file_get_contents("$dst/$lua/datainfo/enumvar.lub") === 'additions-enum' && file_get_contents("$dst/$lua/datainfo/addrandomoptionnametable.lub") === 'random-options', "random option pair $sample");
             if ($i !== 2 && $selected !== '2018-06-20') check(is_file("$dst/data/markers/$selected"), "selected overlay $sample");
             $expectedPrevious = $i >= 4;
             check(is_file("$dst/data/markers/2017-06-14") === ($i === 3 || $expectedPrevious), "loop start $sample");

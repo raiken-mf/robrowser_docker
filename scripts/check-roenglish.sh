@@ -28,6 +28,15 @@ for mode in 0 1; do
       local quests = 0
       for _ in pairs(QuestInfoList) do quests = quests + 1 end
       assert(quests == 11363, "quest entries differ: " .. quests)
+      local lua = "data/luafiles514/lua files/datainfo/"
+      dofile(lua .. "enumvar.lub")
+      dofile(lua .. "addrandomoptionnametable.lub")
+      local options = 0
+      for id, description in pairs(NameTable_VAR) do
+        assert(type(id)=="number" and type(description)=="string")
+        options = options + 1
+      end
+      assert(options == 254 and NameTable_VAR[1] == "MaxHP +%d", "random option table differs")
       local starts, ends, needed, rewards = 0, 0, 0, 0
       InsertStartableMap = function(v) assert(type(v)=="string"); starts=starts+1; return 1 end
       InsertEndableMap = function(v) assert(type(v)=="string"); ends=ends+1; return 1 end

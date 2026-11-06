@@ -160,7 +160,9 @@ try:
   response.read()
  connection.close()
  for asset in ('/remote/SystemEN/itemInfo.lua', '/remote/SystemEN/OngoingQuests.lub',
-               '/remote/System/PetEvolutionCln.lub', '/remote/data/fogparametertable.txt'):
+               '/remote/System/PetEvolutionCln.lub', '/remote/data/fogparametertable.txt',
+               '/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',
+               '/remote/data/luafiles514/lua%20files/datainfo/addrandomoptionnametable.lub'):
   via_frontend,_=request('robrowser',3000,asset)
   direct,_=request('remote',8080,asset)
   assert via_frontend==direct, asset

@@ -171,9 +171,12 @@ fonts are not yet sufficiently verified for automatic activation.
 
 The initial `ROENGLISH_ADDITIONS=all` implementation selects the additions
 listed explicitly in `images/remote/roenglish-generate.php`, not every file in
-the upstream Additions tree. Other client-loaded candidates, including
-random-option dependencies and hat effects, require format,
-dependency and version checks before they can safely be enabled. This is an
+the upstream Additions tree. The generator supplies `datainfo/enumvar.lub`
+for the base `addrandomoptionnametable.lub`; together the pinned originals
+execute as 254 numeric-keyed string entries under Lua 5.1. Client-local GRFs
+can still take precedence, so the actual displayed options depend on the
+loaded GRFs and server. Other client-loaded candidates, including hat effects,
+require format, dependency and version checks before they can safely be enabled. This is an
 open integration gap rather than a claim that the remaining files are
 incompatible. `ROENGLISH_LEGACY_MAPS=1` selects the two upstream all-in-one
 legacy map/minimap choices; `0` leaves those additions out.

@@ -106,6 +106,8 @@ try {
     foreach (['accessoryid.lub','accname.lub','spriterobeid.lub','spriterobename.lub','weapontable.lub','tb_cashshop_banner.lub','npcidentity.lub','jobname.lub'] as $name) {
         $p = $lua . 'datainfo/' . $name; put($files, "$add/$p", $p);
     }
+    // Paired with Translation/Renewal's addrandomoptionnametable.lub.
+    $p = $lua . 'datainfo/enumvar.lub'; put($files, "$add/$p", $p);
     // These all-in-one files depend on the remaining files from the base
     // translation or client GRF (stateiconinfo, worldview language/list).
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $name) {

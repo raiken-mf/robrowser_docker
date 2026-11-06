@@ -32,6 +32,9 @@ At startup, regular loose files in the readonly client mount's `data/` and
 Matching ASCII names are overlaid without regard to letter case, retaining the
 generated path spelling. Ambiguous names differing only in ASCII letter case
 within one source or destination directory fail initialization explicitly.
+The generator also consolidates ASCII-case variants of directory names from
+different upstream layers, so their files remain available in one directory;
+non-ASCII filename bytes are left unchanged.
 The browser may itself resolve a file from its local GRF before requesting the
 RemoteClient, so server-side overlays cannot override every browser-local file.
 The exact pinned upstream generator rules, known script discrepancies and

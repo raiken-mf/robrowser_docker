@@ -56,6 +56,28 @@ function dropPrefix(array &$files, string $path): void {
     $key = strtolower($path);
     foreach (array_keys($files) as $k) if ($k === $key || str_starts_with($k, $key . '/')) unset($files[$k]);
 }
+// Reconcile directory spelling without changing file names or non-ASCII bytes.
+// Sorted input makes the first spelling deterministic; client aliases are pinned.
+function normalizeDirectories(array &$files): void {
+    $fold = static fn(string $s): string => strtr($s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
+    $dirs = [];
+    foreach (['data', 'SystemEN', 'data/luafiles514', 'data/luafiles514/lua files', 'data/luafiles514/lua files/hateffectinfo'] as $path) {
+        $dirs[$fold($path)] = $path;
+    }
+    foreach ($files as $key => &$entry) {
+        $parts = explode('/', $entry[1]); $name = array_pop($parts);
+        $original = ''; $canonical = '';
+        foreach ($parts as $part) {
+            $original = $original === '' ? $part : $original . '/' . $part;
+            $dirKey = $fold($original);
+            if (isset($files[$dirKey])) fail("File/directory collision: $original");
+            if (!isset($dirs[$dirKey])) $dirs[$dirKey] = $canonical === '' ? $part : $canonical . '/' . $part;
+            $canonical = $dirs[$dirKey];
+        }
+        $entry[1] = $canonical === '' ? $name : $canonical . '/' . $name;
+    }
+    unset($entry);
+}
 try {
     if ($argc !== 3) fail('Usage: php roenglish-generate.php SOURCE_DIRECTORY EMPTY_TARGET_DIRECTORY');
     $source = realpath($argv[1]); $target = realpath($argv[2]);
@@ -140,6 +162,7 @@ try {
         }
     }
     ksort($files, SORT_STRING);
+    normalizeDirectories($files);
     foreach (['data','SystemEN'] as $dir) if (!mkdir("$target/$dir", 0755)) fail("Cannot create $dir");
     foreach ($files as [$src, $rel]) {
         $dest = "$target/$rel"; $parent = dirname($dest);

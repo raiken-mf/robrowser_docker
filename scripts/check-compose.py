@@ -124,7 +124,7 @@ try:
  fog_override=data_fixture/'FogParameterTable.txt'
  fog_override.write_bytes(b'user fog override\n')
  (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
- loose=output('docker','run','-d','--rm','-p','127.0.0.1::8080',
+ loose=output('docker','run','-d','-p','127.0.0.1::8080',
               '-e','PACKETVER=20240417',
               '--mount',f'type=bind,src={fixture},dst=/opt/client_files/AI,readonly',
               '--mount',f'type=bind,src={data_fixture},dst=/opt/client_files/data,readonly',
@@ -140,7 +140,8 @@ try:
    except (urllib.error.URLError, ConnectionError, TimeoutError):
     time.sleep(1)
   else:
-   raise RuntimeError('Loose AI fixture server failed to start')
+   logs=subprocess.run(['docker','logs',loose],capture_output=True,text=True)
+   raise RuntimeError('Loose AI fixture server failed to start: '+logs.stdout+logs.stderr)
   def verify_overrides():
    for path,expected in (('/remote/data/resnametable.txt',b'user data override\n'),
                          ('/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',b'-- user enum override\n'),
@@ -174,7 +175,7 @@ try:
   assert fog_override.read_bytes()==b'user fog override\n'
   assert (system_fixture/'itemInfo_C.lua').read_bytes()==b'-- user SystemEN override\n'
  finally:
-  run('docker','stop',loose,stdout=subprocess.DEVNULL)
+  run('docker','rm','-f',loose,stdout=subprocess.DEVNULL)
  print('PASS loose AI, data and SystemEN overrides; repeated initialization preserves mounts')
  frontend=output(*base,'port','robrowser','3000').strip()
  front_host,front_port=frontend.rsplit(':',1)

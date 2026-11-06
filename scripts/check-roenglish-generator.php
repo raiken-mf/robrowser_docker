@@ -21,6 +21,12 @@ function runGenerator(string $source, string $target, array $env): array {
 try {
     mkdir($root); $src = "$root/source"; $dst = "$root/target"; mkdir($dst);
     fixture("$src/Translation/Renewal/data/base.txt", 'renewal'); fixture("$src/Translation/Renewal/SystemEN/base.lub", 'system');
+    fixture("$src/Translation/Renewal/data/CaseDir/Nested/one.txt", 'one');
+    fixture("$src/Translation/Renewal/data/casedir/nested/two.txt", 'two');
+    fixture("$src/Translation/Renewal/data/casedir/NESTED/THREE.txt", 'three');
+    fixture("$src/Translation/Renewal/data/Byte\xC4/First.txt", 'upper-byte');
+    fixture("$src/Translation/Renewal/data/byte\xC4/Second.txt", 'same-byte');
+    fixture("$src/Translation/Renewal/data/byte\xE4/Third.txt", 'other-byte');
     fixture("$src/Translation/Pre-Renewal/data/base.txt", 'pre');
     $dates = ['2012-04-10','2015-05-13','2017-06-14','2017-12-13','2018-06-20','2019-06-05','2020-09-02','2021-10-28','2022-03-30','2022-04-06','2022-06-02','2022-08-31','2022-09-28','2022-12-07','2023-01-18','2023-08-02','2023-09-20','2024-03-11','2024-04-03','2024-05-02','2024-08-07','2024-10-16','2025-01-22','2025-06-18','2025-09-02','2025-12-17'];
     foreach ($dates as $d) fixture("$src/Translation/Compatibility/$d/data/markers/$d", $d);
@@ -131,6 +137,8 @@ try {
     erase($dst); mkdir($dst);
     [$code] = runGenerator($src, $dst, ['PACKETVER'=>'20250618','ROENGLISH_LEGACY_MAPS'=>'1']);
     check($code === 0, '2025 generation failed'); check(!file_exists("$dst/$lua/hateffectinfo/remove.lub"), 'hat effect deletion');
+    check(file_get_contents("$dst/data/CaseDir/Nested/one.txt") === 'one' && file_get_contents("$dst/data/CaseDir/Nested/two.txt") === 'two' && file_get_contents("$dst/data/CaseDir/Nested/THREE.txt") === 'three' && !is_dir("$dst/data/casedir"), 'case-folded nested directories');
+    check(file_get_contents("$dst/data/Byte\xC4/First.txt") === 'upper-byte' && file_get_contents("$dst/data/Byte\xC4/Second.txt") === 'same-byte' && file_get_contents("$dst/data/byte\xE4/Third.txt") === 'other-byte', 'non-ASCII directory bytes');
     check(!file_exists("$dst/$lua/selectpackage/selectpackageitem.lub"), 'select package deletion');
     check(is_file("$dst/$lua/ItemDBNameTbl.lub"), 'item table threshold'); check(is_file("$dst/data/example.gat"), 'legacy map');
     check(is_file("$dst/data/texture/legacy/map/ama_dun01.bmp") && !file_exists("$dst/data/texture/legacy/map/sch_lab.bmp"), 'explicit minimaps');
@@ -151,7 +159,13 @@ try {
         [$code] = runGenerator($src, $dst, $env); check($code !== 0 && count(scandir($dst)) === 2, 'invalid input accepted or wrote target');
     }
     [$code, , $err] = runGenerator($src, $dst, ['PACKETVER'=>'20260101']); check($code === 0 && str_contains($err, 'Warning:'), 'future warning');
-    erase($dst); mkdir($dst); symlink('/etc/passwd', "$src/Translation/Renewal/data/escape");
+    erase($dst); mkdir($dst);
+    fixture("$src/Translation/Renewal/data/type-conflict", 'file');
+    fixture("$src/Translation/Renewal/data/TYPE-CONFLICT/child", 'child');
+    [$code, , $err] = runGenerator($src, $dst, []);
+    check($code !== 0 && str_contains($err, 'File/directory collision') && count(scandir($dst)) === 2, 'file/directory collision accepted');
+    unlink("$src/Translation/Renewal/data/type-conflict"); erase("$src/Translation/Renewal/data/TYPE-CONFLICT");
+    symlink('/etc/passwd', "$src/Translation/Renewal/data/escape");
     [$code] = runGenerator($src, $dst, []); check($code !== 0 && count(scandir($dst)) === 2, 'symlink accepted');
     echo "PASS: generator fixtures\n";
 } finally { if (is_dir($root)) erase($root); }

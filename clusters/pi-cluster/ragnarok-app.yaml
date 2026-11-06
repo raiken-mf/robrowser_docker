@@ -4,8 +4,8 @@ metadata:
   name: ragnarok-stack
   namespace: flux-system
 spec:
-  # Installation hold: resuming the parent must not start this stack.
-  suspend: false
+  # Ragnarok has been removed and must not be reconciled automatically.
+  suspend: true
   interval: 10m0s
   path: ./deploy/overlays/flux
   prune: true

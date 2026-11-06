@@ -118,6 +118,9 @@ try:
  data_fixture.mkdir(mode=0o755)
  system_fixture.mkdir(mode=0o755)
  (data_fixture/'resnametable.txt').write_bytes(b'user data override\n')
+ enum_override=data_fixture/'luafiles514'/'lua files'/'datainfo'/'enumvar.lub'
+ enum_override.parent.mkdir(mode=0o755, parents=True)
+ enum_override.write_bytes(b'-- user enum override\n')
  (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
  loose=output('docker','run','-d','--rm','-p','127.0.0.1::8080',
               '--mount',f'type=bind,src={fixture},dst=/opt/client_files/AI,readonly',
@@ -137,6 +140,7 @@ try:
    raise RuntimeError('Loose AI fixture server failed to start')
   def verify_overrides():
    for path,expected in (('/remote/data/resnametable.txt',b'user data override\n'),
+                         ('/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',b'-- user enum override\n'),
                          ('/remote/SystemEN/itemInfo_C.lua',b'-- user SystemEN override\n')):
     with urllib.request.urlopen('http://'+loose_address+path,timeout=10) as res:
      assert res.status==200 and res.read()==expected, path
@@ -144,6 +148,7 @@ try:
   run('docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php')
   verify_overrides()
   assert (data_fixture/'resnametable.txt').read_bytes()==b'user data override\n'
+  assert enum_override.read_bytes()==b'-- user enum override\n'
   assert (system_fixture/'itemInfo_C.lua').read_bytes()==b'-- user SystemEN override\n'
  finally:
   run('docker','stop',loose,stdout=subprocess.DEVNULL)

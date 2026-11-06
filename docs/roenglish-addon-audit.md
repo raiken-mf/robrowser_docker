@@ -46,9 +46,29 @@ Alle Namen in dieser Tabelle tragen die Endung `.lub`. CLS-Dateien können zusä
 
 ## Tests und Evidenzgrenzen
 
+Die drei Dateien des Stateicon-Patches wurden zusätzlich mit dem gepinnten
+`SystemEN/LuaFiles514/rotp_f.lua` unter Lua 5.1 ausgeführt. Der Patch benötigt
+diese Datei über `require()` und erzeugte Tabellen mit 1.320 EFST-Einträgen
+und 847 Statuseinträgen; die verglichene reguläre Renewal-Kombination enthielt
+1.315 beziehungsweise 842. Die fünf zusätzlichen IDs `2000` bis `2004`
+beschreiben Mild-Wind-Varianten und verweisen auf vorhandene Icon-Namen wie
+`i_p_FIRE.tga`. Das bestätigt weder die Belegung dieser IDs durch den jeweiligen
+Server noch das Vorhandensein der TGA-Dateien im verwendeten GRF. Es ist daher
+kein Nachweis für eine allgemeine automatische Aktivierung des Patch-Satzes.
+
+Die gepinnte Signboard-Legacy-Datei wurde ebenfalls unter Lua 5.1 ausgeführt:
+Sie erzeugt 625 Einträge. Die ersten sechs Felder haben jeweils die vom
+roBrowser-Callback erwarteten Typen; bei 102 Einträgen sind zusätzlich Text
+und Farbe vorhanden. Die gepinnte Pre-Renewal-Tabelle enthält dagegen nur einen
+Eintrag, der in der Legacy-Tabelle unverändert vorkommt. Damit ist der Parser
+grundsätzlich ein Kandidat, aber Karten, Koordinaten und referenzierte Assets
+sind noch nicht gegen ein konkretes Server-/GRF-Paar geprüft. Die vom Client
+angefragte Großschreibung muss zudem mit dem Vorrang vorhandener loser Dateien
+zusammenpassen.
+
 - Der vollständige Upstream-Baum wurde bei obiger SHA ausgecheckt und die Dateiliste, Readmes, CLS-Auswahl, repräsentative Datenstrukturen und Client-Loader wurden lesend geprüft. Die lokale roBrowser-Revision wurde mit dem Compose-Pin abgeglichen. Der Checkout lag außerhalb des Arbeitsbaums; Forks wurden nicht verändert.
 - Konkrete Negativbefunde sind die oben zitierten Navigationswerte und Verbraucher sowie die `tbl`-Extraktion statt `main(server_name)`. Dass ein Dateiname geladen wird, beweist weder vollständige Ausführung noch richtige Darstellung.
-- `php scripts/check-roenglish-generator.php` wurde versucht, konnte aber nicht starten: `php: command not found`. Der vorhandene Fixture-Test würde Generatorauswahl testen, nicht die Addons im Browser. Es wurden keine Windows-Patches, Lua-Ausführung der Addons, HTTP-/GRF-Auflösung oder End-to-End-Spielszenarien getestet. Ein früherer Hinweis im [Inventar](roenglish-upstream-inventory.md) auf Lua-ladbare Navigation ist hier nicht erneut reproduziert.
+- `php scripts/check-roenglish-generator.php` wurde bei der ursprünglichen Inventarisierung lokal versucht, konnte aber mangels lokalem PHP nicht starten. Der Fixture-Test lief später in GitHub Actions; er prüft die Generatorauswahl, nicht die Addons im Browser. Abgesehen von den oben beschriebenen Lua-Tests wurden keine Addon-Lua-Läufe, Windows-Patches, HTTP-/GRF-Auflösung oder End-to-End-Spielszenarien getestet. Ein früherer Hinweis im [Inventar](roenglish-upstream-inventory.md) auf Lua-ladbare Navigation ist hier nicht erneut reproduziert.
 
 ## Umsetzungsvorschläge
 

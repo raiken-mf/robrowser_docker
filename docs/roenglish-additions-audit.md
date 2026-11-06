@@ -22,6 +22,17 @@ PetEvolution wird als `System/PetEvolutionCln.lub` über System-Aliase angefragt
 
 ## Data
 
+`itemmoveinfov5.txt` is deliberately not applied as a general override yet.
+The client loads eight restriction flags from this table starting at
+`PACKETVER=20150422`, and displays the corresponding prohibition when a flag
+is `1`. The pinned Additions and Pre-Renewal tables disagree for 363 of 1,449
+shared item IDs: for example, the Storage flag changes from `0` to `1` for
+1183, 1184 and 1279, and from `1` to `0` for 6046. These data describe
+server-dependent restrictions, so format compatibility alone does not show
+which value is correct for an installation. The client requests the mixed-case
+path `data/ItemMoveInfoV5.txt`; case-sensitive loose-file override precedence
+also needs to be verified before automatically installing it.
+
 | Auswahl | Regel; Quelle → Ziel | roBrowser-Fundstelle |
 |---|---|---|
 | 1 All in One Package | keine Datumsbedingung; Gesamtpaket; `D:*.txt` | kein direkter Treffer in DBManager.js; weitere Loader ungeprüft |

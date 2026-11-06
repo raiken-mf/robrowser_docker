@@ -56,3 +56,22 @@ for mode in 0 1; do
     ')
   fi
 done
+# Audit alternative datasets without activating or modifying the pinned sources.
+(cd "$workdir/source" && lua5.1 -e '
+  package.path = "Translation/Renewal/?.lua;" .. package.path
+  local root = "Addons/Stateiconimginfo Patch/"
+  dofile(root .. "efstids.lub")
+  dofile(root .. "stateiconinfo.lub")
+  dofile(root .. "stateiconimginfo.lub")
+  assert(EFST_IDs.EFST_PROPERTYFIRE_TK == 2000)
+  for id=2000,2004 do assert(type(StateIconList[id]) == "table") end
+  dofile("Addons/Signboard Legacy/signboardlist.lub")
+  local count = 0
+  for _, value in pairs(SignBoardList) do
+    assert(type(value[1])=="string" and type(value[2])=="number" and type(value[3])=="number")
+    assert(type(value[4])=="number" and type(value[5])=="number" and type(value[6])=="string")
+    count = count + 1
+  end
+  assert(count == 625, "legacy signboard count differs: " .. count)
+  print("PASS addon Lua audit: stateicon IDs and signboard fields", count)
+')

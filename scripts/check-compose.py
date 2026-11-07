@@ -129,6 +129,9 @@ try:
  job_override=data_fixture/'luafiles514'/'lua files'/'skillinfoz'/'JobInheritList.lub'
  job_override.parent.mkdir(mode=0o755, parents=True)
  job_override.write_bytes(b'-- user job inheritance override\n')
+ world_override=data_fixture/'luafiles514'/'lua files'/'worldviewdata'/'WorldViewData_Language.lub'
+ world_override.parent.mkdir(mode=0o755, parents=True)
+ world_override.write_bytes(b'-- user worldview language override\n')
  fog_override=data_fixture/'FogParameterTable.txt'
  fog_override.write_bytes(b'user fog override\n')
  (system_fixture/'itemInfo_C.lua').write_bytes(b'-- user SystemEN override\n')
@@ -161,6 +164,7 @@ try:
    for path,expected in (('/remote/data/resnametable.txt',b'user data override\n'),
                          ('/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',b'-- user enum override\n'),
                          ('/remote/data/luafiles514/lua%20files/skillinfoz/jobinheritlist.lub',b'-- user job inheritance override\n'),
+                         ('/remote/data/luafiles514/lua%20files/worldviewdata/worldviewdata_language.lub',b'-- user worldview language override\n'),
                          ('/remote/data/fogparametertable.txt',b'user fog override\n'),
                          ('/remote/System/CheckAttendance.lub',b'-- loose attendance\n'),
                          ('/remote/System/cHeCkAtTeNdAnCe.lUb',b'-- loose attendance\n'),
@@ -209,6 +213,7 @@ try:
   assert (data_fixture/'resnametable.txt').read_bytes()==b'user data override\n'
   assert enum_override.read_bytes()==b'-- user enum override\n'
   assert job_override.read_bytes()==b'-- user job inheritance override\n'
+  assert world_override.read_bytes()==b'-- user worldview language override\n'
   assert fog_override.read_bytes()==b'user fog override\n'
   for name,content in loose_system_files.items():
    assert (loose_system_fixture/name).read_bytes()==content
@@ -231,12 +236,16 @@ try:
                '/remote/System/PetEvolutionCln.lub', '/remote/data/fogparametertable.txt',
                '/remote/data/luafiles514/lua%20files/datainfo/enumvar.lub',
                '/remote/data/luafiles514/lua%20files/skillinfoz/jobinheritlist.lub',
+               '/remote/data/luafiles514/lua%20files/worldviewdata/worldviewdata_language.lub',
+               '/remote/data/luafiles514/lua%20files/worldviewdata/worldviewdata_table.lub',
                '/remote/data/luafiles514/lua%20files/datainfo/addrandomoptionnametable.lub'):
   via_frontend,_=request('robrowser',3000,asset)
   direct,_=request('remote',8080,asset)
   assert via_frontend==direct, asset
   if asset.endswith('/fogparametertable.txt') and not (client_root/'data'/'fogparametertable.txt').is_file():
    assert b'2@exds.rsw#' in direct, 'unexpected fog table'
+  if asset.endswith('/worldviewdata_language.lub') and not (client_root/'data'/'luafiles514'/'lua files'/'worldviewdata'/'worldviewdata_language.lub').is_file():
+   assert b'MSI_2_CH1_ZERO1 = "Zerocell Sector - Lux"' in direct, 'missing restored worldview language entries'
  for asset in ('/remote/resources/DATA.INI', '/remote/configs.php', '/remote/data/%252e%252e/resources/DATA.INI'):
   try:
    urllib.request.urlopen('http://'+frontend+asset,timeout=5)
@@ -281,6 +290,26 @@ try:
      "const r = await fetch('http://remote:8080/remote/System/add-system-folder-files-here.txt', "
      "{headers: {Origin: 'http://robrowser:3000'}}); "
      "if (r.status !== 200 || r.headers.get('access-control-allow-origin') !== '*') process.exit(1);")
+ run(*base,'exec','-T','remote','php','-r',
+     "require '/var/www/localhost/htdocs/remote/Debug.php'; "
+     "require '/var/www/localhost/htdocs/remote/PathMapping.php'; "
+     "require '/var/www/localhost/htdocs/remote/GrfDES.php'; "
+     "require '/var/www/localhost/htdocs/remote/Grf.php'; "
+     "$tmp = sys_get_temp_dir() . '/grf-test-' . bin2hex(random_bytes(4)) . '.grf'; "
+     "$kor = 'data\\\\texture\\\\' . \"\\xEC\\x9C\\xA0\\xEC\\xA0\\x80\\xEC\\x9D\\xB8\\xED\\x84\\xB0\\xED\\x8E\\x98\\xEC\\x9D\\xB4\\xEC\\x8A\\xA4\" . '\\\\map\\\\prontera.bmp'; "
+     "$cp949 = mb_convert_encoding($kor, 'CP949', 'UTF-8'); "
+     "$mojibake = mb_convert_encoding($cp949, 'UTF-8', 'ISO-8859-1'); "
+     "$payload = 'BMP-CP949-FIXTURE'; $comp = gzcompress($payload); "
+     "$entry = $cp949 . \"\\0\" . pack('VVVCV', strlen($comp), strlen($comp), strlen($payload), 1, 0); "
+     "$table = gzcompress($entry); "
+     "$hdr = pack('Z16a14VVVV', 'Master of Magic', '', strlen($comp), 0, 8, 0x200); "
+     "file_put_contents($tmp, $hdr . $comp . pack('VV', strlen($table), strlen($entry)) . $table); "
+     "$grf = new Grf($tmp); $grf->setEncoding('CP949'); $grf->load(); "
+     "$out1 = ''; $out2 = ''; "
+     "if (!$grf->getFile($kor, $out1) || $out1 !== $payload) exit(1); "
+     "if (!$grf->getFile(strtoupper($mojibake), $out2) || $out2 !== $payload) exit(1); "
+     "unlink($tmp);")
+ print('PASS GRF 0x200 CP949 Korean, mojibake and case-insensitive extraction')
  resources=pathlib.Path(next(v['source'] for v in services['remote']['volumes']
                            if v['target']=='/opt/client_files'))/'resources'
  if (pathlib.Path(resources)/'DATA.INI').is_file():

@@ -23,7 +23,26 @@ for mode in 0 1; do
       if type(id)=="number" then assert(type(parent)=="number"); count=count+1 end
     end
     assert(count==148 and JOB_INHERIT_LIST[4353]==4351 and JOB_INHERIT_LIST[4355]==4353)
-    print("PASS Lua job inheritance:", count)
+    local wv = "data/luafiles514/lua files/worldviewdata/"
+    dofile(wv .. "worldviewdata_language.lub")
+    setmetatable(WORLD_MSGID, {__index = function(_, k) error("Missing WORLD_MSGID: " .. tostring(k)) end})
+    dofile(wv .. "worldviewdata_list.lub")
+    dofile(wv .. "worldviewdata_table.lub")
+    local maps, duns = 0, 0
+    for _, world in ipairs(World_List) do
+      local tbl, dtbl = _G[world[2]], _G[world[3]]
+      assert(type(tbl)=="table" and type(dtbl)=="table", "Missing world table: " .. tostring(world[1]))
+      for _, entry in ipairs(tbl) do
+        assert(type(entry[2])=="string" and #entry[2]>0 and type(entry[7])=="string" and #entry[7]>0)
+        maps = maps + 1
+      end
+      for _, entry in ipairs(dtbl) do
+        assert(type(entry[6])=="string" and #entry[6]>0)
+        duns = duns + 1
+      end
+    end
+    assert((tonumber("'"$mode"'")==0 and maps==372 and duns==52) or (tonumber("'"$mode"'")==1 and maps==338 and duns==46), "world map count: " .. maps .. "/" .. duns)
+    print("PASS Lua job inheritance and worldview tables:", count, maps, duns)
   ')
   if [ "$mode" = 0 ]; then
     (cd "$workdir/output-$mode" && lua5.1 -e '

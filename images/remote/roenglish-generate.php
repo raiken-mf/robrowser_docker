@@ -61,7 +61,7 @@ function dropPrefix(array &$files, string $path): void {
 function normalizeDirectories(array &$files): void {
     $fold = static fn(string $s): string => strtr($s, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz');
     $dirs = [];
-    foreach (['data', 'SystemEN', 'data/luafiles514', 'data/luafiles514/lua files', 'data/luafiles514/lua files/hateffectinfo', 'data/luafiles514/lua files/skillinfoz'] as $path) {
+    foreach (['data', 'SystemEN', 'data/luafiles514', 'data/luafiles514/lua files', 'data/luafiles514/lua files/hateffectinfo', 'data/luafiles514/lua files/skillinfoz', 'data/luafiles514/lua files/worldviewdata'] as $path) {
         $dirs[$fold($path)] = $path;
     }
     foreach ($files as $key => &$entry) {
@@ -135,6 +135,14 @@ try {
     foreach (['stateicon/efstids.lub','stateicon/stateiconimginfo.lub','worldviewdata/worldviewdata_table.lub'] as $name) {
         $p = $lua . $name; put($files, "$add/$p", $p);
     }
+    $worldLangTarget = $lua . 'worldviewdata/worldviewdata_language.lub';
+    if (!isset($files[$worldLangTarget])) fail('Missing base worldviewdata_language.lub');
+    $files[$worldLangTarget][1] = $worldLangTarget;
+    $worldLangData = file_get_contents($files[$worldLangTarget][0]);
+    // Restore the six 2025-08-02 WORLD_MSGID keys referenced by Additions worldviewdata_table.lub.
+    if ($worldLangData === false || hash('sha256', str_replace("\r\n", "\n", $worldLangData)) !== '09a5877f008617739c41139d6375b5cef6478fc44462aa781aba8c33a99f2704') fail('Unexpected worldviewdata_language.lub SHA-256');
+    $worldLangData = str_replace('MSI_DUN49 = "Encroached Geffenia"', 'MSI_DUN49 = "Encroached Geffenia", MSI_102_CH1_FILD1 = "Erosion Zone", MSI_2_CH1_ZERO1 = "Zerocell Sector - Lux", MSI_2_CH1_ZERO2 = "Zerocell Sector - Nox", MSI_2_CH1_ZERO3 = "Zerocell Sector - Vita", MSI_2_CH1_ZERO4 = "Zerocell Sector - Arc", MSI_DUN51 = "Research Institute Zerocell"', $worldLangData, $count);
+    if ($count !== 1) fail('Unexpected worldviewdata_language.lub replacement count');
     $jobTarget = $lua . 'skillinfoz/jobinheritlist.lub';
     put($files, "$add/$jobTarget", $jobTarget);
     $files[$jobTarget][1] = $jobTarget;
@@ -179,6 +187,8 @@ try {
         if ($out === false) fail("Cannot write $rel");
         if ($rel === $jobTarget) {
             if (fwrite($out, $jobData) !== strlen($jobData)) fail("Cannot write $rel");
+        } elseif ($rel === $worldLangTarget) {
+            if (fwrite($out, $worldLangData) !== strlen($worldLangData)) fail("Cannot write $rel");
         } elseif ($rel === $footprintTarget && $footprintData !== null) {
             if (fwrite($out, $footprintData) !== strlen($footprintData)) fail("Cannot write $rel");
         } else {

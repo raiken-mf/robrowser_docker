@@ -191,6 +191,18 @@ entries; the tests exercise both Renewal modes and the client's HTTP path.
 The chosen skill-tree data and displayed skills remain dependent on the loaded
 client and server data; this does not establish every version's full UI behavior.
 
+Similarly, the selected `Additions/data/luafiles514/lua files/worldviewdata/worldviewdata_table.lub`
+references six `WORLD_MSGID` keys (`MSI_102_CH1_FILD1`, `MSI_2_CH1_ZERO1`
+through `MSI_2_CH1_ZERO4`, and `MSI_DUN51`) that were added in upstream commit
+`d336ab454031fda5868e710cbf2435216474bff4` (`8e71824234385c7cd5084ccbd6976c8dbeb44019`)
+for `2025-08-02` but omitted from `Translation/Renewal/.../worldviewdata_language.lub`
+when `worldviewdata_table.lub` was moved into `Additions/` (`a2e9b9dd94511a345a730faad9fa988f182a8fa2`).
+The generator restores those six upstream strings only in its generated copy of
+`worldviewdata_language.lub` after verifying the canonical source SHA-256 and a
+single replacement count, leaving the pinned source and user overrides untouched.
+With those six keys restored, all 424 Renewal and 384 Pre-Renewal WorldMap table
+entries resolve non-empty display strings under Lua 5.1.
+
 For the upstream HatEffect addition (selected by the Windows generator from
 2024-04-17), the pinned `HatEffectIDs.lub` and `HatEffectInfo.lub` execute
 under Lua 5.1 and define 290 IDs and 265 effects. The same source directory's

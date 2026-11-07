@@ -70,6 +70,10 @@ for key, (relative, upstream) in expected.items():
         assert hashlib.sha256(content.replace(b'\r\n', b'\n')).hexdigest() == 'df68d3833de2aeda496fb92e49e5c34fddff2aa63b01a0573c8a6f6d2ec86e40'
         assert content.count(b'JOBID = {') == 1
         content = content.replace(b'JOBID = {', b'JOBID = { JT_DRUID = 4351, JT_DRUID_B = 4352, JT_KARNOS = 4353, JT_KARNOS_B = 4354, JT_ALITEA = 4355,', 1)
+    elif key == lua + 'worldviewdata/worldviewdata_language.lub':
+        assert hashlib.sha256(content.replace(b'\r\n', b'\n')).hexdigest() == '09a5877f008617739c41139d6375b5cef6478fc44462aa781aba8c33a99f2704'
+        assert content.count(b'MSI_DUN49 = "Encroached Geffenia"') == 1
+        content = content.replace(b'MSI_DUN49 = "Encroached Geffenia"', b'MSI_DUN49 = "Encroached Geffenia", MSI_102_CH1_FILD1 = "Erosion Zone", MSI_2_CH1_ZERO1 = "Zerocell Sector - Lux", MSI_2_CH1_ZERO2 = "Zerocell Sector - Nox", MSI_2_CH1_ZERO3 = "Zerocell Sector - Vita", MSI_2_CH1_ZERO4 = "Zerocell Sector - Arc", MSI_DUN51 = "Research Institute Zerocell"', 1)
     assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(content).digest(), f'Checksum mismatch: {relative}'
 print(f'PASS mode={mode}, PACKETVER=20211103: {len(expected)} output checksums, '
       f'{compatibility_files} compatibility inputs, {len(additions) + 1} additions including PetEvolution')

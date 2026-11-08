@@ -12,7 +12,7 @@ images:
 - name: ghcr.io/raiken-mf/rathena
   newTag: sha-b893f028b321da2e2e62d6f0cd8723ac9299a431
 - name: ghcr.io/raiken-mf/remote
-  newTag: sha-f2009866b660253a271af0c538ddb0ec84d7d080
+  newTag: sha-d61baf00759e90d5fd369f178dbba2ece685bc0a
 - name: ghcr.io/raiken-mf/robrowser
   newTag: sha-f2009866b660253a271af0c538ddb0ec84d7d080
 - name: ghcr.io/raiken-mf/wsproxy

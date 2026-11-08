@@ -18,6 +18,9 @@ export PORT_FRONTEND="${PORT_FRONTEND:-30000}"
 export SERVER_NAME="${SERVER_NAME:-Ragnarok Online}"
 export SET_PRERENEWAL="${SET_PRERENEWAL:-0}"
 export PACKETVER="${PACKETVER:-20211103}"
+export ROENGLISH_ADDITIONS="${ROENGLISH_ADDITIONS:-all}"
+export ROENGLISH_ADDONS="${ROENGLISH_ADDONS:-compatible}"
+export ROENGLISH_LEGACY_MAPS="${ROENGLISH_LEGACY_MAPS:-0}"
 # Use an immutable sha-<commit> image tag in production; stable is only a convenience default.
 export REMOTE_IMAGE_TAG="${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-stable}}"
 export VITE_IMAGE_TAG="${VITE_IMAGE_TAG:-stable}"
@@ -41,6 +44,9 @@ kubectl create configmap robrowser-config \
   --from-literal=SERVER_NAME="${SERVER_NAME}" \
   --from-literal=SET_PRERENEWAL="${SET_PRERENEWAL}" \
   --from-literal=PACKETVER="${PACKETVER}" \
+  --from-literal=ROENGLISH_ADDITIONS="${ROENGLISH_ADDITIONS}" \
+  --from-literal=ROENGLISH_ADDONS="${ROENGLISH_ADDONS}" \
+  --from-literal=ROENGLISH_LEGACY_MAPS="${ROENGLISH_LEGACY_MAPS}" \
   --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> 5. Applying PVCs & wsproxy..."

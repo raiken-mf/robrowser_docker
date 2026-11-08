@@ -29,4 +29,7 @@ kubectl create configmap robrowser-config --namespace "$NAMESPACE" \
   --from-literal=SERVER_NAME="${SERVER_NAME:-Ragnarok Online}" \
   --from-literal=SET_PRERENEWAL="${SET_PRERENEWAL:-0}" \
   --from-literal=PACKETVER="${PACKETVER:-20211103}" \
+  --from-literal=ROENGLISH_ADDITIONS="${ROENGLISH_ADDITIONS:-all}" \
+  --from-literal=ROENGLISH_ADDONS="${ROENGLISH_ADDONS:-compatible}" \
+  --from-literal=ROENGLISH_LEGACY_MAPS="${ROENGLISH_LEGACY_MAPS:-0}" \
   --dry-run=client -o yaml > "$output_dir/robrowser-config.yaml"

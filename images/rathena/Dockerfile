@@ -1,4 +1,4 @@
-# alpine:3.24.2 pinned by immutable multi-architecture manifest digest.
+# alpine:3.24.3 pinned by immutable multi-architecture manifest digest.
 FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 ARG PACKETVER=20211103
@@ -16,53 +16,51 @@ RUN addgroup -g 1000 ragnarok && adduser -u 1000 -G ragnarok -D ragnarok
 
 # Install build/runtime packages from the pinned Alpine release.
 # zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
-# drop this once alpine:3.24.2 ships zlib >= 1.3.2-r1 by default.
+# drop this once alpine:3.24.3 ships zlib >= 1.3.2-r1 by default.
 RUN apk add --no-cache \
-    patch git make gcc g++ \
+    gettext-envsubst git make gcc g++ \
     mariadb-dev mariadb-connector-c mariadb-client \
     zlib-dev pcre-dev pcre libstdc++ linux-headers \
     && apk upgrade --no-cache zlib
 
-# Build from an explicit revision so a fork sync cannot silently change an image.
-RUN test -n "${RATHENA_REF}" && \
+# Validate build arguments and clone the explicit pinned upstream revision.
+RUN set -eu; \
+    test -n "${RATHENA_REF}"; \
+    printf '%s' "${PACKETVER}" | grep -Eq '^[0-9]{8}$'; \
+    printf '%s' "${SET_PRERENEWAL}" | grep -Eq '^[01]$'; \
+    for key in "${PACKET_OBFUSCATION_KEY1}" "${PACKET_OBFUSCATION_KEY2}" "${PACKET_OBFUSCATION_KEY3}"; do \
+        printf '%s' "$key" | grep -Eq '^0[xX][0-9a-fA-F]{1,8}$'; \
+    done && \
     git clone "${RATHENA_REPOSITORY}" /opt/ragnarok && \
     git -C /opt/ragnarok checkout --detach "${RATHENA_REF}"
 
-RUN patch --ignore-whitespace /opt/ragnarok/src/custom/defines_pre.hpp <<PATCH_EOF
---- defines_post.hpp	2024-01-29 20:25:41.731355800 +0100
-+++ defines_post.hpp.patch	2024-01-29 20:13:45.706997100 +0100
-@@ -11,4 +11,7 @@
+COPY templates/ /usr/local/share/rathena/templates/
 
-
-
-+#define PACKET_OBFUSCATION_KEY1 ${PACKET_OBFUSCATION_KEY1}
-+#define PACKET_OBFUSCATION_KEY2 ${PACKET_OBFUSCATION_KEY2}
-+#define PACKET_OBFUSCATION_KEY3 ${PACKET_OBFUSCATION_KEY3}
- #endif /* CONFIG_CUSTOM_DEFINES_PRE_HPP */
-PATCH_EOF
+RUN test -f /opt/ragnarok/src/custom/defines_pre.hpp && \
+    PACKET_OBFUSCATION_KEY1="${PACKET_OBFUSCATION_KEY1}" \
+    PACKET_OBFUSCATION_KEY2="${PACKET_OBFUSCATION_KEY2}" \
+    PACKET_OBFUSCATION_KEY3="${PACKET_OBFUSCATION_KEY3}" \
+    envsubst '${PACKET_OBFUSCATION_KEY1} ${PACKET_OBFUSCATION_KEY2} ${PACKET_OBFUSCATION_KEY3}' \
+      < /usr/local/share/rathena/templates/defines_pre.hpp.template \
+      > /opt/ragnarok/src/custom/defines_pre.hpp
 
 COPY repository_override /opt/ragnarok/
 
 RUN cd /opt/ragnarok && \
-    if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
+    if [ "${SET_PRERENEWAL}" -ne 0 ]; then \
         ./configure --enable-packetver="${PACKETVER}" --enable-prere; \
     else \
         ./configure --enable-packetver="${PACKETVER}"; \
     fi && \
     make clean && \
     make server && \
-    chmod a+x login-server char-server map-server
+    chmod a+x login-server char-server map-server && \
+    rm -rf /opt/ragnarok/.git && \
+    apk del linux-headers pcre-dev zlib-dev mariadb-dev g++ gcc make git
 
-# Remove build-only tooling to save space
-RUN apk del linux-headers pcre-dev zlib-dev mariadb-dev g++ gcc make git patch
-
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && \
-    mkdir -p /opt/ragnarok/conf/import && \
+COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN mkdir -p /opt/ragnarok/conf/import && \
     chown -R ragnarok:ragnarok /opt/ragnarok
-
-# Add security hardening
-RUN chmod 755 /usr/local/bin/entrypoint.sh
 
 USER ragnarok
 WORKDIR /opt/ragnarok

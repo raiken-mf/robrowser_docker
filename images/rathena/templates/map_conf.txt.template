@@ -1,0 +1,5 @@
+userid: ${SET_INTERSRV_USER}
+passwd: ${SET_INTERSRV_PASSWORD}
+
+char_ip: ${CHAR_SERVER_HOST}
+map_ip: ${MAP_SERVER_HOST}

@@ -1,0 +1,25 @@
+// Dynamic Runtime Config
+login_server_ip: ${MARIADB_HOST}
+login_server_db: ${MARIADB_DATABASE}
+login_server_id: ${MARIADB_USER}
+login_server_pw: ${MARIADB_PASSWORD}
+
+map_server_ip: ${MARIADB_HOST}
+map_server_db: ${MARIADB_DATABASE}
+map_server_id: ${MARIADB_USER}
+map_server_pw: ${MARIADB_PASSWORD}
+
+char_server_ip: ${MARIADB_HOST}
+char_server_db: ${MARIADB_DATABASE}
+char_server_id: ${MARIADB_USER}
+char_server_pw: ${MARIADB_PASSWORD}
+
+ipban_db_ip: ${MARIADB_HOST}
+ipban_db_db: ${MARIADB_DATABASE}
+ipban_db_id: ${MARIADB_USER}
+ipban_db_pw: ${MARIADB_PASSWORD}
+
+log_db_ip: ${MARIADB_HOST}
+log_db_db: ${MARIADB_DATABASE}
+log_db_id: ${MARIADB_USER}
+log_db_pw: ${MARIADB_PASSWORD}

@@ -74,7 +74,9 @@ jobs:
 
       - name: Validate pinned source layouts
         if: steps.scope.outputs.relevant == 'true'
-        run: bash scripts/check-upstream-layout.sh
+        run: |
+          python3 scripts/check-dockerfile-configs.py
+          bash scripts/check-upstream-layout.sh
 
       - name: Validate Kustomize manifests
         if: steps.scope.outputs.relevant == 'true'

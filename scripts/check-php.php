@@ -5,7 +5,9 @@ if (PHP_SAPI !== 'apache2handler'
     || PHP_VERSION_ID < 80427
     || PHP_VERSION_ID >= 80500
     || get_cfg_var('session.upload_progress.enabled') !== '0'
-    || (extension_loaded('session') && ini_get('session.upload_progress.enabled') !== '0')) {
+    || (extension_loaded('session') && ini_get('session.upload_progress.enabled') !== '0')
+    || ini_get('memory_limit') !== '1024M'
+    || ini_get('max_execution_time') !== '600') {
     http_response_code(500);
     exit("PHP runtime security check failed\n");
 }

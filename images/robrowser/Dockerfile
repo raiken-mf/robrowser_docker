@@ -5,11 +5,13 @@ ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
 
 # Vite requires Node.js, not Apache or PHP.
+# Upgrade zlib and libexpat in the base package layer while keeping runtime non-root.
 RUN apk add --no-cache \
       nodejs \
       npm \
       git \
       gettext \
+    && apk upgrade --no-cache zlib libexpat \
     && addgroup -g 1000 vite \
     && adduser -u 1000 -G vite -D vite \
     && mkdir -p /app \
@@ -18,10 +20,11 @@ RUN apk add --no-cache \
 USER vite
 WORKDIR /app
 
-# Fetch the exact pinned upstream revision.
+# Fetch the exact pinned upstream revision and preserve its Vite configuration.
 RUN test -n "${ROBROWSER_REF}" \
     && git clone "${ROBROWSER_REPOSITORY}" /app \
     && git checkout --detach "${ROBROWSER_REF}" \
+    && mv /app/vite.config.js /app/vite.upstream.config.js \
     && rm -rf .git
 
 # Reproducible npm dependencies.
@@ -30,11 +33,9 @@ COPY --chown=vite:vite images/robrowser/package-lock.json /app/package-lock.json
 
 RUN npm ci && npm cache clean --force
 
-# Allow configured hosts and proxy client assets through the frontend origin.
-RUN grep -q 'server: {' vite.config.js \
-    && sed -i '/server: {/a\    allowedHosts: true,' vite.config.js \
-    && grep -q 'const _proxy = {' vite.config.js \
-    && sed -i '/const _proxy = {/a\  "/remote/": { target: "http://remote:8080", changeOrigin: true },' vite.config.js
+# Extend the pinned upstream Vite configuration declaratively.
+COPY --chown=vite:vite images/robrowser/vite.config.js /app/vite.config.js
+RUN node --input-type=module -e 'import c from "./vite.config.js"; const cfg = typeof c === "function" ? c({ command: "serve", mode: "development" }) : c; if (cfg.server?.allowedHosts !== true || cfg.server?.proxy?.["/remote/"]?.target !== "http://remote:8080" || !cfg.server?.proxy?.["/get"] || !cfg.resolve?.alias?.Core || !cfg.plugins?.length) process.exit(1);'
 
 # The frontend configuration template belongs only to Vite.
 COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template
@@ -43,11 +44,6 @@ COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.temp
 COPY --chown=vite:vite images/robrowser/repository_override/ /app/
 
 COPY --chown=vite:vite --chmod=755 images/robrowser/entrypoint.sh /entrypoint.sh
-
-# Keep the runtime non-root and install patched zlib and libexpat packages.
-USER root
-RUN apk upgrade --no-cache zlib libexpat
-USER vite
 
 EXPOSE 3000
 

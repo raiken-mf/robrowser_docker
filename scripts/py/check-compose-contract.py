@@ -5,6 +5,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 
 root = pathlib.Path(__file__).resolve().parents[2]
@@ -44,12 +45,7 @@ args=("${@:2}")
 if [ "${args[${#args[@]}-1]}" = -d ]; then unset 'args[${#args[@]}-1]'; fi
 unset 'args[${#args[@]}-1]'
 if [ "$action" = up ]; then
-        PATH="$REAL_PATH" "$REAL_DOCKER" compose "${args[@]}" config --format json | "$RUBY" -rjson -e '
-      services = JSON.parse(STDIN.read).fetch("services")
-      abort "missing database credential" if services.fetch("database").fetch("environment").fetch("MARIADB_PASSWORD").to_s.empty?
-      abort "missing interserver credential" if services.fetch("rathena").fetch("environment").fetch("SET_INTERSRV_PASSWORD").to_s.empty?
-            abort "wrong alternate host" if ENV["EXPECT_ALTERNATE"] && services.fetch("robrowser").fetch("environment").fetch("HOST") != "alternate.example.invalid"
-    '
+        PATH="$REAL_PATH" "$REAL_DOCKER" compose "${args[@]}" config --format json | "$PYTHON" -c 'import json, os, sys; services = json.load(sys.stdin)["services"]; assert services["database"]["environment"]["MARIADB_PASSWORD"]; assert services["rathena"]["environment"]["SET_INTERSRV_PASSWORD"]; assert not os.environ.get("EXPECT_ALTERNATE") or services["robrowser"]["environment"]["HOST"] == "alternate.example.invalid"'
 else
         PATH="$REAL_PATH" "$REAL_DOCKER" compose "${args[@]}" config --quiet
 fi
@@ -57,7 +53,7 @@ fi
     docker.chmod(0o700)
     starter_env = {**environment, 'PATH': str(fixture) + os.pathsep + environment['PATH'],
                    'REAL_DOCKER': shutil.which('docker'),
-                   'RUBY': shutil.which('ruby'), 'REAL_PATH': environment['PATH'],
+                   'PYTHON': sys.executable, 'REAL_PATH': environment['PATH'],
                    'TEST_ACTIONS': str(fixture / 'actions')}
     starter = ['bash', str(fixture / 'scripts/sh/compose/start-compose.sh')]
     for extra_env in ({}, {'ENV_FILE': str(fixture / 'alternate.env'), 'EXPECT_ALTERNATE': '1'}):

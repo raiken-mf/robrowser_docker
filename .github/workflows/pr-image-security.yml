@@ -43,10 +43,10 @@ jobs:
           set -euo pipefail
           case "$IMAGE" in
             remote|robrowser) paths=("images/$IMAGE" .dockerignore build/dependencies.env) ;;
-            rathena) paths=(images/rathena build/dependencies.env) ;;
+            rathena) paths=(images/rathena scripts/sh/ci/check-rathena-pin-scope.sh) ;;
             wsproxy) paths=(images/wsproxy) ;;
           esac
-          if git diff --quiet "$BASE_SHA...$HEAD_SHA" -- "${paths[@]}"; then
+          if git diff --quiet "$BASE_SHA...$HEAD_SHA" -- "${paths[@]}" && { [ "$IMAGE" != rathena ] || bash scripts/sh/ci/check-rathena-pin-scope.sh "$BASE_SHA...$HEAD_SHA"; }; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
             echo "$IMAGE has no image-affecting changes"
           else

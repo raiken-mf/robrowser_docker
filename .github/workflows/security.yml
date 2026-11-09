@@ -57,10 +57,10 @@ jobs:
           case "$IMAGE" in
             remote) paths=(images/remote .dockerignore build/dependencies.env) ;;
             robrowser)      paths=(images/robrowser .dockerignore build/dependencies.env) ;;
-            rathena)   paths=(images/rathena build/dependencies.env) ;;
+            rathena)   paths=(images/rathena scripts/sh/ci/check-rathena-pin-scope.sh) ;;
             wsproxy)   paths=(images/wsproxy .dockerignore) ;;
           esac
-          if git diff --quiet "$previous" HEAD -- "${paths[@]}"; then
+          if git diff --quiet "$previous" HEAD -- "${paths[@]}" && { [ "$IMAGE" != rathena ] || bash scripts/sh/ci/check-rathena-pin-scope.sh "$previous..HEAD"; }; then
             echo 'changed=false' >> "$GITHUB_OUTPUT"
             echo "${IMAGE}: unchanged since $previous"
           else

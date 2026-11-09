@@ -7,10 +7,13 @@ observed results from assumptions.
 
 ## Local checks
 
-Run from the repository root. Python 3, Ruby, Bash, Docker with Compose, `kubectl`,
+Run from the repository root. Python 3 with PyYAML, Bash, Docker with Compose, `kubectl`,
 `envsubst` and a C compiler are needed for the checks that use them. Docker image
 builds and upstream-layout checks require network access. Never use production
 credentials or a live cluster for these tests.
+
+Install the YAML test dependency in a Python environment with
+`python3 -m pip install 'PyYAML==6.0.2'`.
 
 ```bash
 python3 scripts/py/check-script-layout.py

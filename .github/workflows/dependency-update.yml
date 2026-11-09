@@ -3,7 +3,7 @@ name: Check Fork Updates
 on:
   workflow_dispatch:
   schedule:
-    - cron: '23 */6 * * *'
+    - cron: '23 12 * * *'
 
 permissions:
   contents: read
@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   update:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -30,9 +31,17 @@ jobs:
         with:
           token: ${{ secrets.UPSTREAM_PR_TOKEN }}
           fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Check dependency cycle
+        id: cycle
+        env:
+          GH_TOKEN: ${{ secrets.UPSTREAM_PR_TOKEN }}
+        run: python3 scripts/py/check-fork-update-cycle.py
 
       - name: Find newer fork heads and update pins
         id: update
+        if: steps.cycle.outputs.ready == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -89,25 +98,53 @@ jobs:
           GH_TOKEN: ${{ secrets.UPSTREAM_PR_TOKEN }}
           SUMMARY: ${{ steps.update.outputs.summary }}
           REPOSITORY: ${{ github.repository }}
+          CYCLE: ${{ steps.cycle.outputs.cycle }}
+          PR_NUMBER: ${{ steps.cycle.outputs.pr_number }}
         run: |
           set -euo pipefail
+          check_output=$(mktemp)
+          trap 'rm -f "$check_output"' EXIT
+          GITHUB_OUTPUT="$check_output" python3 scripts/py/check-fork-update-cycle.py
+          if ! grep -qx 'ready=true' "$check_output" || ! grep -Fxq "cycle=$CYCLE" "$check_output" || ! grep -Fxq "pr_number=$PR_NUMBER" "$check_output"; then
+            echo 'Dependency cycle changed during validation; retry on the next run.'
+            exit 0
+          fi
+          git fetch --quiet origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo 'Main changed during validation; retry on the next run.'
+            exit 0
+          fi
           branch='automation/upstream-dependency-update'
+          body=$(printf 'Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n%s\n\n<!-- fork-pin-cycle:%s -->\n' "$SUMMARY" "$CYCLE")
+          remote_ref=$(git ls-remote --heads origin "refs/heads/$branch")
+          expected_sha=${remote_ref%%[[:space:]]*}
+          if [ -n "$expected_sha" ] && ! [[ "$expected_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'Invalid automation branch revision.' >&2
+            exit 1
+          fi
+          if [ -n "$PR_NUMBER" ]; then
+            git fetch --quiet origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            if [ "$(git rev-parse "refs/remotes/origin/$branch")" != "$expected_sha" ]; then
+              echo 'Automation branch changed during validation; retry on the next run.'
+              exit 0
+            fi
+            if git diff --quiet "refs/remotes/origin/$branch" -- build/dependencies.env; then
+              gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --body "$body"
+              exit 0
+            fi
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add build/dependencies.env
-          git commit -m 'chore(deps): update fork pins' || {
-            echo 'No pin changes to commit.'
-            exit 0
-          }
-          git push --force origin "HEAD:refs/heads/$branch"
-          if ! gh pr view "$branch" --repo "$REPOSITORY" >/dev/null 2>&1; then
+          git commit -m 'chore(deps): update fork pins'
+          git push "--force-with-lease=refs/heads/$branch:$expected_sha" origin "HEAD:refs/heads/$branch"
+          if [ -n "$PR_NUMBER" ]; then
+            gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --body "$body"
+          else
             gh pr create \
               --repo "$REPOSITORY" \
               --base main \
               --head "$branch" \
               --title 'chore(deps): update fork pins' \
-              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
-          else
-            gh pr edit "$branch" --repo "$REPOSITORY" \
-              --body "Automated upstream fork revision update. CI validates the pinned layouts and builds/smoke-tests the affected images before merge. No automatic merge or deployment is performed.\n\nDetected updates:\n$SUMMARY"
+              --body "$body"
           fi

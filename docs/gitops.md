@@ -25,22 +25,49 @@ the old `deploy/overlays/flux` is an equivalent temporary overlay. Both render
 the same resource identities and image pins as their new counterparts. Keep both
 bridges and their pins synchronized until migration is verified; CI checks equality.
 
-1. Merge the bridges and new directories while retaining both existing paths.
-   Verify the parent and child are Ready at the intended revision, compare their
-   live inventories with the rendered resources, and check application health.
-2. After separate operator approval, review and merge a change setting the parent
-   path to `./deploy/clusters/default` and the child path to
-   `./deploy/k8s/overlays/flux`. Keep both bridges and image pins synchronized;
-   pruning remains enabled, so resource identities must not change. Verify both
-   paths, inventories, revisions and application health after reconciliation.
-3. Only in a later reviewed change remove the bridges after all installations and
-   external bootstrap tooling use the new paths. The external bootstrap wrapper's
-   default may still be the old path: explicitly set `CLUSTER_PATH` until updated.
+1. Merge the preparation PR with both old paths unchanged. Run
+   `bash scripts/sh/ci/check-platform-config.sh` and record the live inventories,
+   applied revisions and workload health using the read-only commands below.
+2. In a separate reviewed PR, change only `spec.path` in
+   `deploy/clusters/default/ragnarok-app.yaml` to `./deploy/k8s/overlays/flux`.
+   Merge, wait for normal reconciliation, and verify the child path, Ready
+   condition, applied revision, inventory and workload health before proceeding.
+3. In another reviewed PR, change only `spec.path` in
+   `deploy/clusters/default/flux-system/gotk-sync.yaml` to
+   `./deploy/clusters/default`. Merge and verify both reconcilers, inventories,
+   revisions and workload health again. Do not rebootstrap Flux.
+4. Only after every installation and external bootstrap tool uses the new paths,
+   remove the bridges in a later reviewed PR, updating the publisher, tests and
+   documentation together. The external bootstrap wrapper's default may still be
+   the old path: explicitly set `CLUSTER_PATH` until updated.
 
-For rollback, restore both bridges and their matching pins before reverting either
-live path; verify reconciliation and inventory before removing anything. Never
-delete Flux resources outside `ragnarok` as part of this migration. A fresh install
-requires a separately reviewed source path and suspended-child procedure below.
+Before each merge, compare both old and new rendered parent and child resources;
+the preparation check also verifies that changing the two paths changes no other
+parent resource. Compare the live `status.inventory.entries` before and after each
+stage, including namespaces, PVCs and StatefulSets. Both reconcilers prune, so
+stop if identities or ownership differ; rendered equality alone cannot prove live
+inventory safety. Flux Ready does not prove application health (`wait: false`).
+
+```bash
+flux get sources git -n flux-system
+flux get kustomizations -n flux-system
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o yaml
+kubectl -n ragnarok get deployments,statefulsets,pods,pvc
+kubectl -n ragnarok get mariadb database
+kubectl -n ragnarok rollout status deployment/ragnarok-login
+kubectl -n ragnarok rollout status deployment/ragnarok-char
+kubectl -n ragnarok rollout status deployment/ragnarok-map
+kubectl -n ragnarok rollout status deployment/remote
+kubectl -n ragnarok rollout status deployment/robrowser
+kubectl -n ragnarok rollout status deployment/wsproxy
+```
+
+Record the inventory and applied revision securely without publishing private
+configuration. For rollback, submit a reviewed `git revert <migration-merge-sha>`
+PR for the affected stage, keeping both bridges and matching pins available;
+verify reconciliation and inventory before proceeding. Do not delete or recreate
+Flux objects, workloads or PVCs. A fresh install requires a separately reviewed
+source path and suspended-child procedure below.
 The later shared-HOST migration remains a separate change after the child patch is
 confirmed; this path migration does not activate it.
 

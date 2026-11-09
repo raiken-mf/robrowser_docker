@@ -6,15 +6,12 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-WRAPPERS = {f"scripts/{name}.sh" for name in (
-    "k8s-all", "k8s-client-data", "k8s-mariadb", "k8s-rathena",
-    "k8s-robrowser", "render-web-manifests",
-)} | {"scripts/check-wsproxy.cjs"}
 EXTENSIONS = {".sh", ".py", ".rb", ".php", ".js", ".cjs", ".mjs"}
 OLD_PATH = re.compile(
     r"scripts/(?:sh/(?:check-[\w-]+\.sh|k8s-[\w-]+\.sh|render-web-manifests\.sh|start-compose\.sh)"
-    r"|(?:rb/ci/check-[\w-]+|sh/ci/check-pr-image-matrix)\.rb|check-[\w-]+\.(?:py|php|sh|cjs)|render-k8s-bootstrap\.py)"
+    r"|(?:rb/ci/check-[\w-]+|sh/ci/check-pr-image-matrix)\.rb|check-[\w-]+\.(?:py|php|sh|cjs)|render-k8s-bootstrap\.py|k8s-[\w-]+\.sh|render-web-manifests\.sh)"
 )
+OLD_FLUX_PATHS = ("clusters/" + "pi-cluster", "deploy/" + "overlays/flux")
 
 
 def check(root, paths):
@@ -27,8 +24,11 @@ def check(root, paths):
             continue
         if not path.is_file():
             continue
+        if "__pycache__" in parts or path.suffix in {".pyc", ".pyo"}:
+            errors.append(f"Python cache artifact: {relative}")
+            continue
         if parts[0] == "scripts" and (path.suffix in EXTENSIONS or path.stat().st_mode & 0o111):
-            allowed = relative in WRAPPERS or (
+            allowed = (
                 len(parts) >= 3 and (
                     (parts[1] == "sh" and len(parts) >= 4 and parts[2] in {"k8s", "compose", "ci", "lib"} and path.suffix == ".sh")
                     or (parts[1] in {"py", "js", "php"} and path.suffix in {
@@ -51,16 +51,18 @@ def check(root, paths):
                 expected = {"sh": ".sh", "bash": ".sh", "dash": ".sh", "zsh": ".sh", "python": ".py", "ruby": ".rb", "node": path.suffix, "php": ".php"}.get(language)
                 if expected and (path.suffix != expected or (language == "node" and path.suffix not in {".js", ".cjs", ".mjs"})):
                     errors.append(f"Script interpreter mismatch: {relative}")
-        if relative == "scripts/py/check-script-layout.py" or relative in WRAPPERS or parts[0] == "client":
+        if relative == "scripts/py/check-script-layout.py" or parts[0] == "client":
             continue
-        if path.suffix not in EXTENSIONS | {".md", ".yaml", ".yml"} and path.name != "Dockerfile":
+        if path.suffix not in EXTENSIONS | {".md", ".yaml", ".yml"} and path.name not in {"Dockerfile", ".gitignore", ".dockerignore"}:
             continue
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeError, OSError):
             continue
-        if any(match.group() not in WRAPPERS for match in OLD_PATH.finditer(text)):
+        if OLD_PATH.search(text):
             errors.append(f"Obsolete script reference: {relative}")
+        if parts[0] not in {"docs", "README.md", "CHANGELOG.md"} and any(old in text for old in OLD_FLUX_PATHS):
+            errors.append(f"Obsolete Flux reference: {relative}")
     return errors
 
 
@@ -79,7 +81,12 @@ with tempfile.TemporaryDirectory(prefix="script-layout-") as directory:
     (fixture / "scripts/link.sh").symlink_to("misplaced.sh")
     (fixture / "example.md").write_text("scripts/sh/" + "check-old.sh\n")
     (fixture / "ruby-reference.md").write_text("scripts/sh/ci/" + "check-pr-image-matrix.rb\n")
-    assert len(check(fixture, ["scripts/misplaced.sh", "scripts/check-compose.py", "scripts/sh/ci/wrong.py", "scripts/sh/ci/wrong.rb", "scripts/rb/ci/right.rb", "scripts/py/wrong.py", "scripts/link.sh", "example.md", "ruby-reference.md"])) == 9
+    (fixture / ".github/workflows").mkdir(parents=True)
+    (fixture / ".github/workflows/old.yml").write_text(OLD_FLUX_PATHS[0])
+    (fixture / ".dockerignore").write_text(OLD_FLUX_PATHS[1])
+    (fixture / "scripts/py/__pycache__").mkdir()
+    (fixture / "scripts/py/__pycache__/old.pyc").write_bytes(b"")
+    assert len(check(fixture, ["scripts/misplaced.sh", "scripts/check-compose.py", "scripts/sh/ci/wrong.py", "scripts/sh/ci/wrong.rb", "scripts/rb/ci/right.rb", "scripts/py/wrong.py", "scripts/link.sh", "example.md", "ruby-reference.md", ".github/workflows/old.yml", ".dockerignore", "scripts/py/__pycache__/old.pyc"])) == 12
 
 paths = subprocess.check_output(
     ["git", "ls-files", "-co", "--exclude-standard", "-z"], cwd=ROOT

@@ -75,12 +75,12 @@ jobs:
             comparison="$BASE_SHA..$HEAD_SHA"
           fi
           changed=$(git diff --name-only "$comparison")
-          if grep -Eq '^(images/|build/|\.github/workflows/|clusters/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
+          if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
           else
             echo 'relevant=false' >> "$GITHUB_OUTPUT"
           fi
-          if grep -Ev '^(clusters/|deploy/clusters/|deploy/overlays/flux/|deploy/k8s/overlays/flux/|docs/|README\.md$|\.gitignore$)' <<< "$changed" | grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)'; then
+          if grep -Ev '^(deploy/clusters/|deploy/k8s/overlays/flux/|docs/|README\.md$|\.gitignore$)' <<< "$changed" | grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)'; then
             echo 'build=true' >> "$GITHUB_OUTPUT"
           else
             echo 'build=false' >> "$GITHUB_OUTPUT"
@@ -303,7 +303,7 @@ jobs:
         if: steps.scope.outputs.build == 'true'
         run: |
           docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
-          docker exec -i wsproxy-ci node - < scripts/check-wsproxy.cjs
+          docker exec -i wsproxy-ci node - < images/wsproxy/tests/check-wsproxy.cjs
       - name: wsProxy diagnostics
         if: always() && steps.scope.outputs.build == 'true'
         run: docker logs wsproxy-ci || true

@@ -77,8 +77,8 @@ if absent, installs the Flux CLI if missing, runs `flux check --pre`, then calls
 
 - owner GITHUB_USER (default raiken-mf), repository positional argument/default
   robrowser_docker;
-- GITHUB_BRANCH (default main) and CLUSTER_PATH (use the path explicitly reviewed
-  in the installation branch; the first migration phase retains clusters/pi-cluster);
+- GITHUB_BRANCH (default main) and CLUSTER_PATH (explicitly set
+  `deploy/clusters/default` for the reviewed installation branch);
 - the extra image-reflector/image-automation controllers and --personal;
 - KUBECONFIG from the caller, otherwise ~/.kube/config with a system-file fallback.
 
@@ -94,8 +94,8 @@ Do not use the normal active main as though it were a paused installation plan.
 
 For a new cluster, first prepare an operator-reviewed installation branch with
 the same deploy/clusters/default path in its parent manifest and an explicit
-ragnarok-stack suspend:true. This path change is installation-specific and must
-not be merged into main as part of the first migration phase.
+ragnarok-stack suspend:true. The child hold is installation-specific and must
+not be merged into main as part of the path migration.
 Set the child Kustomization's HOST patch to the new installation's browser-reachable
 hostname or IP; the existing value belongs only to the original installation.
 Keep the running cluster on its existing main; do not merge a global pause as

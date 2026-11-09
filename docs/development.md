@@ -8,12 +8,12 @@
 - build/dependencies.env: exact upstream Git revision pins.
 - deploy/compose: local runtime; deploy/k8s/base: concrete GitOps base;
   deploy/k8s/templates: bootstrap templates; deploy/k8s/overlays: release selection.
+  The base is authoritative for shared resource definitions; CI compares each
+  parameterized bootstrap template with its base using standard values.
 - deploy/clusters/default: Flux parent/source and installation-specific child.
 - scripts/sh, scripts/py and scripts/js: project-wide administration and checks;
-  image-specific tests and helpers live with their image. Documented legacy shell
-  and test entrypoints remain as compatibility wrappers. The wsproxy stdin test
-  remains at its historical path because it is piped into a remote container.
-- clusters/pi-cluster and deploy/overlays/flux: temporary Flux migration bridges.
+  image-specific tests and helpers, including the wsproxy stdin test, live with
+  their image. The root `start.sh` remains the Compose entrypoint.
 - docs: installation, operation, development, release and security guidance.
 
 The separate custom-scripts repository owns K3s/Longhorn/Flux bootstrap wrappers;

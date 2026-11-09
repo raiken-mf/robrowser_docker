@@ -22,6 +22,24 @@ def yaml_document(path):
     return yaml.safe_load(path.read_text())
 
 
+template_values = {
+    "NAMESPACE": "ragnarok", "MARIADB_HOST": "database", "MARIADB_DATABASE": "ragnarok",
+    "MARIADB_USER": "ragnarok", "RATHENA_IMAGE_TAG": "stable", "REMOTE_IMAGE_TAG": "stable",
+    "VITE_IMAGE_TAG": "stable", "WSPROXY_IMAGE_TAG": "stable", "PORT_HTTP": "30080",
+    "PORT_FRONTEND": "30000", "PORT_WSPROXY": "30599",
+}
+templates = sorted((ROOT / "deploy/k8s/templates").glob("*.yaml"))
+assert {template.name for template in templates} == {
+    "mariadb.yaml", "namespace.yaml", "network-policy.yaml", "pvc-client-data.yaml",
+    "pvc-helper.yaml", "rathena.yaml", "remote.yaml", "robrowser.yaml", "wsproxy.yaml",
+}
+for template in templates:
+    base = ROOT / "deploy/k8s/base" / template.name
+    assert base.is_file(), f"Missing base for {template.name}"
+    rendered = re.sub(r"\$\{([A-Z_]+)\}", lambda match: template_values[match.group(1)], template.read_text())
+    assert list(yaml.safe_load_all(rendered)) == list(yaml.safe_load_all(base.read_text())), f"Template drift: {template.name}"
+
+
 def validate_matrix(matrix):
     assert sorted(matrix["image"]) == sorted(["remote", "robrowser", "rathena", "wsproxy"])
     assert sorted(matrix["arch"]) == ["amd64", "arm64"]
@@ -120,8 +138,8 @@ build_line = next(line for line in scope_run.splitlines() if "grep -Ev" in line 
 patterns = re.findall(r"grep -E[vq] '([^']+)'", build_line)
 assert len(patterns) == 2
 for paths, expected in ((["docs/gitops.md"], False), (["deploy/clusters/default/ragnarok-app.yaml"], False),
-                        (["deploy/k8s/overlays/flux/kustomization.yaml", "deploy/overlays/flux/kustomization.yaml"], False),
-                        (["clusters/pi-cluster/kustomization.yaml", "images/robrowser/Dockerfile"], True),
+                        (["deploy/k8s/overlays/flux/kustomization.yaml"], False),
+                        (["deploy/clusters/default/kustomization.yaml", "images/robrowser/Dockerfile"], True),
                         (["images/rathena/Dockerfile"], True), (["deploy/k8s/base/rathena.yaml"], True),
                         (["deploy/k8s/overlays/other/kustomization.yaml"], True)):
     filtered = subprocess.run(["grep", "-Ev", patterns[0]], input="\n".join(paths) + "\n", text=True, capture_output=True)
@@ -153,12 +171,13 @@ assert pr_step["if"] == "steps.update.outputs.changed == 'true'"
 assert all(value in pr_step["run"] for value in ("scripts/py/check-fork-update-cycle.py", "branch='automation/upstream-dependency-update'", "gh pr create", "gh pr edit"))
 
 publish = (ROOT / ".github/workflows/publish.yml").read_text()
-assert "for overlay in deploy/k8s/overlays/flux deploy/overlays/flux; do" in publish
-assert "git add deploy/k8s/overlays/flux/kustomization.yaml deploy/overlays/flux/kustomization.yaml" in publish
+assert "pushd deploy/k8s/overlays/flux" in publish
+assert "git add deploy/k8s/overlays/flux/kustomization.yaml" in publish
 assert "gh pr merge" not in (ROOT / ".github/workflows/dependency-update.yml").read_text()
 assert not (ROOT / ".github/workflows/dependabot-automerge.yml").exists()
 assert subprocess.run(["git", "check-ignore", "-q", "--no-index", "database/conf.d/local.cnf"], cwd=ROOT).returncode == 0
-assert "../../database/conf.d:/etc/mariadb.conf.d:ro" in (ROOT / "deploy/compose/docker-compose-common.yml").read_text()
+assert subprocess.run(["git", "check-ignore", "-q", "--no-index", "deploy/compose/conf.d/local.cnf"], cwd=ROOT).returncode == 0
+assert "./conf.d:/etc/mariadb.conf.d:ro" in (ROOT / "deploy/compose/docker-compose-common.yml").read_text()
 legacy = subprocess.run(["bash", str(ROOT / "scripts/sh/k8s/k8s-rathena.sh")], capture_output=True, text=True)
 assert legacy.returncode != 0 and "disabled" in legacy.stderr
 

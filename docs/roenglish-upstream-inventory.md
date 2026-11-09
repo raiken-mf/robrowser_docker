@@ -18,7 +18,7 @@ components; neither audit asserts complete browser compatibility.
 `SystemEN`, then overlaid the corresponding Pre-Renewal trees when the build
 argument `SET_PRERENEWAL=1`. It also copied `Additions/SystemEN/PetEvolution.lub`.
 It did not run upstream generators or apply Compatibility or other Additions or
-Addons. `scripts/check-roenglish.py` checks the resulting base/Pre-Renewal
+Addons. `images/remote/tests/check-roenglish.py` checks the resulting base/Pre-Renewal
 translation hashes and PetEvolution, not the omitted layers. Repository overrides
 and mounted client resources may affect what is served separately from this build.
 

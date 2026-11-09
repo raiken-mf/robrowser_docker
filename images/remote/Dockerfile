@@ -27,45 +27,24 @@ RUN apk add --no-cache \
 
 # Stay on PHP 8.4 while accepting patched releases from Alpine. Reject old
 # packages even if the package selection or repository configuration changes.
-RUN php -r 'if (PHP_VERSION_ID < 80427 || PHP_VERSION_ID >= 80500) { fwrite(STDERR, "PHP 8.4.27 or newer in the 8.4 branch is required\n"); exit(1); }'
 COPY images/remote/security.ini /etc/php84/conf.d/99-robrowser-security.ini
-# Alpine packages the session extension separately; also check the configured
-# value when the extension is absent so installing it later remains safe.
-RUN php -r 'if (get_cfg_var("session.upload_progress.enabled") !== "0" || (extension_loaded("session") && ini_get("session.upload_progress.enabled") !== "0")) { fwrite(STDERR, "Session upload progress must be disabled\n"); exit(1); }'
+RUN php -r '$ini = parse_ini_file("/etc/php84/conf.d/99-robrowser-security.ini"); if (PHP_VERSION_ID < 80427 || PHP_VERSION_ID >= 80500) { fwrite(STDERR, "PHP 8.4.27 or newer in the 8.4 branch is required\n"); exit(1); } if (get_cfg_var("session.upload_progress.enabled") !== "0" || (extension_loaded("session") && ini_get("session.upload_progress.enabled") !== "0")) { fwrite(STDERR, "Session upload progress must be disabled\n"); exit(1); } if (ini_get("memory_limit") !== "1024M" || ($ini["max_execution_time"] ?? null) !== "600") { fwrite(STDERR, "PHP runtime limits were not applied\n"); exit(1); }'
 
-# Configure Apache to unprivileged port 8080 & PHP runtime settings
-RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/httpd.conf && \
-    sed -i 's/:80/:8080/g' /etc/apache2/httpd.conf && \
-    echo "LoadModule rewrite_module modules/mod_rewrite.so" >> /etc/apache2/httpd.conf && \
-    echo "LoadModule headers_module modules/mod_headers.so" >> /etc/apache2/httpd.conf && \
-    sed -i "s|AllowOverride None|AllowOverride All|g" /etc/apache2/httpd.conf && \
-    echo "TraceEnable Off" >> /etc/apache2/httpd.conf && \
-    echo "ServerName localhost" >> /etc/apache2/httpd.conf && \
-    echo 'Header onsuccess unset Access-Control-Allow-Origin' >> /etc/apache2/httpd.conf && \
-    echo 'Header always unset Access-Control-Allow-Origin' >> /etc/apache2/httpd.conf && \
-    echo 'Header set Access-Control-Allow-Origin "*"' >> /etc/apache2/httpd.conf && \
-    echo 'Header set Access-Control-Allow-Methods "GET, POST, OPTIONS"' >> /etc/apache2/httpd.conf && \
-    echo 'Header set Access-Control-Allow-Headers "*"' >> /etc/apache2/httpd.conf && \
-    PHP_INI="$(php --ini | sed -n 's/^Loaded Configuration File: *//p')" && \
-    test -f "$PHP_INI" && \
-    sed -i "s/memory_limit = .*/memory_limit = 1024M/g" "$PHP_INI" && \
-    sed -i "s/max_execution_time = .*/max_execution_time = 600/g" "$PHP_INI" && \
-    sed -i 's/^User .*/User robrowser/' /etc/apache2/httpd.conf && \
-    sed -i 's/^Group .*/Group robrowser/' /etc/apache2/httpd.conf
+# Declarative Apache server and access configuration on unprivileged port 8080.
+COPY images/remote/httpd.conf /etc/apache2/httpd.conf
+COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
 
 # The Apache image has no dependency on roBrowserLegacy frontend sources.
 RUN test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
     git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/remote && \
-    git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}"
+    git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}" && \
+    rm -rf /var/www/localhost/htdocs/remote/.git
 
 # Keep the complete pinned source tree for runtime selection.
 RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
     git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
     test -d /opt/translation/Translation && \
     rm -rf /opt/translation/.git
-
-# Protect non-public application files and mounted archives with Apache.
-COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI /opt/client_files/System && \
@@ -76,12 +55,12 @@ RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files
     ln -s /opt/client_files/AI /var/www/localhost/htdocs/AI && \
     ln -s /opt/client_files/AI /var/www/localhost/htdocs/remote/AI
 
-
 # Static service status, custom overrides, and startup entrypoint
 COPY images/remote/index.html /var/www/localhost/htdocs/index.html
 COPY images/remote/repository_override/ /var/www/localhost/htdocs/
 COPY images/remote/roenglish-generate.php /usr/local/bin/roenglish-generate.php
 COPY images/remote/roenglish-startup.php /usr/local/bin/roenglish-startup.php
+COPY --chmod=755 images/remote/entrypoint.sh /entrypoint.sh
 
 # Keep the existing image files once, outside the document root. Public paths
 # follow the one atomically selected runtime generation.
@@ -93,18 +72,13 @@ RUN set -eu; \
         mkdir -p "$root/$name"; \
         mv "$root/$name" /opt/remote-base/; \
         ln -s "/opt/remote-runtime/current/$name" "$root/$name"; \
-    done
-COPY images/remote/entrypoint.sh /entrypoint.sh
-
-# Create non-root user and set permissions for runtime directories
-RUN addgroup -g 1000 robrowser && \
+    done && \
+    rm -rf /var/www/localhost/htdocs/.git /var/www/localhost/htdocs/remote/.git && \
+    addgroup -g 1000 robrowser && \
     adduser -u 1000 -G robrowser -D robrowser && \
     mkdir -p /run/apache2 /var/log/apache2 && \
     chown -R robrowser:robrowser /var/www/localhost/htdocs /opt/client_files /opt/remote-runtime /run/apache2 /var/log/apache2 && \
-    chmod 755 /entrypoint.sh
-
-RUN rm -rf /var/www/localhost/htdocs/.git /var/www/localhost/htdocs/remote/.git \
-    && echo 'RedirectMatch 404 /\.git' >> /etc/apache2/httpd.conf
+    httpd -t
 
 USER robrowser
 WORKDIR /var/www/localhost/htdocs

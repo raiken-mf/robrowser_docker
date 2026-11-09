@@ -1,0 +1,7 @@
+userid: ${SET_INTERSRV_USER}
+passwd: ${SET_INTERSRV_PASSWORD}
+
+login_ip: ${LOGIN_SERVER_HOST}
+char_ip: ${CHAR_SERVER_HOST}
+
+pincode_enabled: ${SET_PINCODE_ENABLED}

@@ -9,7 +9,7 @@ and local client-file layout.
 
 | Situation | Procedure |
 | --- | --- |
-| New Pi/cluster, no K3s or Longhorn | [Cluster installation](cluster-installation.md) |
+| New cluster, no K3s or Longhorn | [Cluster installation](cluster-installation.md) |
 | Cluster exists, Ragnarok stack is new | [Fresh Ragnarok installation](fresh-install-runbook.md) |
 | Stack already runs under Flux | [Operations and rollback](operations.md) |
 | Local Docker/rAthena or Hercules | [Deployment and configuration](deployment.md) |

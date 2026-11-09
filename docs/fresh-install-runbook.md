@@ -2,7 +2,7 @@
 
 This runbook is for an **empty application installation** on an already prepared
 cluster. It is not the maintenance procedure for the running GitOps stack. The
-Pi installation has completed: both Flux Kustomizations are active/Ready and
+example installation has completed: both Flux Kustomizations are active/Ready and
 browser login succeeded. Nothing here says to suspend that working installation.
 
 ## Prerequisites and approval gate
@@ -31,20 +31,20 @@ or ignored override payloads. A separate worktree can use the originals by
 absolute path. For example, after choosing the intended checkout:
 
 ```bash
-export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-export ENV_FILE=/home/pi/git/robrowser_docker/.env
-export CLIENT_SOURCE_DIR=/home/pi/git/robrowser_docker/client
+export KUBECONFIG="$HOME/.kube/config"
+export ENV_FILE="$PWD/.env"
+export CLIENT_SOURCE_DIR="$PWD/client"
 kubectl config current-context
 kubectl get nodes -o wide
 flux get kustomizations -n flux-system
 ```
 
 These are environment/read-only checks. Never print kubeconfig, `.env`, Secret
-data or registry credentials. On another host use its authorized kubeconfig;
-copying a Pi file with a localhost server address is not sufficient.
+data or registry credentials. Use an authorized kubeconfig for the target;
+copying a file with a localhost server address to another host is not sufficient.
 
-The verified Pi uses HOST=pi, PORT_FRONTEND=30000, PORT_HTTP=30080 and
-PORT_WSPROXY=30599. Keep the existing variable names and fallbacks. All database
+Set HOST to a browser-reachable hostname or IP and choose the appropriate ports.
+Keep the existing variable names and fallbacks. All database
 and interserver credentials are read from local `.env` exactly as configured;
 bootstrap does not invent passwords or restore backups.
 
@@ -67,7 +67,7 @@ establish a recovery path after deletion; this runbook assumes an empty new DB.
 ## Read-only bootstrap check
 
 ```bash
-bash scripts/k8s-all.sh --check
+bash scripts/sh/k8s/k8s-all.sh --check
 ```
 
 No argument also defaults to --check. It loads the local configuration, renders
@@ -88,7 +88,7 @@ provenance. See [configuration sources](deployment.md#configuration-sources).
 Only after the installation approval and a successful preflight:
 
 ```bash
-bash scripts/k8s-all.sh --apply
+bash scripts/sh/k8s/k8s-all.sh --apply
 ```
 
 The script runs the complete application sequence:
@@ -134,7 +134,7 @@ commit or recreate them to make GitOps adopt the stack.
 
 ## What was actually verified
 
-The completed Pi installation and login were confirmed by the operator on
+The completed example installation and login were confirmed by the operator on
 2026-11-02. The empty MariaDB 11.8.6 schema/bootstrap was also tested in disposable
 Docker containers against the published rAthena image. CI tests secret rendering,
 failure/ordering behavior through a fake kubectl, and the frontend/remote images.

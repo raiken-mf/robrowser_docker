@@ -1,0 +1,29 @@
+name: Monitor XERJ references
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 8 * * 1'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: xerj-reference-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Compare reviewed references and update review PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: bash scripts/sh/ci/check-xerj-updates.sh

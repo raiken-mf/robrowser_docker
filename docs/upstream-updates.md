@@ -9,19 +9,16 @@ updates changed pins and validates the candidate source layouts.
 ## Distinct approval boundaries
 
 - The source updater uses UPSTREAM_PR_TOKEN to create/update
-  automation/upstream-dependency-update and explicitly requests squash auto-merge
-  after required checks. Its branch-update implementation currently force-pushes
-  that dedicated automation branch; operators should review that policy separately.
-- Dependabot checks actions, image bases and the project npm overlays. The
-  Dependabot Auto-Merge workflow enables auto-merge only for non-draft Dependabot
-  PRs targeting main. Required repository checks/protections still apply.
+  automation/upstream-dependency-update. Its branch-update implementation
+  force-pushes that dedicated automation branch; review that policy separately.
+- Dependabot checks actions, image bases and the project npm overlays. Neither
+  workflow requests auto-merge; human review and branch protection remain required.
 - These are **source/dependency PR** behaviors. Publish opens a separate **draft
   GitOps image-pin PR**, and does not request its auto-merge. It requires release
   approval before an active Flux reconciler adopts it.
 
-One source-PR body text currently says no automatic merge, but the executable
-workflow ends in gh pr merge --auto; this guide describes that actual behavior.
-This documentation cleanup does not change automation policy or enable merges.
+Repository rules and externally configured automation must also be checked for
+unintended bypasses; these workflows cannot enforce repository settings.
 
 The updater requires a repository-scoped UPSTREAM_PR_TOKEN with Contents and Pull
 requests write access. Keep it in Actions Secrets, never Git or chat. A workflow

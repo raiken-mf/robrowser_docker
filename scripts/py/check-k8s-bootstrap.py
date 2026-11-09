@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Check offline bootstrap confidentiality and credential mappings with fixtures."""
+import base64
+import json
+import os
+from pathlib import Path
+import stat
+import subprocess
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[2]
+with tempfile.TemporaryDirectory(prefix='bootstrap-check-') as directory:
+    work = Path(directory)
+    fixture = work / 'fixture.env'
+    # Deliberately synthetic, never used by a deployment.
+    values = {'MARIADB_HOST': 'database', 'MARIADB_DATABASE': 'ragnarok', 'MARIADB_USER': 'ragnarok',
+              'MARIADB_ROOT_PASSWORD': 'fixture-root-only', 'MARIADB_PASSWORD': 'fixture-db-only',
+              'SET_INTERSRV_USER': 'fixture-server', 'SET_INTERSRV_PASSWORD': 'fixture-server-only'}
+    fixture.write_text(''.join(f'{key}={value}\n' for key, value in values.items()))
+    command = ['python3', str(ROOT / 'scripts/py/render-k8s-bootstrap.py')]
+    bad = subprocess.run(command + ['--env-file', str(ROOT / '.env-tmpl'), '--output-dir', str(work/'bad')], capture_output=True, text=True)
+    assert bad.returncode and not (work/'bad').exists(), 'Repository template accepted as operator configuration'
+    result = subprocess.run(command + ['--env-file', str(fixture), '--output-dir', str(work/'private')], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    for key in ('MARIADB_ROOT_PASSWORD', 'MARIADB_PASSWORD', 'SET_INTERSRV_PASSWORD'):
+        assert values[key] not in result.stdout + result.stderr, 'Credential in output'
+    path = work/'private/bootstrap.json'
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+    objects = json.loads(path.read_text())['items']
+    secrets = {o['metadata']['name']: o for o in objects if o['kind']=='Secret'}
+    data = {k:base64.b64decode(v).decode() for k,v in secrets['mariadb-user-secret']['data'].items()}
+    assert data['password'] == data['MARIADB_PASSWORD'] == values['MARIADB_PASSWORD']
+    assert data['SET_INTERSRV_PASSWORD'] == values['SET_INTERSRV_PASSWORD']
+    again = subprocess.run(command + ['--env-file', str(fixture), '--output-dir', str(work/'private')], capture_output=True, text=True)
+    assert again.returncode, 'Existing private bootstrap overwritten'
+    installer_fixture = work / 'installer.env'
+    installer_fixture.write_text(''.join(f'{key}={value}\n' for key, value in values.items()
+                                         if key not in ('MARIADB_HOST', 'MARIADB_DATABASE', 'MARIADB_USER')))
+    binary = work / 'bin'
+    binary.mkdir()
+    fake = binary / 'kubectl'
+    fake.write_text('''#!/usr/bin/env python3
+import json, os, sys
+args = sys.argv[1:]
+with open(os.environ['MOCK_LOG'], 'a') as stream:
+    stream.write(json.dumps(args) + '\\n')
+if 'get' in args and 'endpoints' in args:
+    print('127.0.0.1')
+elif 'create' in args:
+    print('kind: Namespace')
+elif 'apply' in args:
+    data = sys.stdin.read()
+    if data.startswith('{'):
+        with open(os.environ['MOCK_MANIFEST'], 'w') as stream:
+            stream.write(data)
+''')
+    fake.chmod(0o755)
+    helm = binary / 'helm'
+    helm.write_text('#!/bin/sh\nexit 0\n')
+    helm.chmod(0o755)
+    envsubst = binary / 'envsubst'
+    envsubst.write_text('#!/bin/sh\ncat\n')
+    envsubst.chmod(0o755)
+    log, manifest = work / 'calls.jsonl', work / 'manifest.json'
+    env = {'PATH': str(binary) + os.pathsep + os.environ['PATH'], 'ENV_FILE': str(installer_fixture),
+           'MOCK_LOG': str(log), 'MOCK_MANIFEST': str(manifest), 'TMPDIR': str(work)}
+    result = subprocess.run(['bash', str(ROOT / 'scripts/sh/k8s/k8s-mariadb.sh')], cwd=ROOT,
+                            env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    assert not any(values[key] in result.stdout + result.stderr + log.read_text()
+                   for key in ('MARIADB_ROOT_PASSWORD', 'MARIADB_PASSWORD', 'SET_INTERSRV_PASSWORD'))
+    items = json.loads(manifest.read_text())['items']
+    assert len(items) == 2 and all(item['kind'] == 'Secret' for item in items)
+    user = next(item for item in items if item['metadata']['name'] == 'mariadb-user-secret')
+    decoded = {key: base64.b64decode(value).decode() for key, value in user['data'].items()}
+    assert decoded['MARIADB_HOST'] == 'mariadb' and decoded['MARIADB_USER'] == 'ragnarok-user'
+    assert decoded['SET_INTERSRV_PASSWORD'] == values['SET_INTERSRV_PASSWORD']
+print('PASS offline bootstrap: requires operator config, preserves secret mappings, private modes, no output leaks or overwrite')

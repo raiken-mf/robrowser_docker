@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+- Organize shell, Python and PHP scripts by language; the Compose entrypoint is
+  `scripts/sh/compose/start-compose.sh` and no longer installs Docker.
+- Preserve the read-only MariaDB configuration mount and ignore local overrides.
+- Restrict Vite hosts and CORS, and encode rAthena SQL values before interpolation.
+- Pass configured environment values to all Compose rAthena services.
+
 ## 2026-11-02 — completed split-stack installation and documentation
 
 - Final runtime names: robrowser is Node.js/Vite frontend; remote is Apache/PHP,

@@ -5,7 +5,6 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'clusters/**'
       - '.gitignore'
       - 'README.md'
       - 'docs/**'
@@ -29,6 +28,7 @@ jobs:
     needs: pr-image-security
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -42,6 +42,12 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Test XERJ reference monitor
+        run: python3 scripts/py/check-xerj-monitor.py
+
+      - name: Validate repository script layout
+        run: python3 scripts/py/check-script-layout.py
 
       - name: Determine scope
         id: scope
@@ -61,7 +67,7 @@ jobs:
           else
             changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           fi
-          if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
+          if grep -Eq '^(images/|build/|\.github/workflows/|clusters/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
             echo 'relevant=true' >> "$GITHUB_OUTPUT"
           else
             echo 'relevant=false' >> "$GITHUB_OUTPUT"
@@ -74,16 +80,19 @@ jobs:
 
       - name: Validate pinned source layouts
         if: steps.scope.outputs.relevant == 'true'
-        run: bash scripts/check-upstream-layout.sh
+        run: |
+          python3 scripts/py/check-dockerfile-configs.py
+          bash scripts/sh/ci/check-upstream-layout.sh
 
       - name: Validate Kustomize manifests
         if: steps.scope.outputs.relevant == 'true'
-        run: kubectl kustomize deploy/overlays/flux >/dev/null
+        run: |
+          bash scripts/sh/ci/check-platform-config.sh
 
       - name: Render configurable Kubernetes web manifests
         if: steps.scope.outputs.relevant == 'true'
         run: |
-          ENV_FILE=.env-tmpl bash scripts/render-web-manifests.sh "$RUNNER_TEMP/web-manifests"
+          ENV_FILE=.env-tmpl bash scripts/sh/k8s/render-web-manifests.sh "$RUNNER_TEMP/web-manifests"
           if grep -R -F "\${" "$RUNNER_TEMP/web-manifests"; then
             echo 'Unresolved Kubernetes template variables' >&2
             exit 1
@@ -92,13 +101,14 @@ jobs:
       - name: Validate private offline Kubernetes bootstrap
         if: steps.scope.outputs.relevant == 'true'
         run: |
-          python3 scripts/check-k8s-bootstrap.py
-          python3 scripts/check-k8s-all.py
+          python3 scripts/py/check-k8s-bootstrap.py
+          python3 scripts/py/check-k8s-all.py
 
       - name: Validate Docker Compose
         if: steps.scope.outputs.relevant == 'true'
         shell: bash
         run: |
+          python3 scripts/py/check-compose-contract.py
           cp .env-tmpl .env
           set -a
           source .env
@@ -156,35 +166,35 @@ jobs:
 
       - name: Regress cache-busted iframe HTML and Vite module handshake
         if: steps.scope.outputs.relevant == 'true'
-        run: python3 scripts/check-api-module.py robrowser:ci
+        run: python3 images/robrowser/tests/check-api-module.py robrowser:ci
 
       - name: Run ROEnglish generator fixtures
         if: steps.scope.outputs.relevant == 'true'
         run: |
           docker run --rm --entrypoint php \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
-            remote:ci /repo/scripts/check-roenglish-generator.php
+            remote:ci /repo/images/remote/tests/check-roenglish-generator.php
 
       - name: Verify generated Renewal and Pre-Renewal translations
         if: steps.scope.outputs.relevant == 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y lua5.1
-          bash scripts/check-roenglish.sh
+          bash images/remote/tests/check-roenglish.sh
 
       - name: Smoke-test runtime generation and HTTP via isolated Compose web services
         if: steps.scope.outputs.relevant == 'true'
-        run: python3 scripts/check-compose.py
+        run: python3 scripts/py/check-compose.py
 
       - name: Verify image filesystem boundaries
         if: steps.scope.outputs.relevant == 'true'
-        run: bash scripts/check-image-boundaries.sh remote:ci robrowser:ci
+        run: bash scripts/sh/ci/check-image-boundaries.sh remote:ci robrowser:ci
 
       - name: Verify independent image overrides
         if: steps.scope.outputs.relevant == 'true'
         env:
           OVERRIDE_BUILDX: "1"
-        run: python3 scripts/check-image-overrides.py
+        run: python3 scripts/py/check-image-overrides.py
 
       - name: Smoke-test roBrowser
         if: steps.scope.outputs.relevant == 'true'
@@ -210,7 +220,8 @@ jobs:
           }
           wait_http http://127.0.0.1:8080/
           wait_http http://127.0.0.1:3000/
-          docker cp scripts/check-php.php remote-ci:/var/www/localhost/htdocs/ci-php-check.php
+          curl -fsS -H 'Host: ro.example.test' http://127.0.0.1:3000/@vite/client >/dev/null
+          docker cp images/remote/tests/check-php.php remote-ci:/var/www/localhost/htdocs/ci-php-check.php
           curl -fsS http://127.0.0.1:8080/ci-php-check.php | \
             grep -Ex 'PHP runtime security check passed \(8\.4\.[0-9]+, apache2handler\)'
           docker exec remote-ci rm /var/www/localhost/htdocs/ci-php-check.php
@@ -251,11 +262,17 @@ jobs:
           context: ./images/rathena
           platforms: linux/amd64
           push: false
+          load: true
+          tags: rathena:ci
           cache-from: type=gha,scope=ci-rathena-amd64
           cache-to: type=gha,scope=ci-rathena-amd64,mode=max,ignore-error=true
           build-args: |
             RATHENA_REPOSITORY=${{ env.RATHENA_REPOSITORY }}
             RATHENA_REF=${{ env.RATHENA_REF }}
+
+      - name: Test rAthena entrypoint
+        if: steps.scope.outputs.rathena == 'true'
+        run: bash images/rathena/tests/check-entrypoint.sh
 
       - name: Build wsProxy
         if: steps.scope.outputs.relevant == 'true'

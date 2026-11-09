@@ -1,22 +1,42 @@
 #!/bin/sh
 set -e
 
+[ "${MARIADB_PASSWORD+x}" != x ] || [ -n "$MARIADB_PASSWORD" ] || { echo 'MARIADB_PASSWORD must not be empty' >&2; exit 1; }
+[ "${SET_INTERSRV_PASSWORD+x}" != x ] || [ -n "$SET_INTERSRV_PASSWORD" ] || { echo 'SET_INTERSRV_PASSWORD must not be empty' >&2; exit 1; }
+
 # Default variables if not set
-MARIADB_HOST="${MARIADB_HOST:-mariadb}"
-MARIADB_DATABASE="${MARIADB_DATABASE:-ragnarok}"
-MARIADB_USER="${MARIADB_USER:-ragnarok-user}"
-MARIADB_PASSWORD="${MARIADB_PASSWORD:-ragnarok_db_pass}"
-LOGIN_SERVER_HOST="${LOGIN_SERVER_HOST:-ragnarok-login}"
-CHAR_SERVER_HOST="${CHAR_SERVER_HOST:-ragnarok-char}"
-MAP_SERVER_HOST="${MAP_SERVER_HOST:-ragnarok-map}"
-SET_INTERSRV_USER="${SET_INTERSRV_USER:-s1}"
-SET_INTERSRV_PASSWORD="${SET_INTERSRV_PASSWORD:-p1}"
+export MARIADB_HOST="${MARIADB_HOST:-mariadb}"
+export MARIADB_DATABASE="${MARIADB_DATABASE:-ragnarok}"
+export MARIADB_USER="${MARIADB_USER:-ragnarok-user}"
+export MARIADB_PASSWORD="${MARIADB_PASSWORD:-ragnarok_db_pass}"
+export LOGIN_SERVER_HOST="${LOGIN_SERVER_HOST:-ragnarok-login}"
+export CHAR_SERVER_HOST="${CHAR_SERVER_HOST:-ragnarok-char}"
+export MAP_SERVER_HOST="${MAP_SERVER_HOST:-ragnarok-map}"
+export SET_INTERSRV_USER="${SET_INTERSRV_USER:-s1}"
+export SET_INTERSRV_PASSWORD="${SET_INTERSRV_PASSWORD:-p1}"
+export SET_PINCODE_ENABLED="${SET_PINCODE_ENABLED:-no}"
+export SET_NEW_ACCOUNT="${SET_NEW_ACCOUNT:-yes}"
 
 # Security hardening
 umask 077
 
+TEMPLATE_DIR="/usr/local/share/rathena/templates"
+
+sql_hex() {
+    printf '%s' "$1" | od -An -tx1 | tr -d ' \n'
+}
+
+carriage_return=$(printf '\r')
+for value in "$MARIADB_HOST" "$MARIADB_DATABASE" "$MARIADB_USER" "$MARIADB_PASSWORD" "$LOGIN_SERVER_HOST" "$CHAR_SERVER_HOST" "$MAP_SERVER_HOST" "$SET_INTERSRV_USER" "$SET_INTERSRV_PASSWORD" "$SET_PINCODE_ENABLED" "$SET_NEW_ACCOUNT"; do
+    case "$value" in *"$carriage_return"*|*'
+'*) echo 'Configuration values must not contain line breaks' >&2; exit 1 ;; esac
+done
+export MYSQL_PWD="$MARIADB_PASSWORD"
+
 check_database_exist() {
-    TABLE_COUNT=$(mariadb -u "${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -s -N -e "SELECT COUNT(DISTINCT table_name) FROM information_schema.columns WHERE table_schema = '${MARIADB_DATABASE}'" 2>/dev/null || echo 0)
+    database_hex=$(sql_hex "${MARIADB_DATABASE}")
+    TABLE_COUNT=$(mariadb -u "${MARIADB_USER}" -h "${MARIADB_HOST}" -s -N -e "SELECT COUNT(DISTINCT table_name) FROM information_schema.columns WHERE table_schema = CONVERT(UNHEX('${database_hex}') USING utf8mb4)") || return 2
+    case "$TABLE_COUNT" in ''|*[!0-9]*) return 2 ;; esac
     if [ "$TABLE_COUNT" -gt 0 ]; then
         return 0
     else
@@ -26,36 +46,40 @@ check_database_exist() {
 
 setup_database() {
     echo "==> Checking database '${MARIADB_DATABASE}' at '${MARIADB_HOST}'..."
-    if ! check_database_exist; then
+    result=0
+    check_database_exist || result=$?
+    [ "$result" -ne 2 ] || { echo 'Database check failed' >&2; return 1; }
+    if [ "$result" -eq 1 ]; then
         echo "==> Database empty. Initializing rAthena schema..."
         
         # Main tables
-        mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/main.sql
-        mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/logs.sql
-        mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/roulette_default_data.sql
-        mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/web.sql
+        mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/main.sql
+        mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/logs.sql
+        mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/roulette_default_data.sql
+        mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/web.sql
 
         if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then
             echo "==> Importing Pre-Renewal DB files..."
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_db.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_skill_db.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_equip.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_etc.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_usable.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_db.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_skill_db.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_equip.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_etc.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_usable.sql
         else
             echo "==> Importing Renewal DB files..."
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_db_re.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_skill_db_re.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_equip.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_etc.sql
-            mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_usable.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_db_re.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/mob_skill_db_re.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_equip.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_etc.sql
+            mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" < /opt/ragnarok/sql-files/item_db_re_usable.sql
         fi
 
         echo "==> Updating interserver credentials for account ID 1..."
-        mariadb -u"${MARIADB_USER}" -p"${MARIADB_PASSWORD}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}" \
-          -e "UPDATE login SET userid = '${SET_INTERSRV_USER}', user_pass = '${SET_INTERSRV_PASSWORD}' WHERE account_id = 1;"
+                interserver_user_hex=$(sql_hex "${SET_INTERSRV_USER}")
+                interserver_password_hex=$(sql_hex "${SET_INTERSRV_PASSWORD}")
+        printf '%s\n' "UPDATE login SET userid = CONVERT(UNHEX('${interserver_user_hex}') USING utf8mb4), user_pass = CONVERT(UNHEX('${interserver_password_hex}') USING utf8mb4) WHERE account_id = 1;" | mariadb -u"${MARIADB_USER}" -h "${MARIADB_HOST}" -D"${MARIADB_DATABASE}"
         echo "==> Database schema initialized successfully!"
     else
         echo "==> Database already initialized."
@@ -65,55 +89,21 @@ setup_database() {
 render_configs() {
     mkdir -p /opt/ragnarok/conf/import
 
-    cat <<CONFIG_EOF > /opt/ragnarok/conf/import/inter_conf.txt
-// Dynamic Runtime Config
-login_server_ip: ${MARIADB_HOST}
-login_server_db: ${MARIADB_DATABASE}
-login_server_id: ${MARIADB_USER}
-login_server_pw: ${MARIADB_PASSWORD}
+    envsubst '${MARIADB_HOST} ${MARIADB_DATABASE} ${MARIADB_USER} ${MARIADB_PASSWORD}' \
+      < "${TEMPLATE_DIR}/inter_conf.txt.template" \
+      > /opt/ragnarok/conf/import/inter_conf.txt
 
-map_server_ip: ${MARIADB_HOST}
-map_server_db: ${MARIADB_DATABASE}
-map_server_id: ${MARIADB_USER}
-map_server_pw: ${MARIADB_PASSWORD}
+    envsubst '${SET_INTERSRV_USER} ${SET_INTERSRV_PASSWORD} ${LOGIN_SERVER_HOST} ${CHAR_SERVER_HOST} ${SET_PINCODE_ENABLED}' \
+      < "${TEMPLATE_DIR}/char_conf.txt.template" \
+      > /opt/ragnarok/conf/import/char_conf.txt
 
-char_server_ip: ${MARIADB_HOST}
-char_server_db: ${MARIADB_DATABASE}
-char_server_id: ${MARIADB_USER}
-char_server_pw: ${MARIADB_PASSWORD}
+    envsubst '${SET_INTERSRV_USER} ${SET_INTERSRV_PASSWORD} ${CHAR_SERVER_HOST} ${MAP_SERVER_HOST}' \
+      < "${TEMPLATE_DIR}/map_conf.txt.template" \
+      > /opt/ragnarok/conf/import/map_conf.txt
 
-ipban_db_ip: ${MARIADB_HOST}
-ipban_db_db: ${MARIADB_DATABASE}
-ipban_db_id: ${MARIADB_USER}
-ipban_db_pw: ${MARIADB_PASSWORD}
-
-log_db_ip: ${MARIADB_HOST}
-log_db_db: ${MARIADB_DATABASE}
-log_db_id: ${MARIADB_USER}
-log_db_pw: ${MARIADB_PASSWORD}
-CONFIG_EOF
-
-    cat <<CONFIG_EOF > /opt/ragnarok/conf/import/char_conf.txt
-userid: ${SET_INTERSRV_USER}
-passwd: ${SET_INTERSRV_PASSWORD}
-
-login_ip: ${LOGIN_SERVER_HOST}
-char_ip: ${CHAR_SERVER_HOST}
-
-pincode_enabled: ${SET_PINCODE_ENABLED:-no}
-CONFIG_EOF
-
-    cat <<CONFIG_EOF > /opt/ragnarok/conf/import/map_conf.txt
-userid: ${SET_INTERSRV_USER}
-passwd: ${SET_INTERSRV_PASSWORD}
-
-char_ip: ${CHAR_SERVER_HOST}
-map_ip: ${MAP_SERVER_HOST}
-CONFIG_EOF
-
-    cat <<CONFIG_EOF > /opt/ragnarok/conf/import/login_conf.txt
-new_account: ${SET_NEW_ACCOUNT:-yes}
-CONFIG_EOF
+    envsubst '${SET_NEW_ACCOUNT}' \
+      < "${TEMPLATE_DIR}/login_conf.txt.template" \
+      > /opt/ragnarok/conf/import/login_conf.txt
 
     if [ -n "${SET_MOTD:-}" ]; then
         printf "%s" "${SET_MOTD}" > /opt/ragnarok/conf/motd.txt
@@ -127,6 +117,7 @@ render_configs
 if [ "${INIT_DB:-true}" = "true" ]; then
     setup_database
 fi
+unset MYSQL_PWD
 
 # 3. Start specified command or default to shell
 exec "$@"

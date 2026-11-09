@@ -19,7 +19,7 @@ on the Apache service; `/` on that service is its static status page.
 `.env-tmpl` is a starting template; preserve/edit the existing local `.env`.
 Never commit passwords, private bootstrap output or client assets.
 
-| Setting | Template/Pi value | Compose fallback | Kubernetes fallback | Internal port |
+| Setting | Template value | Compose fallback | Kubernetes fallback | Internal port |
 | --- | --- | --- | --- | --- |
 | PORT_FRONTEND | 30000 | 3000 | 30000 | 3000 |
 | PORT_HTTP | 30080 | 8080 | 30080 | 8080 |
@@ -27,12 +27,16 @@ Never commit passwords, private bootstrap output or client assets.
 
 Compose uses these variables for **host** ports; Kubernetes templates use them
 for **NodePorts**. Changing them does not change container listeners/target ports.
-HOST must resolve from the browser: the verified Pi configuration uses HOST=pi.
+HOST must resolve from the browser; the template uses `127.0.0.1` for local access.
+The Kubernetes base retains the existing host until the staged Flux migration is
+complete. Set a reachable hostname or IP for remote clients.
+Vite accepts this hostname, localhost and IP addresses; cross-origin reads are
+disabled. Configure the browser-facing hostname explicitly when using DNS.
 Internal names `database` and `ragnarok-login` are not public browser hostnames;
 wsProxy resolves game-service names inside the cluster/network.
 
-- **Compose:** the root `.env` supplies interpolation and explicit service
-  `env_file` configuration; mounts refer to this checkout's `client/` directories.
+- **Compose:** the root `.env` supplies interpolation; the rAthena stack passes
+  selected variables explicitly. Mounts refer to this checkout's `client/` directories.
 - **Full bootstrap:** `k8s-all.sh` honors ENV_FILE (default repository `.env`),
   CLIENT_SOURCE_DIR (default repository `client`), K8S_NAMESPACE (default
   ragnarok) and KUBECONFIG (default `/etc/rancher/k3s/k3s.yaml`). It changes to the
@@ -40,10 +44,13 @@ wsProxy resolves game-service names inside the cluster/network.
   running from another worktree.
 - **Offline renderers:** `render-web-manifests.sh` honors ENV_FILE;
   `render-k8s-bootstrap.py` accepts `--env-file` explicitly.
-- **Flux:** reads `deploy/k8s/` through `deploy/overlays/flux`; it does not read
-  local `.env`, rerun the renderer or upload local client files.
+- **Flux:** reads `deploy/k8s/base/` through the `deploy/overlays/flux` bridge; it does not read
+  local `.env`, rerun the renderer or upload local client files. The existing
+  cluster's Flux Kustomization patches its own
+  hostname; configure that patch for your installation before reconciliation.
 - **Legacy component scripts:** several still source `.env` directly. They are
   not the normal GitOps update path and do not all implement ENV_FILE semantics.
+  The MariaDB component installer accepts ENV_FILE and defaults to `.env`.
 
 The web ConfigMap contains HOST, the three ports, SERVER_NAME, SET_PRERENEWAL
 and PACKETVER. rathena-config contains non-secret DB/game configuration. The
@@ -76,16 +83,31 @@ Starting Compose changes local containers; use it only for the intended local
 installation, not to update a Kubernetes deployment:
 
 ```bash
-./start.sh rathena detached
-./start.sh hercules detached
+./scripts/sh/compose/start-compose.sh rathena detached
+./scripts/sh/compose/start-compose.sh hercules detached
 ```
 
-The first argument selects the emulator; `./start.sh detached` is not valid.
-Default `./start.sh` runs rAthena in the foreground. `./start.sh stop` stops the
-Compose stacks. These are script interfaces, not commands executed during the
-final documentation cleanup.
+The starter uses the repository-root `.env` for Compose interpolation; set
+`ENV_FILE` to select another file. Shell environment variables take precedence.
+The first argument selects the emulator; `./scripts/sh/compose/start-compose.sh detached` is not valid.
+Default `./scripts/sh/compose/start-compose.sh` runs rAthena in the foreground. `./scripts/sh/compose/start-compose.sh stop` stops the
+Compose stacks; `./scripts/sh/compose/start-compose.sh down` removes them.
+Stopping or removing the stacks does not require database credentials or an env file.
+Starting the rAthena stack requires nonempty database and interserver passwords;
+MariaDB also requires a root password for initialization.
+
+The starter checks Docker and Compose but does not install them. The historical
+`./start.sh` entrypoint forwards to it. Compose mounts `database/conf.d` read-only;
+local configuration files there are ignored by Git. Kubernetes explicitly configures `utf8mb4_unicode_ci`
+and UTC. Verify collation and time-zone requirements before moving data between
+the two environments. Compose does not configure persistent database storage;
+plan and test persistence and backups before using it for valuable data.
 
 ## Kubernetes
+
+The legacy `scripts/sh/k8s/k8s-rathena.sh` installer is disabled because it exposed
+credentials and interpolated SQL. Use the reviewed fresh-install procedure;
+its preflight is read-only and cluster changes require separate approval.
 
 [Cluster setup](cluster-installation.md), [fresh stack installation](fresh-install-runbook.md)
 and [normal operation](operations.md) are separate procedures. Existing K3s,
@@ -94,23 +116,24 @@ Longhorn, MariaDB operator and Flux must not be reinstalled as routine updates.
 To review web manifests without changing the cluster:
 
 ```bash
-ENV_FILE=/absolute/path/to/.env bash scripts/render-web-manifests.sh /tmp/ragnarok-web-review
-kubectl kustomize deploy/overlays/flux
+ENV_FILE=/absolute/path/to/.env bash scripts/sh/k8s/render-web-manifests.sh /tmp/ragnarok-web-review
+kubectl kustomize deploy/k8s/overlays/flux
 ```
 
 The renderer emits remote.yaml, robrowser.yaml, wsproxy.yaml and
 robrowser-config.yaml. Review ports, namespace, public HOST, image references and
 non-secret values before proposing Git changes. It does not automatically replace
 the concrete manifests or update Flux. Never copy private bootstrap output into
-`deploy/k8s/`.
+`deploy/k8s/base/`.
 
 ## Translation, mounts and overrides
 
-The remote build copies Renewal `data` and `SystemEN` (installed as `remote/System`)
-from pinned ROEnglishRE. SET_PRERENEWAL=1 is a **build argument** adding the
-Pre-Renewal layer afterwards. Runtime changes cannot rebuild those translations.
-Required source directories are checked; optional Addons/Compatibility layers
-are not silently installed.
+The remote image includes the pinned ROEnglishRE source. At container startup,
+`SET_PRERENEWAL=1` selects the Pre-Renewal translation layer; `0` selects Renewal.
+Restart the container after changing runtime settings. The rAthena image also
+uses `SET_PRERENEWAL` at build time to select its server ruleset; keep the build
+and runtime settings consistent. Required source directories are checked, and
+the `ROENGLISH_*` runtime options control optional layers.
 
 `images/remote/repository_override/` is copied after translations into the Apache
 document root. Use remote/data and remote/System for translation overrides.

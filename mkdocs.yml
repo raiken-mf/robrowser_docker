@@ -11,6 +11,7 @@ nav:
   - Image revisions: image-revisions.md
   - Upstream updates: upstream-updates.md
   - Development: development.md
+  - Best practices: BEST_PRACTICES.md
   - Validation: validation.md
   - Security: security.md
   - Frontend iframe regression: frontend-api-module.md

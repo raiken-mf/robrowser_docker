@@ -7,13 +7,29 @@ trap 'rm -r "$work"' EXIT
 kubectl kustomize deploy/k8s/overlays/flux > "$work/resources.yaml"
 diff -u "$work/resources.yaml" <(kubectl kustomize deploy/overlays/flux)
 diff -u <(kubectl kustomize deploy/clusters/default) <(kubectl kustomize clusters/pi-cluster)
+kubectl kustomize clusters/pi-cluster | ruby -ryaml -e '
+    resources = YAML.load_stream(STDIN.read).compact
+    expected = {"flux-system" => "./clusters/pi-cluster", "ragnarok-stack" => "./deploy/overlays/flux"}
+    expected.each do |name, path|
+        matches = resources.select { |resource| resource["apiVersion"] == "kustomize.toolkit.fluxcd.io/v1" && resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
+        abort "Invalid Flux identity or path: #{name}" unless matches.length == 1 && matches.first.dig("spec", "path") == path && matches.first.dig("spec", "prune") == true
+    end
+    identities = resources.map { |resource| [resource["apiVersion"], resource["kind"], resource.dig("metadata", "namespace"), resource.dig("metadata", "name")] }
+    abort "Duplicate parent resource identity" unless identities.uniq.length == identities.length
+'
+ruby -ryaml -e '
+    resources = YAML.load_stream(File.read(ARGV.fetch(0))).compact
+    identities = resources.map { |resource| [resource["apiVersion"], resource["kind"], resource.dig("metadata", "namespace"), resource.dig("metadata", "name")] }
+    abort "Duplicate child resource identity" unless identities.uniq.length == identities.length
+    abort "Missing application namespace" unless identities.include?(["v1", "Namespace", nil, "ragnarok"])
+' "$work/resources.yaml"
 mkdir -p "$work/fixture"
 cp -R deploy clusters "$work/fixture/"
 diff -u <(kubectl kustomize "$work/fixture/deploy/clusters/default") <(kubectl kustomize "$work/fixture/clusters/pi-cluster")
 diff -u <(kubectl kustomize "$work/fixture/deploy/k8s/overlays/flux") <(kubectl kustomize "$work/fixture/deploy/overlays/flux")
 test "$(awk '/^  HOST:/{print $2}' "$work/resources.yaml")" = pi
-grep -Fq 'path: ./deploy/clusters/default' deploy/clusters/default/flux-system/gotk-sync.yaml
-grep -Fq 'path: ./deploy/k8s/overlays/flux' deploy/clusters/default/ragnarok-app.yaml
+grep -Fq 'path: ./clusters/pi-cluster' deploy/clusters/default/flux-system/gotk-sync.yaml
+grep -Fq 'path: ./deploy/overlays/flux' deploy/clusters/default/ragnarok-app.yaml
 grep -Fq 'prune: true' deploy/clusters/default/flux-system/gotk-sync.yaml
 grep -Fq 'prune: true' deploy/clusters/default/ragnarok-app.yaml
 scope=$(sed -n "s/.*grep -Eq '\([^']*\)' <<< \"\$changed\".*/\1/p" .github/workflows/ci.yml | head -n 1)

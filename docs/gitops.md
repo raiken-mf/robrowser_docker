@@ -3,9 +3,9 @@
 ## Source of truth and current state
 
 `deploy/clusters/default/flux-system/gotk-sync.yaml` defines the GitRepository and
-parent Kustomization flux-system. The desired parent path is deploy/clusters/default;
+parent Kustomization flux-system. The active parent path remains clusters/pi-cluster;
 it manages the child object in ragnarok-app.yaml. Both use the same source.
-The desired child path is deploy/k8s/overlays/flux, whose base is deploy/k8s/base.
+The active child path remains deploy/overlays/flux, whose base is deploy/k8s/base.
 The shared base retains the existing host during migration stage one; the existing
 cluster's child Kustomization patches `robrowser-config` with its installation-specific browser hostname. Set
 that patch to your own reachable hostname or IP before adopting this configuration.
@@ -19,19 +19,20 @@ relationship is not an application-health dependency.
 
 ## Cluster path migration
 
-The existing parent still points to `clusters/pi-cluster` until it reconciles
-this change. That path is a temporary Kustomize bridge to the new cluster package;
+The existing parent continues to point to `clusters/pi-cluster` after this merge.
+That path is a temporary Kustomize bridge to the new cluster package;
 the old `deploy/overlays/flux` is an equivalent temporary overlay. Both render
 the same resource identities and image pins as their new counterparts. Keep both
 bridges and their pins synchronized until migration is verified; CI checks equality.
 
-1. Review and merge the bridge and new paths together. Do not change the shared
-   HOST or remove the installation patch in this change. The existing parent can
-   read the bridge and apply its own new path and the child's new path.
-2. After separate operator approval, verify the parent and child are Ready at the
-   intended revision and their live paths are `./deploy/clusters/default` and
-   `./deploy/k8s/overlays/flux`. Check inventory and application health; pruning
-   remains enabled and resource names and namespaces must not change.
+1. Merge the bridges and new directories while retaining both existing paths.
+   Verify the parent and child are Ready at the intended revision, compare their
+   live inventories with the rendered resources, and check application health.
+2. After separate operator approval, review and merge a change setting the parent
+   path to `./deploy/clusters/default` and the child path to
+   `./deploy/k8s/overlays/flux`. Keep both bridges and image pins synchronized;
+   pruning remains enabled, so resource identities must not change. Verify both
+   paths, inventories, revisions and application health after reconciliation.
 3. Only in a later reviewed change remove the bridges after all installations and
    external bootstrap tooling use the new paths. The external bootstrap wrapper's
    default may still be the old path: explicitly set `CLUSTER_PATH` until updated.
@@ -39,7 +40,7 @@ bridges and their pins synchronized until migration is verified; CI checks equal
 For rollback, restore both bridges and their matching pins before reverting either
 live path; verify reconciliation and inventory before removing anything. Never
 delete Flux resources outside `ragnarok` as part of this migration. A fresh install
-must use the new path and the separately reviewed suspended-child procedure below.
+requires a separately reviewed source path and suspended-child procedure below.
 The later shared-HOST migration remains a separate change after the child patch is
 confirmed; this path migration does not activate it.
 

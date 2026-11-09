@@ -7,7 +7,7 @@ spec:
   # Installation hold: resuming the parent must not start this stack.
   suspend: false
   interval: 10m0s
-  path: ./deploy/k8s/overlays/flux
+  path: ./deploy/overlays/flux
   patches:
     - target:
         kind: ConfigMap

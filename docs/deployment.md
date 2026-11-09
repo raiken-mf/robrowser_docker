@@ -44,7 +44,7 @@ wsProxy resolves game-service names inside the cluster/network.
   running from another worktree.
 - **Offline renderers:** `render-web-manifests.sh` honors ENV_FILE;
   `render-k8s-bootstrap.py` accepts `--env-file` explicitly.
-- **Flux:** reads `deploy/k8s/base/` through `deploy/k8s/overlays/flux`; it does not read
+- **Flux:** reads `deploy/k8s/base/` through the `deploy/overlays/flux` bridge; it does not read
   local `.env`, rerun the renderer or upload local client files. The existing
   cluster's Flux Kustomization patches its own
   hostname; configure that patch for your installation before reconciliation.
@@ -87,13 +87,12 @@ installation, not to update a Kubernetes deployment:
 ./scripts/sh/compose/start-compose.sh hercules detached
 ```
 
+The starter uses the repository-root `.env` for Compose interpolation; set
+`ENV_FILE` to select another file. Shell environment variables take precedence.
 The first argument selects the emulator; `./scripts/sh/compose/start-compose.sh detached` is not valid.
 Default `./scripts/sh/compose/start-compose.sh` runs rAthena in the foreground. `./scripts/sh/compose/start-compose.sh stop` stops the
-Compose stacks. These are script interfaces, not commands executed during the
-final documentation cleanup.
-Stopping or removing the rAthena Compose stack directly does not require database
-credentials. The legacy starter also loads the Hercules configuration when
-stopping and therefore still requires its `.env` file.
+Compose stacks; `./scripts/sh/compose/start-compose.sh down` removes them.
+Stopping or removing the stacks does not require database credentials or an env file.
 Starting the rAthena stack requires nonempty database and interserver passwords;
 MariaDB also requires a root password for initialization.
 

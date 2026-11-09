@@ -44,9 +44,9 @@ to its environment; restrict process access.
 The active rAthena Compose stack passes explicitly selected environment variables
 to each service. Empty database or interserver passwords are rejected by the
 rAthena entrypoint; MariaDB rejects initialization without a root password.
-Direct rAthena Compose lifecycle commands can render without credentials. The
-legacy starter also loads the Hercules configuration when stopping and still
-requires its `.env` file. Hercules is outside the current scope: its existing Compose
+The starter's lifecycle commands can render without credentials; it suppresses
+the Hercules service env file only for stop and down. Hercules is outside the
+current scope: its existing Compose
 credential propagation, runtime configuration, SQL interpolation and password
 arguments require a separate security and integration review before Hercules use.
 The standalone MariaDB installer renders private Secret files

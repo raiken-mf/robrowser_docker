@@ -25,19 +25,33 @@ if [ "${2:-}" == "detached" ]; then
     MODE="-d"
 fi
 
+ENV_FILE=${ENV_FILE:-.env}
+COMPOSE_ENV=()
+if [ -f "$ENV_FILE" ] && [ -r "$ENV_FILE" ]; then
+    COMPOSE_ENV=(--env-file "$ENV_FILE")
+elif [ "$EMULATOR" != stop ] && [ "$EMULATOR" != down ]; then
+    echo "Error: Compose environment file is missing or unreadable" >&2
+    exit 1
+else
+  COMPOSE_ENV=(--env-file /dev/null)
+fi
+
 case "$EMULATOR" in
   rathena)
-    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml up $MODE
+    docker compose "${COMPOSE_ENV[@]}" -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml up $MODE
     ;;
   hercules)
-    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml up $MODE
+    docker compose "${COMPOSE_ENV[@]}" -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml up $MODE
     ;;
-  stop)
-    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml stop
-    docker compose -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml stop
+  stop|down)
+    docker compose "${COMPOSE_ENV[@]}" -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-rathena.yml "$EMULATOR" || exit $?
+    override=$(mktemp "${TMPDIR:-/tmp}/compose-lifecycle.XXXXXXXX") || exit 1
+    trap 'rm -f "$override"' EXIT
+    printf 'services:\n  hercules:\n    env_file: !reset []\n' > "$override" || exit 1
+    docker compose "${COMPOSE_ENV[@]}" -f ./deploy/compose/docker-compose-common.yml -f ./deploy/compose/docker-compose-hercules.yml -f "$override" "$EMULATOR"
     ;;
   *)
-    echo "Usage: $0 [rathena|hercules] [detached] | stop"
+    echo "Usage: $0 [rathena|hercules] [detached] | stop | down"
     exit 1
     ;;
 esac

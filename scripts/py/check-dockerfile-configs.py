@@ -1,15 +1,157 @@
 #!/usr/bin/env python3
 """Verify declarative Dockerfile configs, templates, and build-arg validation."""
 import os
+import importlib.util
+import json
 import pathlib
 import re
-import shutil
 import subprocess
+import sys
 import tempfile
+
+import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-subprocess.run(["ruby", str(ROOT / "scripts/sh/ci/check-pr-image-matrix.rb")], check=True)
+spec = importlib.util.spec_from_file_location("fork_cycle", ROOT / "scripts/py/check-fork-update-cycle.py")
+cycle = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cycle)
+
+
+def yaml_document(path):
+    return yaml.safe_load(path.read_text())
+
+
+def validate_matrix(matrix):
+    assert sorted(matrix["image"]) == sorted(["remote", "robrowser", "rathena", "wsproxy"])
+    assert sorted(matrix["arch"]) == ["amd64", "arm64"]
+    assert "exclude" not in matrix
+    assert all(set(entry) == {"arch", "runner"} for entry in matrix["include"])
+    assert sorted((entry["arch"], entry["runner"]) for entry in matrix["include"]) == [
+        ("amd64", "ubuntu-latest"), ("arm64", "ubuntu-24.04-arm")]
+
+
+def pull(author="automation", branch=cycle.BRANCH, state="open", created="2026-11-09T12:00:00Z", labels=(), body=None, closed=None):
+    return {"user": {"login": author}, "head": {"ref": branch}, "base": {"ref": "main"},
+            "state": state, "created_at": created, "closed_at": closed, "body": body,
+            "labels": [{"name": label} for label in labels]}
+
+
+version = pull(author="dependabot[bot]", branch="dependabot/dependencies")
+security = pull(author="dependabot[bot]", branch="dependabot/npm/security", labels=["security"])
+unknown_security = pull(author="dependabot[bot]", branch="dependabot/npm_and_yarn/security-123")
+old_pin = pull(created="2026-11-01T12:00:00Z")
+for pulls, when, expected in (
+    ([], "2026-11-10T10:59:59Z", False), ([], "2026-11-10T11:00:00Z", True),
+    ([version], "2026-11-10T12:00:00Z", False), ([security], "2026-11-10T12:00:00Z", True),
+    ([unknown_security], "2026-11-10T12:00:00Z", False), ([pull(state="closed")], "2026-11-10T12:00:00Z", False),
+    ([old_pin], "2026-11-10T12:00:00Z", True),
+    ([pull(state="closed", created="2026-11-01T12:00:00Z", body="<!-- fork-pin-cycle:2026-11-09 -->")], "2026-11-10T12:00:00Z", False),
+    ([pull(state="closed", created="2026-11-01T12:00:00Z", closed="2026-11-10T11:30:00Z")], "2026-11-10T12:00:00Z", False),
+    ([pull(state="closed")], "2026-11-17T12:00:00Z", True),
+    ([], "2026-07-07T09:59:59Z", False), ([], "2026-07-07T10:00:00Z", True),
+    ([], "2026-03-31T10:00:00Z", True),
+):
+    assert (cycle.decision(pulls, cycle.timestamp(when)) is None) == expected, when
+
+with tempfile.TemporaryDirectory(prefix="fork-cycle-") as directory:
+    fixture = pathlib.Path(directory)
+    gh = fixture / "gh"
+    output = fixture / "output"
+    gh.write_text('#!/bin/sh\n[ "$1" = api ] && [ "$2" = --paginate ] && [ "$3" = --slurp ] || exit 2\nprintf "%s" "$FIXTURE"\n')
+    gh.chmod(0o700)
+    environment = {**os.environ, "PATH": f"{fixture}{os.pathsep}{os.environ['PATH']}",
+                   "GITHUB_REPOSITORY": "owner/repo", "GITHUB_OUTPUT": str(output)}
+    helper = [sys.executable, str(ROOT / "scripts/py/check-fork-update-cycle.py")]
+    for pages, expected_number in (([[], []], ""), ([[], [{**old_pin, "number": 42}]], "42")):
+        output.write_text("")
+        subprocess.run(helper, env={**environment, "FIXTURE": json.dumps(pages)}, check=True, capture_output=True)
+        assert f"pr_number={expected_number}\n" in output.read_text()
+    for invalid in ('{"message":"error"}', '[]', 'invalid'):
+        assert subprocess.run(helper, env={**environment, "FIXTURE": invalid}, capture_output=True).returncode != 0
+    for number in (0, False, "42"):
+        pages = [[{**old_pin, "number": number}]]
+        assert subprocess.run(helper, env={**environment, "FIXTURE": json.dumps(pages)}, capture_output=True).returncode != 0
+    pages = [[{**old_pin, "number": 1}, {**old_pin, "number": 2}]]
+    assert subprocess.run(helper, env={**environment, "FIXTURE": json.dumps(pages)}, capture_output=True).returncode != 0
+    gh.write_text("#!/bin/sh\nexit 1\n")
+    assert subprocess.run(helper, env=environment, capture_output=True).returncode != 0
+
+with tempfile.TemporaryDirectory(prefix="rathena-scope-") as directory:
+    fixture = pathlib.Path(directory)
+    (fixture / "build").mkdir()
+    pins = fixture / "build/dependencies.env"
+    original = f"ROBROWSER_REF={'a' * 40}\nRATHENA_REF={'b' * 40}\n"
+    pins.write_text(original)
+    subprocess.run(["git", "init", "-q", directory], check=True)
+    subprocess.run(["git", "add", "build/dependencies.env"], cwd=fixture, check=True)
+    tree = subprocess.check_output(["git", "write-tree"], cwd=fixture, text=True).strip()
+    scope = ["bash", str(ROOT / "scripts/sh/ci/check-rathena-pin-scope.sh")]
+    for content, expected in ((original, True), (original.replace('a' * 40, 'c' * 40), True),
+                              (original.replace('b' * 40, 'c' * 40), False), (original + "UNKNOWN_REF=new\n", False),
+                              (original.replace('a' * 40, 'invalid'), False),
+                              (original.replace('a' * 40, 'c' * 40) + "+RATHENA_REF=invalid\n", False)):
+        pins.write_text(content)
+        subprocess.run(["git", "add", "build/dependencies.env"], cwd=fixture, check=True)
+        assert (subprocess.run(scope + [tree], cwd=fixture, capture_output=True).returncode == 0) == expected
+    assert subprocess.run(scope + ["invalid-revision"], cwd=fixture, capture_output=True).returncode != 0
+
+matrix = yaml_document(ROOT / ".github/workflows/pr-image-security.yml")["jobs"]["scan"]["strategy"]["matrix"]
+validate_matrix(matrix)
+for invalid in ({**matrix, "image": matrix["image"][1:]}, {**matrix, "image": matrix["image"] + ["hercules"]},
+                {**matrix, "arch": ["amd64"]}, {**matrix, "arch": matrix["arch"] + ["other"]},
+                {**matrix, "exclude": [{"image": "remote", "arch": "arm64"}]},
+                {**matrix, "include": matrix["include"] + [{"image": "hercules", "arch": "amd64"}]}):
+    try:
+        validate_matrix(invalid)
+    except AssertionError:
+        continue
+    raise AssertionError("Invalid matrix was accepted")
+ci = yaml_document(ROOT / ".github/workflows/ci.yml")
+validate = ci["jobs"]["validate"]
+steps = validate["steps"]
+assert validate["needs"] == "pr-image-security"
+assert any('test "$SCAN_RESULT" = success' in step.get("run", "") for step in steps)
+for name in ("Build RemoteClient for smoke test", "Build roBrowser frontend for smoke test", "Build wsProxy"):
+    assert next(step for step in steps if step.get("name") == name)["if"] == "steps.scope.outputs.build == 'true'"
+assert next(step for step in steps if step.get("name") == "Build rAthena on AMD64 (PR validation)")["if"] == "steps.scope.outputs.rathena == 'true'"
+scope_run = next(step for step in steps if step.get("id") == "scope")["run"]
+build_line = next(line for line in scope_run.splitlines() if "grep -Ev" in line and "grep -Eq" in line)
+patterns = re.findall(r"grep -E[vq] '([^']+)'", build_line)
+assert len(patterns) == 2
+for paths, expected in ((["docs/gitops.md"], False), (["deploy/clusters/default/ragnarok-app.yaml"], False),
+                        (["deploy/k8s/overlays/flux/kustomization.yaml", "deploy/overlays/flux/kustomization.yaml"], False),
+                        (["clusters/pi-cluster/kustomization.yaml", "images/robrowser/Dockerfile"], True),
+                        (["images/rathena/Dockerfile"], True), (["deploy/k8s/base/rathena.yaml"], True),
+                        (["deploy/k8s/overlays/other/kustomization.yaml"], True)):
+    filtered = subprocess.run(["grep", "-Ev", patterns[0]], input="\n".join(paths) + "\n", text=True, capture_output=True)
+    assert filtered.returncode in (0, 1)
+    matched = subprocess.run(["grep", "-Eq", patterns[1]], input=filtered.stdout, text=True)
+    assert (matched.returncode == 0) == expected, paths
+dependabot = yaml_document(ROOT / ".github/dependabot.yml")
+assert dependabot["multi-ecosystem-groups"]["dependencies"]["schedule"] == {
+    "interval": "weekly", "day": "monday", "time": "12:00", "timezone": "Europe/Berlin"}
+updates = dependabot["updates"]
+expected = [("github-actions", "/"), ("npm", "/images/robrowser"), ("npm", "/images/wsproxy")] + [
+    ("docker", f"/images/{image}") for image in ("remote", "robrowser", "rathena", "wsproxy", "hercules")]
+assert sorted((entry["package-ecosystem"], entry["directory"]) for entry in updates) == sorted(expected)
+assert all(entry["patterns"] == ["*"] and entry["multi-ecosystem-group"] == "dependencies" for entry in updates)
+assert all(entry["groups"] == {"security": {"applies-to": "security-updates", "patterns": ["*"]}}
+           for entry in updates if entry["package-ecosystem"] in ("npm", "github-actions"))
+updater = yaml_document(ROOT / ".github/workflows/dependency-update.yml")
+assert updater[True] == {"workflow_dispatch": None, "schedule": [{"cron": "23 12 * * *"}]}
+assert updater["concurrency"] == {"group": "upstream-dependency-update", "cancel-in-progress": False}
+updater_steps = updater["jobs"]["update"]["steps"]
+cycle_step = next(step for step in updater_steps if step.get("id") == "cycle")
+update_step = next(step for step in updater_steps if step.get("id") == "update")
+assert "scripts/py/check-fork-update-cycle.py" in cycle_step["run"] and update_step["if"] == "steps.cycle.outputs.ready == 'true'"
+assert all(f"update_pin {name} " in update_step["run"] for name in ("ROBROWSER", "REMOTECLIENT", "RATHENA", "ROENGLISH"))
+layout_step = next(step for step in updater_steps if step.get("name") == "Validate layouts at candidate revisions")
+assert layout_step["if"] == "steps.update.outputs.changed == 'true'" and "scripts/sh/ci/check-upstream-layout.sh" in layout_step["run"]
+pr_step = next(step for step in updater_steps if step.get("name") == "Create or update dependency update PR")
+assert pr_step["if"] == "steps.update.outputs.changed == 'true'"
+assert all(value in pr_step["run"] for value in ("scripts/py/check-fork-update-cycle.py", "branch='automation/upstream-dependency-update'", "gh pr create", "gh pr edit"))
+
 publish = (ROOT / ".github/workflows/publish.yml").read_text()
 assert "for overlay in deploy/k8s/overlays/flux deploy/overlays/flux; do" in publish
 assert "git add deploy/k8s/overlays/flux/kustomization.yaml deploy/overlays/flux/kustomization.yaml" in publish

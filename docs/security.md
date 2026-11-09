@@ -1,5 +1,10 @@
 # Security and private configuration
 
+The fork pin updater runs only from the default branch, checks pull requests
+through the GitHub API before and after candidate validation, and fails closed
+on API errors. Its 24-hour Dependabot window is a heuristic, not proof of a
+completed update run; see [upstream updates](upstream-updates.md).
+
 ## Image release controls
 
 Main CI gates the existing Container Security workflow. It builds changed
@@ -114,6 +119,11 @@ Dependencies/base images/actions are pinned as described in
 [upstream updates](upstream-updates.md). Source/dependency PRs require human
 review, separately from draft GitOps image release approval. Active Flux adopts merged
 manifests automatically; it must be coordinated during emergency imperative work.
+Dependabot security updates are independent of the scheduled version-update group;
+review them promptly. Configured security groups are limited to one ecosystem;
+grouping across directories also depends on repository or organization settings.
+Docker image vulnerabilities still
+require the existing image scans; Dependabot does not provide Docker security PRs.
 
 Do not use setup scripts, namespace resets, blanket image/containerd pruning or
 PVC/Longhorn deletion to fix an application incident. Keep private rollback and

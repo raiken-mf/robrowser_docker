@@ -7,48 +7,54 @@ trap 'rm -r "$work"' EXIT
 kubectl kustomize deploy/k8s/overlays/flux > "$work/resources.yaml"
 diff -u "$work/resources.yaml" <(kubectl kustomize deploy/overlays/flux)
 diff -u <(kubectl kustomize deploy/clusters/default) <(kubectl kustomize clusters/pi-cluster)
-kubectl kustomize clusters/pi-cluster | ruby -ryaml -e '
-    resources = YAML.load_stream(STDIN.read).compact
-    expected = {"flux-system" => "./clusters/pi-cluster", "ragnarok-stack" => "./deploy/overlays/flux"}
-    expected.each do |name, path|
-        matches = resources.select { |resource| resource["apiVersion"] == "kustomize.toolkit.fluxcd.io/v1" && resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
-        abort "Invalid Flux identity or path: #{name}" unless matches.length == 1 && matches.first.dig("spec", "path") == path && matches.first.dig("spec", "prune") == true
-    end
-    identities = resources.map { |resource| [resource["apiVersion"], resource["kind"], resource.dig("metadata", "namespace"), resource.dig("metadata", "name")] }
-    abort "Duplicate parent resource identity" unless identities.uniq.length == identities.length
-'
-ruby -ryaml -e '
-    resources = YAML.load_stream(File.read(ARGV.fetch(0))).compact
-    identities = resources.map { |resource| [resource["apiVersion"], resource["kind"], resource.dig("metadata", "namespace"), resource.dig("metadata", "name")] }
-    abort "Duplicate child resource identity" unless identities.uniq.length == identities.length
-    abort "Missing application namespace" unless identities.include?(["v1", "Namespace", nil, "ragnarok"])
-' "$work/resources.yaml"
+yaml_json() {
+    awk 'BEGIN { print "services:\n  fixture:\n    image: fixture\nx-resources:"; document=0 }
+         /^---[[:space:]]*$/ { document=0; next }
+         !document && /^[^#[:space:]]/ { print "  -"; document=1 }
+         document { print "    " $0 }' "$1" |
+        docker compose --env-file /dev/null -f - config --format json --no-interpolate
+}
+kubectl kustomize clusters/pi-cluster > "$work/parent.yaml"
+yaml_json "$work/parent.yaml" > "$work/parent.json"
+yaml_json "$work/resources.yaml" > "$work/resources.json"
+python3 - "$work/parent.json" "$work/resources.json" <<'PY'
+import json, sys
+parent, child = [json.load(open(path))["x-resources"] for path in sys.argv[1:]]
+def identities(resources):
+    return [(resource["apiVersion"], resource["kind"], resource["metadata"].get("namespace"), resource["metadata"]["name"]) for resource in resources]
+for resources in (parent, child):
+    assert len(identities(resources)) == len(set(identities(resources))), "Duplicate resource identity"
+assert ("v1", "Namespace", None, "ragnarok") in identities(child)
+for name, path in (("flux-system", "./clusters/pi-cluster"), ("ragnarok-stack", "./deploy/overlays/flux")):
+    matches = [resource for resource in parent if (resource["apiVersion"], resource["kind"], resource["metadata"].get("namespace"), resource["metadata"]["name"]) == ("kustomize.toolkit.fluxcd.io/v1", "Kustomization", "flux-system", name)]
+    assert len(matches) == 1 and matches[0]["spec"]["path"] == path and matches[0]["spec"]["prune"] is True
+PY
 mkdir -p "$work/fixture"
 cp -R deploy clusters "$work/fixture/"
 diff -u <(kubectl kustomize "$work/fixture/deploy/clusters/default") <(kubectl kustomize "$work/fixture/clusters/pi-cluster")
 diff -u <(kubectl kustomize "$work/fixture/deploy/k8s/overlays/flux") <(kubectl kustomize "$work/fixture/deploy/overlays/flux")
 kubectl kustomize "$work/fixture/deploy/clusters/default" > "$work/parent-before.yaml"
-ruby -ryaml -e '
-    parent, child = ARGV
-    [[parent, "./deploy/clusters/default"], [child, "./deploy/k8s/overlays/flux"]].each do |path, replacement|
-        content = File.read(path)
-        old = path == parent ? "./clusters/pi-cluster" : "./deploy/overlays/flux"
-        abort "Expected exactly one old path in #{path}" unless content.scan(old).length == 1
-        File.write(path, content.sub(old, replacement))
-    end
-' "$work/fixture/deploy/clusters/default/flux-system/gotk-sync.yaml" "$work/fixture/deploy/clusters/default/ragnarok-app.yaml"
+parent="$work/fixture/deploy/clusters/default/flux-system/gotk-sync.yaml"
+child="$work/fixture/deploy/clusters/default/ragnarok-app.yaml"
+test "$(grep -Fc './clusters/pi-cluster' "$parent")" = 1
+test "$(grep -Fc './deploy/overlays/flux' "$child")" = 1
+sed 's|\./clusters/pi-cluster|./deploy/clusters/default|' "$parent" > "$work/parent-new.yaml"
+sed 's|\./deploy/overlays/flux|./deploy/k8s/overlays/flux|' "$child" > "$work/child-new.yaml"
+mv "$work/parent-new.yaml" "$parent"
+mv "$work/child-new.yaml" "$child"
 kubectl kustomize "$work/fixture/deploy/clusters/default" > "$work/parent-after.yaml"
-ruby -ryaml -e '
-    before, after = ARGV.map { |path| YAML.load_stream(File.read(path)).compact }
-    expected = {"flux-system" => ["./clusters/pi-cluster", "./deploy/clusters/default"], "ragnarok-stack" => ["./deploy/overlays/flux", "./deploy/k8s/overlays/flux"]}
-    expected.each do |name, paths|
-        old = before.find { |resource| resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
-        new = after.find { |resource| resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
-        abort "Unexpected migration path: #{name}" unless old && new && [old.dig("spec", "path"), new.dig("spec", "path")] == paths
-        new.fetch("spec")["path"] = paths.first
-    end
-    abort "Migration changes other parent resources" unless before == after
-' "$work/parent-before.yaml" "$work/parent-after.yaml"
+yaml_json "$work/parent-before.yaml" > "$work/parent-before.json"
+yaml_json "$work/parent-after.yaml" > "$work/parent-after.json"
+python3 - "$work/parent-before.json" "$work/parent-after.json" <<'PY'
+import json, sys
+before, after = [json.load(open(path))["x-resources"] for path in sys.argv[1:]]
+for name, old, new in (("flux-system", "./clusters/pi-cluster", "./deploy/clusters/default"),
+                       ("ragnarok-stack", "./deploy/overlays/flux", "./deploy/k8s/overlays/flux")):
+    matches = [resource for resource in after if resource["kind"] == "Kustomization" and resource["metadata"].get("namespace") == "flux-system" and resource["metadata"]["name"] == name]
+    assert len(matches) == 1 and matches[0]["spec"]["path"] == new
+    matches[0]["spec"]["path"] = old
+assert before == after, "Migration changes other parent resources"
+PY
 test "$(awk '/^  HOST:/{print $2}' "$work/resources.yaml")" = pi
 grep -Fq 'path: ./clusters/pi-cluster' deploy/clusters/default/flux-system/gotk-sync.yaml
 grep -Fq 'path: ./deploy/overlays/flux' deploy/clusters/default/ragnarok-app.yaml

@@ -49,8 +49,11 @@ jobs:
       - name: Validate repository script layout
         run: python3 scripts/py/check-script-layout.py
 
-      - name: Test CI build scope
-        run: ruby scripts/sh/ci/check-pr-image-matrix.rb
+      - name: Install YAML test dependency
+        run: python3 -m pip install --user 'PyYAML==6.0.2'
+
+      - name: Test CI and Dockerfile contracts
+        run: python3 scripts/py/check-dockerfile-configs.py
 
       - name: Determine scope
         id: scope
@@ -91,7 +94,6 @@ jobs:
       - name: Validate pinned source layouts
         if: steps.scope.outputs.relevant == 'true'
         run: |
-          python3 scripts/py/check-dockerfile-configs.py
           bash scripts/sh/ci/check-upstream-layout.sh
 
       - name: Validate Kustomize manifests

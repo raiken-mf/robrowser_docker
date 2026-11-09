@@ -93,7 +93,7 @@ python3 scripts/py/check-dockerfile-configs.py
 bash images/rathena/tests/check-entrypoint.sh
 ```
 
-The Dockerfile configuration check requires `envsubst` and a C compiler.
+The Dockerfile configuration check requires Ruby, `envsubst` and a C compiler.
 check-compose.py reads this checkout's `.env-tmpl` by default; `COMPOSE_TEST_ENV_FILE`
 selects an explicit alternative. It isolates the web services on temporary networks
 and loopback ephemeral ports. `CLIENT_TEST_ROOT` optionally points to readonly client
@@ -112,8 +112,8 @@ The required `validate` job runs on every pull request, including documentation
 changes; documentation-only PRs skip Docker builds. Relevant changes exercise
 all web and proxy smoke tests because they validate cross-service integration.
 rAthena validation builds only when its inputs or dependency pins change.
-Hercules is Compose-config validated and affected PRs build and scan it on both
-architectures; it is not published by the release workflow.
+Hercules is Compose-config validated but is outside the active PR image build
+and security scan matrix; it is not published by the release workflow.
 
 Buildx stores AMD64 test layers in separate GitHub Actions scopes
 `ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and

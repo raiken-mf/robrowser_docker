@@ -9,12 +9,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-workflow = (ROOT / ".github/workflows/pr-image-security.yml").read_text()
-assert "image: [remote, robrowser, rathena, hercules, wsproxy]" in workflow
-assert "arch: [amd64, arm64]" in workflow
-assert "hercules) paths=(images/hercules build/dependencies.env)" in workflow
-assert "HERCULES_REF=${{ env.HERCULES_REF }}" in workflow
-assert "./images/hercules" in workflow
+subprocess.run(["ruby", str(ROOT / "scripts/sh/ci/check-pr-image-matrix.rb")], check=True)
 publish = (ROOT / ".github/workflows/publish.yml").read_text()
 assert "for overlay in deploy/k8s/overlays/flux deploy/overlays/flux; do" in publish
 assert "git add deploy/k8s/overlays/flux/kustomization.yaml deploy/overlays/flux/kustomization.yaml" in publish

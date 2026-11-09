@@ -7,7 +7,7 @@ observed results from assumptions.
 
 ## Local checks
 
-Run from the repository root. Python 3, Bash, Docker with Compose, `kubectl`,
+Run from the repository root. Python 3, Ruby, Bash, Docker with Compose, `kubectl`,
 `envsubst` and a C compiler are needed for the checks that use them. Docker image
 builds and upstream-layout checks require network access. Never use production
 credentials or a live cluster for these tests.

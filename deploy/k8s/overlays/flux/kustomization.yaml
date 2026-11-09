@@ -16,4 +16,4 @@ images:
 - name: ghcr.io/raiken-mf/robrowser
   newTag: sha-08bf29af042da3ba487ae0dcbefb111cd8881705
 - name: ghcr.io/raiken-mf/wsproxy
-  newTag: sha-7124e3a6237808a845e8accfabbdcc5a1f0e1dd4
+  newTag: sha-4577ec240ae6d90b9808b7870664787c1e090bc2

@@ -60,6 +60,9 @@ the rAthena build uses the same setting to select its compiled ruleset.
 The frontend alone fetches roBrowserLegacy; do not add that source tree to remote.
 Project-owned npm manifest/lockfile are installed with npm ci. Update the lockfile
 and source pin together when the new upstream revision needs a dependency change.
+The locked jsdom 31 test dependency requires Node.js ^22.22.2, ^24.15.0 or >=26.
+The cursor test normalizes its expected zero translation through the DOM CSS
+serializer; its position and scene-loop assertions remain unchanged.
 The rAthena build preserves the upstream or override custom header and applies
 validated packet-key build arguments after it. The Compose initializer runs the
 image entrypoint with database initialization enabled before starting the servers.

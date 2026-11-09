@@ -93,8 +93,12 @@ The first argument selects the emulator; `./scripts/sh/compose/start-compose.sh 
 Default `./scripts/sh/compose/start-compose.sh` runs rAthena in the foreground. `./scripts/sh/compose/start-compose.sh stop` stops the
 Compose stacks; `./scripts/sh/compose/start-compose.sh down` removes them.
 Stopping or removing the stacks does not require database credentials or an env file.
-Starting the rAthena stack requires nonempty database and interserver passwords;
+Starting either game stack requires nonempty database and interserver passwords;
 MariaDB also requires a root password for initialization.
+Hercules starts its character and map servers after the preceding server's TCP
+healthcheck succeeds. Its database initializer skips a nonempty database; inspect
+and recover a partially initialized database before retrying. Changing the
+interserver credentials requires updating the existing database account as well.
 
 The starter checks Docker and Compose but does not install them. The historical
 `./start.sh` entrypoint forwards to it. Compose mounts `deploy/compose/conf.d` read-only;

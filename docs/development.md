@@ -115,8 +115,8 @@ The required `validate` job runs on every pull request, including documentation
 changes; documentation-only PRs skip Docker builds. Relevant changes exercise
 all web and proxy smoke tests because they validate cross-service integration.
 rAthena validation builds only when its inputs or dependency pins change.
-Hercules is Compose-config validated but is outside the active PR image build
-and security scan matrix; it is not published by the release workflow.
+Hercules is Compose-config validated and included in the AMD64/ARM64 PR image
+security scan matrix; it is not published by the release workflow.
 
 Buildx stores AMD64 test layers in separate GitHub Actions scopes
 `ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and

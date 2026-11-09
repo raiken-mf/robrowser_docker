@@ -27,6 +27,28 @@ mkdir -p "$work/fixture"
 cp -R deploy clusters "$work/fixture/"
 diff -u <(kubectl kustomize "$work/fixture/deploy/clusters/default") <(kubectl kustomize "$work/fixture/clusters/pi-cluster")
 diff -u <(kubectl kustomize "$work/fixture/deploy/k8s/overlays/flux") <(kubectl kustomize "$work/fixture/deploy/overlays/flux")
+kubectl kustomize "$work/fixture/deploy/clusters/default" > "$work/parent-before.yaml"
+ruby -ryaml -e '
+    parent, child = ARGV
+    [[parent, "./deploy/clusters/default"], [child, "./deploy/k8s/overlays/flux"]].each do |path, replacement|
+        content = File.read(path)
+        old = path == parent ? "./clusters/pi-cluster" : "./deploy/overlays/flux"
+        abort "Expected exactly one old path in #{path}" unless content.scan(old).length == 1
+        File.write(path, content.sub(old, replacement))
+    end
+' "$work/fixture/deploy/clusters/default/flux-system/gotk-sync.yaml" "$work/fixture/deploy/clusters/default/ragnarok-app.yaml"
+kubectl kustomize "$work/fixture/deploy/clusters/default" > "$work/parent-after.yaml"
+ruby -ryaml -e '
+    before, after = ARGV.map { |path| YAML.load_stream(File.read(path)).compact }
+    expected = {"flux-system" => ["./clusters/pi-cluster", "./deploy/clusters/default"], "ragnarok-stack" => ["./deploy/overlays/flux", "./deploy/k8s/overlays/flux"]}
+    expected.each do |name, paths|
+        old = before.find { |resource| resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
+        new = after.find { |resource| resource["kind"] == "Kustomization" && resource.dig("metadata", "namespace") == "flux-system" && resource.dig("metadata", "name") == name }
+        abort "Unexpected migration path: #{name}" unless old && new && [old.dig("spec", "path"), new.dig("spec", "path")] == paths
+        new.fetch("spec")["path"] = paths.first
+    end
+    abort "Migration changes other parent resources" unless before == after
+' "$work/parent-before.yaml" "$work/parent-after.yaml"
 test "$(awk '/^  HOST:/{print $2}' "$work/resources.yaml")" = pi
 grep -Fq 'path: ./clusters/pi-cluster' deploy/clusters/default/flux-system/gotk-sync.yaml
 grep -Fq 'path: ./deploy/overlays/flux' deploy/clusters/default/ragnarok-app.yaml

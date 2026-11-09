@@ -1,46 +1,57 @@
 version: 2
+multi-ecosystem-groups:
+  dependencies:
+    schedule:
+      interval: weekly
+      day: monday
+      time: "12:00"
+      timezone: Europe/Berlin
+
 updates:
-  # Tracks pinned GitHub Action commits and opens a reviewable update PR.
   - package-ecosystem: github-actions
     directory: /
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
     groups:
-      github-actions:
+      security:
+        applies-to: security-updates
         patterns: ["*"]
 
-  # Tracks the Alpine tag/digest used by each image build.
   - package-ecosystem: docker
     directory: /images/remote
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
   - package-ecosystem: docker
     directory: /images/robrowser
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
   - package-ecosystem: docker
     directory: /images/rathena
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
   - package-ecosystem: docker
     directory: /images/wsproxy
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
   - package-ecosystem: docker
     directory: /images/hercules
-    schedule:
-      interval: weekly
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
 
-  # The project-owned manifest/lockfile overlay for the pinned roBrowser source.
   - package-ecosystem: npm
     directory: /images/robrowser
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
+    groups:
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
 
-  # The project-owned manifest/lockfile overlay for the wsproxy install.
   - package-ecosystem: npm
     directory: /images/wsproxy
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+    patterns: ["*"]
+    multi-ecosystem-group: dependencies
+    groups:
+      security:
+        applies-to: security-updates
+        patterns: ["*"]

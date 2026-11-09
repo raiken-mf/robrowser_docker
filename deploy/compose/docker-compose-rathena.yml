@@ -1,9 +1,23 @@
+x-game-environment: &game-environment
+  MARIADB_HOST: ${MARIADB_HOST:-database}
+  MARIADB_DATABASE: ${MARIADB_DATABASE:-ragnarok}
+  MARIADB_USER: ${MARIADB_USER:-ragnarok}
+  MARIADB_PASSWORD: ${MARIADB_PASSWORD:-}
+  SET_INTERSRV_USER: ${SET_INTERSRV_USER:-s1}
+  SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD:-}
+  SET_MOTD: ${SET_MOTD:-Welcome}
+  SET_PRERENEWAL: ${SET_PRERENEWAL:-0}
+  LOGIN_SERVER_HOST: ${LOGIN_SERVER_HOST:-ragnarok-login}
+  CHAR_SERVER_HOST: ${CHAR_SERVER_HOST:-ragnarok-char}
+  MAP_SERVER_HOST: ${MAP_SERVER_HOST:-ragnarok-map}
+  SET_PINCODE_ENABLED: ${SET_PINCODE_ENABLED:-no}
+  SET_NEW_ACCOUNT: ${SET_NEW_ACCOUNT:-yes}
+
 services:
   rathena:
     container_name: "rathena"
     image: rathena
     pull_policy: never
-    env_file: ../../.env
     volumes:
       - ../../images/rathena/repository_override:/opt/repository_override
     build:
@@ -16,14 +30,10 @@ services:
           PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
           PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
           PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
-          MARIADB_HOST: ${MARIADB_HOST}
-          MARIADB_DATABASE: ${MARIADB_DATABASE}
-          MARIADB_USER: ${MARIADB_USER}
-          MARIADB_PASSWORD: ${MARIADB_PASSWORD}
-          SET_MOTD: ${SET_MOTD}
-          SET_INTERSRV_USER: ${SET_INTERSRV_USER}
-          SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD}
-    entrypoint: sh -c ". /usr/local/bin/docker-entrypoint.sh && setup_database"
+    environment:
+      <<: *game-environment
+      INIT_DB: "true"
+    command: ["true"]
     depends_on:
       database:
         condition: service_healthy
@@ -36,6 +46,9 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
+      INIT_DB: "false"
     #volumes:
     #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/login-server
@@ -54,6 +67,9 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
+      INIT_DB: "false"
     #volumes:
     #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/char-server
@@ -72,6 +88,9 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
+      INIT_DB: "false"
     #volumes:
     #  - ../../images/rathena/repository:/opt/ragnarok
     command: /opt/ragnarok/map-server

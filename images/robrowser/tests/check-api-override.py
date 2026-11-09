@@ -5,7 +5,7 @@ import re
 import sys
 import textwrap
 
-root=Path(__file__).resolve().parents[1]
+root=Path(__file__).resolve().parents[3]
 source=Path(sys.argv[1]).read_text()
 match=re.search(r'\t\t<script type="module">\n(.*?)\n\t\t</script>',source,re.S)
 assert match, 'Pinned API inline module changed; review/rebase the repository override'

@@ -33,6 +33,28 @@ MariaDB controller in its own namespace on TCP3306. The operator needs SQL acces
 to reconcile Database/User/Grant; do not remove the policy or broadly open ingress
 as a bootstrap workaround. Client mounts remain readonly to remote.
 
+Vite restricts DNS hostnames to the configured `HOST` and disables CORS; this
+does not replace network isolation or authentication. Several workloads still
+need writable root filesystems. Harden them only after identifying and testing
+every required writable path. The rAthena entrypoint retains compatibility
+defaults for credentials; supply unique credentials. The MariaDB client receives
+its password through `MYSQL_PWD`, which may be visible to processes with access
+to its environment; restrict process access.
+
+The active rAthena Compose stack passes explicitly selected environment variables
+to each service. Empty database or interserver passwords are rejected by the
+rAthena entrypoint; MariaDB rejects initialization without a root password.
+Direct rAthena Compose lifecycle commands can render without credentials. The
+legacy starter also loads the Hercules configuration when stopping and still
+requires its `.env` file. Hercules is outside the current scope: its existing Compose
+credential propagation, runtime configuration, SQL interpolation and password
+arguments require a separate security and integration review before Hercules use.
+The standalone MariaDB installer renders private Secret files
+and includes interserver credentials; it still changes cluster resources and must
+only be run with explicit approval. The shared Flux base retains the historical
+host until the separately reviewed second migration stage. Runtime integration
+and release security scans remain required before deployment.
+
 ## PHP branch and request-time hardening
 
 images/remote/Dockerfile requires php84 >=8.4.27 and a build-time/runtime guard
@@ -70,6 +92,8 @@ writes owner-only output and refuses overwrites. Database and interserver
 credentials are Secret fields; ConfigMaps contain non-secret settings only.
 Default --check and fake-API tests perform no installation. --apply is a separately
 approved cluster-changing operation and never deletes namespaces/resumes Flux.
+The legacy standalone rAthena installer is disabled; it previously exposed
+interserver credentials in a ConfigMap and interpolated them into SQL.
 
 Use SSH/credential helpers for Git authentication rather than embedding tokens
 in remote URLs. Do not print .git/config, `git remote -v`, kubeconfigs, Secret
@@ -87,8 +111,8 @@ them. Their presence does not make leaked credentials safe or rotate them.
 ## Updates and recovery
 
 Dependencies/base images/actions are pinned as described in
-[upstream updates](upstream-updates.md). Source/dependency auto-merge policy is
-separate from the draft GitOps image release approval. Active Flux adopts merged
+[upstream updates](upstream-updates.md). Source/dependency PRs require human
+review, separately from draft GitOps image release approval. Active Flux adopts merged
 manifests automatically; it must be coordinated during emergency imperative work.
 
 Do not use setup scripts, namespace resets, blanket image/containerd pruning or

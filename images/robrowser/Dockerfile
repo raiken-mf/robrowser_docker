@@ -35,7 +35,7 @@ RUN npm ci && npm cache clean --force
 
 # Extend the pinned upstream Vite configuration declaratively.
 COPY --chown=vite:vite images/robrowser/vite.config.js /app/vite.config.js
-RUN node --input-type=module -e 'import c from "./vite.config.js"; const cfg = typeof c === "function" ? c({ command: "serve", mode: "development" }) : c; if (cfg.server?.allowedHosts !== true || cfg.server?.proxy?.["/remote/"]?.target !== "http://remote:8080" || !cfg.server?.proxy?.["/get"] || !cfg.resolve?.alias?.Core || !cfg.plugins?.length) process.exit(1);'
+RUN node --input-type=module -e 'import c from "./vite.config.js"; const cfg = typeof c === "function" ? c({ command: "serve", mode: "development" }) : c; if (!cfg.server?.allowedHosts?.includes("127.0.0.1") || cfg.server?.cors !== false || cfg.server?.proxy?.["/remote/"]?.target !== "http://remote:8080" || !cfg.server?.proxy?.["/get"] || !cfg.resolve?.alias?.Core || !cfg.plugins?.length) process.exit(1);'
 
 # The frontend configuration template belongs only to Vite.
 COPY --chown=vite:vite images/robrowser/index.html.template /app/index.html.template

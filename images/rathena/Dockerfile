@@ -26,9 +26,11 @@ RUN apk add --no-cache \
 # Validate build arguments and clone the explicit pinned upstream revision.
 RUN set -eu; \
     test -n "${RATHENA_REF}"; \
+    case "${PACKETVER}" in *[!0-9]*) exit 1 ;; esac; \
     printf '%s' "${PACKETVER}" | grep -Eq '^[0-9]{8}$'; \
     if [ -n "${SET_PRERENEWAL}" ]; then [ "${SET_PRERENEWAL}" -eq 0 ] || [ "${SET_PRERENEWAL}" -ne 0 ]; fi; \
     for key in "${PACKET_OBFUSCATION_KEY1}" "${PACKET_OBFUSCATION_KEY2}" "${PACKET_OBFUSCATION_KEY3}"; do \
+        case "$key" in *[!0-9a-fA-FxX]*) exit 1 ;; esac; \
         printf '%s' "$key" | grep -Eq '^0[xX][0-9a-fA-F]{1,8}$' || exit 1; \
     done && \
     git clone "${RATHENA_REPOSITORY}" /opt/ragnarok && \
@@ -38,6 +40,7 @@ COPY templates/ /usr/local/share/rathena/templates/
 COPY repository_override /opt/ragnarok/
 
 RUN test -f /opt/ragnarok/src/custom/defines_pre.hpp && \
+    mv /opt/ragnarok/src/custom/defines_pre.hpp /opt/ragnarok/src/custom/defines_pre_upstream.hpp && \
     PACKET_OBFUSCATION_KEY1="${PACKET_OBFUSCATION_KEY1}" \
     PACKET_OBFUSCATION_KEY2="${PACKET_OBFUSCATION_KEY2}" \
     PACKET_OBFUSCATION_KEY3="${PACKET_OBFUSCATION_KEY3}" \

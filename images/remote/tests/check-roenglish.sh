@@ -15,7 +15,7 @@ for mode in 0 1; do
     --mount "type=bind,src=$workdir/source,dst=/source,readonly" \
     --mount "type=bind,src=$workdir/output-$mode,dst=/output" \
     "$image" /usr/local/bin/roenglish-generate.php /source /output
-  python3 scripts/check-roenglish.py "$workdir/source" "$workdir/output-$mode" "$mode"
+  python3 images/remote/tests/check-roenglish.py "$workdir/source" "$workdir/output-$mode" "$mode"
   (cd "$workdir/output-$mode" && lua5.1 -e '
     dofile("data/luafiles514/lua files/skillinfoz/jobinheritlist.lub")
     local count = 0

@@ -3,15 +3,17 @@ services:
     container_name: "database"
     image: mariadb:11.8.6
     restart: always
-    env_file: ../../.env
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-ragnarok}
+      MARIADB_USER: ${MARIADB_USER:-ragnarok}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-}
     #ports:
     #  - 3306:3306
     volumes:
-      # Uncomment line below to use on volume
-      #- ./database/data:/var/lib/mysql
       - ../../database/conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "mariadb --user=$${MARIADB_USER} --password=$${MARIADB_PASSWORD} --execute 'SELECT 1;'"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       start_period: 10s
       start_interval: 10s
       interval: 10s
@@ -36,14 +38,12 @@ services:
     image: ghcr.io/raiken-mf/remote:${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-stable}}
     pull_policy: always
     restart: always
-    env_file: ../../.env
     volumes:
       - ../../client:/opt/client_files:ro
     build:
       context: ../..
       dockerfile: images/remote/Dockerfile
       args:
-        SET_PRERENEWAL: ${SET_PRERENEWAL}
         REMOTECLIENT_REPOSITORY: ${REMOTECLIENT_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git}
         REMOTECLIENT_REF: ${REMOTECLIENT_REF:-9ab843cb4edad70adedac1cde8e49f66d728aaa9}
         ROENGLISH_REPOSITORY: ${ROENGLISH_REPOSITORY:-https://github.com/raiken-mf/ROenglishRE.git}
@@ -53,6 +53,16 @@ services:
       - wsproxy
     environment:
       ROBROWSER_ROLE: web
+      PACKETVER: ${PACKETVER:-20211103}
+      SET_PRERENEWAL: ${SET_PRERENEWAL:-0}
+      ROENGLISH_ADDITIONS: ${ROENGLISH_ADDITIONS:-all}
+      ROENGLISH_ADDONS: ${ROENGLISH_ADDONS:-compatible}
+      ROENGLISH_LEGACY_MAPS: ${ROENGLISH_LEGACY_MAPS:-0}
+      GRF_ENCODING: ${GRF_ENCODING:-CP949}
+      PATH_MAPPING_ENABLED: ${PATH_MAPPING_ENABLED:-true}
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
+      CACHE_MAX_FILES: ${CACHE_MAX_FILES:-100}
+      CACHE_MAX_MEMORY_MB: ${CACHE_MAX_MEMORY_MB:-256}
     ports:
       - "${PORT_HTTP:-8080}:8080"
     networks:
@@ -70,10 +80,16 @@ services:
         ROBROWSER_REPOSITORY: ${ROBROWSER_REPOSITORY:-https://github.com/raiken-mf/roBrowserLegacy.git}
         ROBROWSER_REF: ${ROBROWSER_REF:-ed8570e8bbc7ffe1285c82ec7166c01703a73277}
     restart: always
-    env_file: ../../.env
     environment:
       ROBROWSER_ROLE: vite
+      HOST: ${HOST:-127.0.0.1}
+      PORT_HTTP: ${PORT_HTTP:-8080}
       PORT_FRONTEND: ${PORT_FRONTEND:-3000}
+      PORT_WSPROXY: ${PORT_WSPROXY:-5999}
+      PACKETVER: ${PACKETVER:-20211103}
+      PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1:-0x6DED6DEE}
+      PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2:-0x3DFD6AED}
+      PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3:-0x0A3D5C0D}
     ports:
       - "${PORT_FRONTEND:-3000}:3000"
     networks:

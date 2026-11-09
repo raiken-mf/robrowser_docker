@@ -26,7 +26,7 @@ require_file "$workdir/robrowser/package.json"
 require_file "$workdir/robrowser/vite.config.js"
 require_file "$workdir/robrowser/src/DB/DBManager.js"
 require_file "$workdir/robrowser/applications/api/api.js"
-python3 scripts/check-api-override.py "$workdir/robrowser/applications/api/api.html"
+python3 images/robrowser/tests/check-api-override.py "$workdir/robrowser/applications/api/api.html"
 
 checkout remoteclient "$REMOTECLIENT_REPOSITORY" "$REMOTECLIENT_REF"
 require_file "$workdir/remoteclient/index.php"

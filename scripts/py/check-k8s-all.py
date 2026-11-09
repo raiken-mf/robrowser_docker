@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix='k8s-all-check-') as directory:
     work=Path(directory)
     for name in ('scripts','deploy'):
@@ -41,6 +41,9 @@ elif 'create' in args:
  assert '--dry-run=client' in args
  data={a[len('--from-literal='):].split('=',1)[0]:a.split('=',2)[2] for a in args if a.startswith('--from-literal=')}
  print(json.dumps({'apiVersion':'v1','kind':'ConfigMap','metadata':{'name':'robrowser-config','namespace':'ragnarok'},'data':data}))
+elif 'apply' in args and pathlib.Path(args[args.index('-f')+1]).name=='rathena.yaml':
+ text=pathlib.Path(args[args.index('-f')+1]).read_text()
+ assert text.count('image: ghcr.io/raiken-mf/rathena:sha-fixture')==3, 'rAthena deployments must use the checked image tag'
 elif 'exec' in args:
  if 'stat' in args:
   relative=args[-1].removeprefix('/data/')
@@ -51,9 +54,10 @@ elif 'exec' in args:
     log=work/'calls.jsonl'
     def run(scenario,flags,success):
         log.write_text('')
-        result=subprocess.run(['bash','scripts/k8s-all.sh',*flags],cwd=work,
+        result=subprocess.run(['bash','scripts/sh/k8s/k8s-all.sh',*flags],cwd=work,
             env=dict(os.environ,PATH=str(binary)+os.pathsep+os.environ['PATH'],ENV_FILE=str(fixture),
-                     CLIENT_SOURCE_DIR=str(client),MOCK_LOG=str(log),MOCK_SCENARIO=scenario),
+                     CLIENT_SOURCE_DIR=str(client),MOCK_LOG=str(log),MOCK_SCENARIO=scenario,
+                     RATHENA_IMAGE_TAG='sha-fixture'),
             capture_output=True,text=True)
         assert (result.returncode==0)==success, result.stdout+result.stderr
         assert not any(v in result.stdout+result.stderr+log.read_text() for v in ('fixture-root-only','fixture-db-only','fixture-server-only'))

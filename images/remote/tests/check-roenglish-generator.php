@@ -1,6 +1,6 @@
 <?php
 declare(strict_types=1);
-$generator = realpath(__DIR__ . '/../images/remote/roenglish-generate.php');
+$generator = realpath(__DIR__ . '/../roenglish-generate.php');
 $root = sys_get_temp_dir() . '/roenglish-fixture-' . bin2hex(random_bytes(8));
 function fixture(string $path, string $content): void { if (!is_dir(dirname($path))) mkdir(dirname($path), 0777, true); file_put_contents($path, $content); }
 function check(bool $ok, string $message): void { if (!$ok) throw new RuntimeException($message); }

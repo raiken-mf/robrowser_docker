@@ -33,7 +33,7 @@ stale override instead of silently masking an upstream bootstrap change.
 After building the normal pinned frontend image:
 
 ```bash
-python3 scripts/check-api-module.py robrowser:ci
+python3 images/robrowser/tests/check-api-module.py robrowser:ci
 ```
 
 The test starts/removes its own container on an ephemeral loopback host port.

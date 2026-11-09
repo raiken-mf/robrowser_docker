@@ -11,12 +11,12 @@ import time
 import urllib.error
 import urllib.request
 import uuid
-root = pathlib.Path(__file__).resolve().parents[1]
+root = pathlib.Path(__file__).resolve().parents[2]
 def run(*args, **kw):
     return subprocess.run(args, check=True, text=True, **kw)
 def output(*args, **kw):
   return subprocess.check_output(args, text=True, **kw)
-env_file=pathlib.Path(os.environ.get('COMPOSE_TEST_ENV_FILE', root/'.env')).resolve()
+env_file=pathlib.Path(os.environ.get('COMPOSE_TEST_ENV_FILE', root/'.env-tmpl')).resolve()
 config=json.loads(output('docker','compose','--env-file',str(env_file),'-f',str(root/'deploy/compose/docker-compose-common.yml'),'config','--format','json',
                          '--no-env-resolution'))
 for service in config['services'].values():
@@ -34,16 +34,21 @@ for name,port,image in [('remote',8080,sys.argv[1] if len(sys.argv)>1 else 'remo
  service['environment']={k:v for k,v in service.get('environment',{}).items() if k in allowed}
  service['ports']=[{'target':port,'published':'0','host_ip':'127.0.0.1','protocol':'tcp'}]
  services[name]=service
-if os.environ.get('CLIENT_TEST_ROOT'):
- for volume in services['remote']['volumes']:
-  assert volume['type']=='bind' and volume['target']=='/opt/client_files'
-  volume['source']=str(pathlib.Path(os.environ['CLIENT_TEST_ROOT']).resolve())
+workdir=tempfile.TemporaryDirectory(prefix='remote-compose-')
+client_fixture=pathlib.Path(workdir.name)/'client'
+client_fixture.mkdir(mode=0o755)
+for directory, marker in (('data', 'add-data-folder-files-here.txt'), ('System', 'add-system-folder-files-here.txt')):
+ (client_fixture/directory).mkdir(mode=0o755)
+ (client_fixture/directory/marker).write_text('fixture\n')
+pathlib.Path(workdir.name).chmod(0o755)
+for volume in services['remote']['volumes']:
+ assert volume['type']=='bind' and volume['target']=='/opt/client_files'
+ volume['source']=str(pathlib.Path(os.environ.get('CLIENT_TEST_ROOT', client_fixture)).resolve())
 assert all(v.get('read_only') for v in services['remote']['volumes'])
 config['services']=services
 for network in config['networks'].values():
  network.pop('name',None)
 for key in ('name','volumes','configs','secrets'): config.pop(key,None)
-workdir=tempfile.TemporaryDirectory(prefix='remote-compose-')
 path=pathlib.Path(workdir.name)/'compose.json'
 path.write_text(json.dumps(config))
 base=['docker','compose','-p','remote-test-'+uuid.uuid4().hex[:10],'-f',str(path)]
@@ -79,7 +84,7 @@ try:
  assert b'granny-ro-js_wasm' in content and b'parseAnimated' in content and b'poseAt' in content
  print('PASS Vite GR2 module transforms')
  container=output(*base,'ps','-q','remote').strip()
- run('docker','cp',str(root/'scripts/check-php.php'),container+':/var/www/localhost/htdocs/ci-php-check.php')
+ run('docker','cp',str(root/'images/remote/tests/check-php.php'),container+':/var/www/localhost/htdocs/ci-php-check.php')
  content,_=request('remote',8080,'/ci-php-check.php')
  assert b'PHP runtime security check passed' in content
  print(content.decode().strip())
@@ -235,7 +240,7 @@ try:
  frontend=output(*base,'port','robrowser','3000').strip()
  front_host,front_port=frontend.rsplit(':',1)
  connection=http.client.HTTPConnection(front_host,int(front_port),timeout=10)
- connection.request('GET','/remote/AI/Util.lua', headers={'Host':'pi:30000'})
+ connection.request('GET','/remote/AI/Util.lua', headers={'Host':services['robrowser']['environment'].get('HOST', '127.0.0.1')})
  response=connection.getresponse()
  if (client_root/'AI'/'Util.lua').is_file():
   assert response.status==200 and response.read()==(client_root/'AI'/'Util.lua').read_bytes()

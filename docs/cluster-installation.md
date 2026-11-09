@@ -1,6 +1,6 @@
 # Fresh K3s, Longhorn and Flux cluster
 
-This procedure is for a **new cluster**, not the running Pi. For an existing
+This procedure is for a **new cluster**, not an existing installation. For an existing
 cluster use the [fresh stack runbook](fresh-install-runbook.md) or
 [normal operations](operations.md). The final documentation cleanup executes
 none of the installation/bootstrap commands below.
@@ -12,8 +12,10 @@ The infrastructure scripts are in the separate
 sh/setup-k8s.sh and sh/setup-k8s-flux.sh. Their local source was inspected at
 commit `7220a191bd06b0ece8b5e42a1f3a04f56751d838`; it was not changed. Reinspect
 later versions rather than assuming this description remains exact.
+These helpers include Raspberry Pi-specific setup and are optional; other Linux
+hosts can provision compatible Kubernetes, Longhorn and Flux independently.
 
-Prepare the Pi OS/network, a deliberately selected storage device, console/admin
+Prepare the host OS/network, a deliberately selected storage device, console/admin
 access, and a kubeconfig/context identifying the intended cluster. Preserve any
 existing data. The application additionally needs Git, kubectl, Python 3, bash,
 envsubst, tar and local client resources; local development/tests need Docker.
@@ -22,7 +24,7 @@ envsubst, tar and local client resources; local development/tests need Docker.
 
 The inspected script:
 
-- Adds Pi memory-cgroup boot parameters when missing; a reboot may be required.
+- Adds Raspberry Pi memory-cgroup boot parameters when missing; a reboot may be required.
 - Defaults ROLE=server, INSTALL_LONGHORN=true, MOUNTPOINT=/mnt/longhorn and
   REPLICA_COUNT=1. K3S_URL/K3S_TOKEN are required for an agent/join operation.
 - Installs iSCSI/NFS/storage prerequisites. If STORAGE_DEVICE is unset, it can
@@ -51,7 +53,7 @@ installation was re-executed as part of the final documentation verification.
 
 ## Verify the intended context and storage
 
-On the Pi, the setup script normally provides ~/.kube/config. Application scripts
+On the target host, the setup script normally provides ~/.kube/config. Application scripts
 otherwise default to the K3s system path; explicitly select the correct file:
 
 ```bash
@@ -75,7 +77,8 @@ if absent, installs the Flux CLI if missing, runs `flux check --pre`, then calls
 
 - owner GITHUB_USER (default raiken-mf), repository positional argument/default
   robrowser_docker;
-- GITHUB_BRANCH (default main) and CLUSTER_PATH (default clusters/pi-cluster);
+- GITHUB_BRANCH (default main) and CLUSTER_PATH (the external wrapper may still
+  default to the historical path; explicitly set deploy/clusters/default);
 - the extra image-reflector/image-automation controllers and --personal;
 - KUBECONFIG from the caller, otherwise ~/.kube/config with a system-file fallback.
 
@@ -90,14 +93,16 @@ it onto an empty cluster can start the stack before private prerequisites exist.
 Do not use the normal active main as though it were a paused installation plan.
 
 For a new cluster, first prepare an operator-reviewed installation branch with
-the same clusters/pi-cluster path and an explicit ragnarok-stack suspend:true.
+the same deploy/clusters/default path and an explicit ragnarok-stack suspend:true.
+Set the child Kustomization's HOST patch to the new installation's browser-reachable
+hostname or IP; the existing value belongs only to the original installation.
 Keep the running cluster on its existing main; do not merge a global pause as
 part of documentation maintenance. Bootstrap that reviewed branch, for example:
 
 ```bash
 # Interface example: INSTALL_BRANCH must already exist and hold the child paused.
 : "${INSTALL_BRANCH:?Set the existing reviewed installation branch first}"
-GITHUB_BRANCH="$INSTALL_BRANCH" CLUSTER_PATH=clusters/pi-cluster \
+GITHUB_BRANCH="$INSTALL_BRANCH" CLUSTER_PATH=deploy/clusters/default \
   bash sh/setup-k8s-flux.sh robrowser_docker
 ```
 
@@ -111,10 +116,10 @@ are installation actions requiring their own approval, not normal health checks.
 
 Longhorn alone is insufficient. The application requires a ready MariaDB operator,
 webhook and k8s.mariadb.com CRDs; K3s/Longhorn setup does not supply them. The
-existing [k8s-mariadb.sh](https://github.com/raiken-mf/robrowser_docker/blob/main/scripts/k8s-mariadb.sh) can install/upgrade that operator
+existing [k8s-mariadb.sh](https://github.com/raiken-mf/robrowser_docker/blob/main/scripts/sh/k8s/k8s-mariadb.sh) can install/upgrade that operator
 but ALSO creates application resources/secrets, so it is not a harmless check.
 Have the operator provision the required infrastructure in an approved stage.
-On the verified Pi it was already installed and available before k8s-all.sh.
+In the verified example installation it was already available before k8s-all.sh.
 
 Continue with [fresh Ragnarok installation](fresh-install-runbook.md), keeping
 both application reconcilers paused until their controlled activation. Future

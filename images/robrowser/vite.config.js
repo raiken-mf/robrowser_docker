@@ -6,7 +6,8 @@ export default defineConfig((env) => {
 	const base = typeof upstreamConfig === 'function' ? upstreamConfig(env) : upstreamConfig;
 	return mergeConfig(base, {
 		server: {
-			allowedHosts: true,
+			allowedHosts: [process.env.HOST || '127.0.0.1'],
+			cors: false,
 			proxy: {
 				'/remote/': {
 					target: 'http://remote:8080',

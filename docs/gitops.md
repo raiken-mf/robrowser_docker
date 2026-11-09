@@ -2,14 +2,48 @@
 
 ## Source of truth and current state
 
-`clusters/pi-cluster/flux-system/gotk-sync.yaml` defines the GitRepository and
-parent Kustomization flux-system. The parent reconciles clusters/pi-cluster and
-therefore manages the child object in ragnarok-app.yaml. Both use the same source.
-The child ragnarok-stack reconciles deploy/overlays/flux, whose base is deploy/k8s.
+`deploy/clusters/default/flux-system/gotk-sync.yaml` defines the GitRepository and
+parent Kustomization flux-system. The desired parent path is deploy/clusters/default;
+it manages the child object in ragnarok-app.yaml. Both use the same source.
+The desired child path is deploy/k8s/overlays/flux, whose base is deploy/k8s/base.
+The shared base retains the existing host during migration stage one; the existing
+cluster's child Kustomization patches `robrowser-config` with its installation-specific browser hostname. Set
+that patch to your own reachable hostname or IP before adopting this configuration.
+For an existing installation, first deploy this stage-one child patch while retaining
+the old shared HOST, then verify the parent has applied it before a separate change
+sets the shared HOST to `127.0.0.1`. Otherwise the child can reconcile loopback before the
+parent applies its patch. Roll back by restoring the previous shared HOST before
+removing the child patch. These are separate reviewed changes, not automatic steps.
 There is no explicit dependsOn in these manifests; the parent/child management
 relationship is not an application-health dependency.
 
-The verified operating state has both reconcilers active/Ready. The child Git
+## Cluster path migration
+
+The existing parent still points to `clusters/pi-cluster` until it reconciles
+this change. That path is a temporary Kustomize bridge to the new cluster package;
+the old `deploy/overlays/flux` is an equivalent temporary overlay. Both render
+the same resource identities and image pins as their new counterparts. Keep both
+bridges and their pins synchronized until migration is verified; CI checks equality.
+
+1. Review and merge the bridge and new paths together. Do not change the shared
+   HOST or remove the installation patch in this change. The existing parent can
+   read the bridge and apply its own new path and the child's new path.
+2. After separate operator approval, verify the parent and child are Ready at the
+   intended revision and their live paths are `./deploy/clusters/default` and
+   `./deploy/k8s/overlays/flux`. Check inventory and application health; pruning
+   remains enabled and resource names and namespaces must not change.
+3. Only in a later reviewed change remove the bridges after all installations and
+   external bootstrap tooling use the new paths. The external bootstrap wrapper's
+   default may still be the old path: explicitly set `CLUSTER_PATH` until updated.
+
+For rollback, restore both bridges and their matching pins before reverting either
+live path; verify reconciliation and inventory before removing anything. Never
+delete Flux resources outside `ragnarok` as part of this migration. A fresh install
+must use the new path and the separately reviewed suspended-child procedure below.
+The later shared-HOST migration remains a separate change after the child patch is
+confirmed; this path migration does not activate it.
+
+The last operator-verified operating state had both reconcilers active/Ready. The child Git
 spec is suspend:false. An absent suspend field on the parent also means active.
 The last operator-confirmed installation revision was `109430d1` (2026-11-02);
 later documentation-only merges can advance source/applied revisions without
@@ -29,6 +63,10 @@ working stack.
 1. Have a reviewed Git installation state explicitly holding the child at
    suspend:true. During manual bootstrap both existing reconcilers stay paused.
    The full application installer refuses an active reconciler and never resumes it.
+   The GitRepository manifest in that installation state must also reference the
+   intended repository and installation branch, not the checked-in main branch.
+   Verify the rendered source and live source revision before resuming the parent;
+   otherwise the parent can switch sources and remove the installation hold.
 2. After bootstrap/acceptance and activation approval, confirm the intended source
    revision and SSH Secret. Resume **only the parent** while the Git child hold
    remains true; wait for the parent's Ready condition and exact applied revision.
@@ -47,7 +85,7 @@ repeat bootstrap or pause/resume working reconcilers for a routine image update.
 ## Normal approved-release path
 
 1. Source/dependency changes pass required PR validation and enter main through
-   review or the repository's configured dependency auto-merge policy.
+   human review and the repository's branch protection.
 2. Main CI validates the affected images. Container Security builds changed
    candidates for AMD64/ARM64, applies the existing HIGH/CRITICAL vulnerability
    gate and emits platform SBOMs/approved digest records.
@@ -56,15 +94,16 @@ repeat bootstrap or pause/resume working reconcilers for a routine image update.
    stable tags; unchanged components retain their previous releases.
 4. Publish opens a **draft GitOps image-bump PR**, without enabling auto-merge,
    updating only the corresponding overlay image tags.
-5. Review the actual registry digest/source/platforms, CI, component pairing and
+5. Approve any GitHub Actions runs awaiting approval on the bot-created PR, then
+   review the actual registry digest/source/platforms, CI, component pairing and
    release approval, then merge that image-pin PR. Active Flux automatically
    applies the new Git desired state; a manual reconcile command is not required.
 
 This is automatic **adoption after approval**, not automatic approval of all
 published images. Publishing stable alone does not change SHA-pinned pods. Review
 any externally configured auto-merge separately; it is not promised by these
-workflows. See [upstream updates](upstream-updates.md) for the distinct source-PR
-and Dependabot auto-merge rules.
+workflows. See [upstream updates](upstream-updates.md) for source-PR and
+Dependabot review requirements.
 
 ## Normal inspection and optional reconciliation
 

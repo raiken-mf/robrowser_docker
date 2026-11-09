@@ -8,7 +8,7 @@ from pathlib import Path
 import stat
 import subprocess
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 REQUIRED = ('MARIADB_HOST', 'MARIADB_DATABASE', 'MARIADB_USER',
         'MARIADB_ROOT_PASSWORD', 'MARIADB_PASSWORD',
         'SET_INTERSRV_USER', 'SET_INTERSRV_PASSWORD')
@@ -17,21 +17,23 @@ OPTIONAL = {'K8S_NAMESPACE': 'ragnarok', 'SET_PRERENEWAL': '0', 'SET_NEW_ACCOUNT
 KEYS = REQUIRED + tuple(OPTIONAL)
 
 
-def read_environment(path):
+def read_environment(path, defaults=None):
     # .env is trusted shell configuration, as in the existing deployment scripts.
     code = 'import json,os; print(json.dumps({k:os.environ.get(k, "") for k in ' + repr(KEYS) + '}))'
     result = subprocess.run(
         ['bash', '-c', 'set -ae; source "$1" >/dev/null 2>&1; python3 -c "$2"',
          'bootstrap-env', str(path.resolve()), code],
-        env={'PATH': os.environ['PATH']}, capture_output=True, text=True,
+        env={'PATH': os.environ['PATH'], **(defaults or {})}, capture_output=True, text=True,
     )
     if result.returncode:
         raise ValueError('Cannot load the trusted environment file')
     return json.loads(result.stdout)
 
 
-def render(env_file, output):
-    values = read_environment(env_file)
+def render(env_file, output, installer_defaults=False):
+    defaults = {'MARIADB_HOST': 'mariadb', 'MARIADB_DATABASE': 'ragnarok',
+                'MARIADB_USER': 'ragnarok-user'} if installer_defaults else None
+    values = read_environment(env_file, defaults)
     if env_file.name == '.env-tmpl':
         raise ValueError('Use the operator-owned local .env, not the repository template')
     for key in REQUIRED:
@@ -70,8 +72,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-file', type=Path, default=ROOT / '.env')
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--installer-defaults', action='store_true')
     args = parser.parse_args()
     try:
-        render(args.env_file, args.output_dir)
+        render(args.env_file, args.output_dir, args.installer_defaults)
     except (OSError, ValueError) as error:
         parser.exit(1, str(error) + '\n')

@@ -8,7 +8,7 @@ import tempfile
 import time
 import uuid
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 pins = dict(
     line.split("=", 1)
     for line in (ROOT / "build/dependencies.env").read_text().splitlines()

@@ -7,7 +7,23 @@ import shutil
 import subprocess
 import tempfile
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+workflow = (ROOT / ".github/workflows/pr-image-security.yml").read_text()
+assert "image: [remote, robrowser, rathena, hercules, wsproxy]" in workflow
+assert "arch: [amd64, arm64]" in workflow
+assert "hercules) paths=(images/hercules build/dependencies.env)" in workflow
+assert "HERCULES_REF=${{ env.HERCULES_REF }}" in workflow
+assert "./images/hercules" in workflow
+publish = (ROOT / ".github/workflows/publish.yml").read_text()
+assert "for overlay in deploy/k8s/overlays/flux deploy/overlays/flux; do" in publish
+assert "git add deploy/k8s/overlays/flux/kustomization.yaml deploy/overlays/flux/kustomization.yaml" in publish
+assert "gh pr merge" not in (ROOT / ".github/workflows/dependency-update.yml").read_text()
+assert not (ROOT / ".github/workflows/dependabot-automerge.yml").exists()
+assert subprocess.run(["git", "check-ignore", "-q", "--no-index", "database/conf.d/local.cnf"], cwd=ROOT).returncode == 0
+assert "../../database/conf.d:/etc/mariadb.conf.d:ro" in (ROOT / "deploy/compose/docker-compose-common.yml").read_text()
+legacy = subprocess.run(["bash", str(ROOT / "scripts/sh/k8s/k8s-rathena.sh")], capture_output=True, text=True)
+assert legacy.returncode != 0 and "disabled" in legacy.stderr
 
 # 1. Ensure Dockerfiles and entrypoints do not regress to in-place sed/patch/heredoc config mutations.
 for rel in (
@@ -50,10 +66,20 @@ with tempfile.TemporaryDirectory(prefix="rathena-cfg-test-") as tmpdir:
         )
     rendered_defines = defines_out.read_text()
     assert "#ifndef CONFIG_CUSTOM_DEFINES_PRE_HPP" in rendered_defines
+    assert '#include "defines_pre_upstream.hpp"' in rendered_defines
     assert "#define PACKET_OBFUSCATION_KEY1 0x11223344" in rendered_defines
     assert "#define PACKET_OBFUSCATION_KEY2 0x55667788" in rendered_defines
     assert "#define PACKET_OBFUSCATION_KEY3 0x99AABBCC" in rendered_defines
     assert "${" not in rendered_defines
+    (tmp / "defines_pre_upstream.hpp").write_text(
+        "#define CONFIG_CUSTOM_DEFINES_PRE_HPP\n#define CUSTOM_SETTING 42\n"
+        "#define PACKET_OBFUSCATION_KEY1 0x1\n"
+    )
+    preprocessed = subprocess.check_output(
+        ["cc", "-E", "-dM", "-x", "c", str(defines_out)], text=True
+    )
+    assert "#define CUSTOM_SETTING 42" in preprocessed
+    assert "#define PACKET_OBFUSCATION_KEY1 0x11223344" in preprocessed
 
     # Verify rAthena build-arg validator rejects invalid values and accepts valid ones.
     dockerfile = (ROOT / "images/rathena/Dockerfile").read_text()
@@ -74,10 +100,14 @@ with tempfile.TemporaryDirectory(prefix="rathena-cfg-test-") as tmpdir:
     for bad_override in (
         {"RATHENA_REF": ""},
         {"PACKETVER": "2021-11-03"},
+        {"PACKETVER": "20211103\n20211104"},
         {"SET_PRERENEWAL": "invalid"},
         {"PACKET_OBFUSCATION_KEY1": "6DED6DEE"},
         {"PACKET_OBFUSCATION_KEY2": "0x123456789"},
         {"PACKET_OBFUSCATION_KEY3": "0x1234; rm -rf /"},
+        {"PACKET_OBFUSCATION_KEY1": "0x1234\n#define INJECTED 1"},
+        {"PACKET_OBFUSCATION_KEY2": "0x1234\n0x5678"},
+        {"PACKET_OBFUSCATION_KEY3": "0x1234\n"},
     ):
         res = subprocess.run(
             ["sh", "-c", validator],
@@ -126,5 +156,10 @@ with tempfile.TemporaryDirectory(prefix="rathena-cfg-test-") as tmpdir:
     assert "userid: inter_u\npasswd: inter$UNEXPANDED_PASS\n\nchar_ip: char.internal\nmap_ip: map.internal\n" == map_conf
     assert "new_account: no\n" == login_conf
     assert motd_txt == "Welcome to Ragnarok!"
+
+    sql_hex = rathena_entrypoint.split("sql_hex() {", 1)[1].split("\n}", 1)[0]
+    for value in ("quote'\\slash", "line\nbreak", "unicode-\u00e4"):
+        encoded = subprocess.check_output(["sh", "-c", sql_hex, "sh", value], text=True)
+        assert encoded == value.encode().hex()
 
 print("PASS declarative Dockerfile configs, build-arg validation, and template rendering")

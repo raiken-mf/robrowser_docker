@@ -10,7 +10,7 @@ import urllib.parse
 import urllib.request
 import uuid
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[3]
 class Modules(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -24,6 +24,7 @@ class Modules(HTMLParser):
 name = 'api-module-test-' + uuid.uuid4().hex[:12]
 try:
     subprocess.run(['docker', 'run', '-d', '--name', name, '-p', '127.0.0.1::3000',
+                    '-e', 'HOST=ro.example.test',
                     sys.argv[1] if len(sys.argv)>1 else 'robrowser:ci'], check=True, stdout=subprocess.DEVNULL)
     address = subprocess.check_output(['docker', 'port', name, '3000'], text=True).strip()
     base = 'http://' + address
@@ -44,6 +45,19 @@ try:
         except Exception:
             if attempt == 59: raise
             time.sleep(1)
+    request = urllib.request.Request(base + '/@vite/client', headers={'Host': 'ro.example.test'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        assert response.status == 200
+    request = urllib.request.Request(base + '/@vite/client', headers={'Host': 'attacker.invalid'})
+    try:
+        urllib.request.urlopen(request, timeout=30)
+        raise AssertionError('Vite accepted an untrusted Host')
+    except urllib.error.HTTPError as error:
+        assert error.code == 403, error.code
+    request = urllib.request.Request(base + '/@vite/client', headers={'Origin': 'https://attacker.invalid'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        assert 'Access-Control-Allow-Origin' not in response.headers
+    print('PASS Vite accepts the configured host, rejects untrusted hosts and does not allow cross-origin reads', flush=True)
     for query in ('?0.138571#fixture', '?0.937421', ''):
         page = base + '/applications/api/api.html' + query
         html, _ = get(page)
@@ -58,7 +72,7 @@ try:
     engine, headers = get(base + '/src/main.js')
     assert engine and 'javascript' in headers.get('Content-Type', '')
     print('PASS actual dynamic engine entry transforms through Vite', flush=True)
-    protocol = ROOT / 'scripts/check-api-handshake.cjs'
+    protocol = ROOT / 'images/robrowser/tests/check-api-handshake.cjs'
     subprocess.run(['docker', 'exec', '-i', name, 'node', '--experimental-vm-modules', '-'],
                    input=protocol.read_text(), text=True, check=True)
 finally:

@@ -13,6 +13,7 @@ permissions:
 jobs:
   promote-and-update-gitops:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     concurrency:
       group: promote-main
       cancel-in-progress: false
@@ -88,11 +89,14 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           set -euo pipefail
-          cd deploy/overlays/flux
-          for file in "$GITHUB_WORKSPACE"/ready/*.txt; do
-            [ -f "$file" ] || continue
-            image=$(head -n 1 "$file")
-            kustomize edit set image "ghcr.io/${OWNER,,}/$image:sha-$GITHUB_SHA"
+          for overlay in deploy/k8s/overlays/flux deploy/overlays/flux; do
+            pushd "$overlay" >/dev/null
+            for file in "$GITHUB_WORKSPACE"/ready/*.txt; do
+              [ -f "$file" ] || continue
+              image=$(head -n 1 "$file")
+              kustomize edit set image "ghcr.io/${OWNER,,}/$image:sha-$GITHUB_SHA"
+            done
+            popd >/dev/null
           done
 
       - name: Create GitOps PR
@@ -104,7 +108,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add deploy/overlays/flux/kustomization.yaml
+          git add deploy/k8s/overlays/flux/kustomization.yaml deploy/overlays/flux/kustomization.yaml
           if git diff --staged --quiet; then
             echo 'No GitOps changes.'
             exit 0

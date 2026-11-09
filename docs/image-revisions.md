@@ -1,7 +1,7 @@
 # Image references and provenance
 
 The authoritative desired selection is
-[deploy/overlays/flux/kustomization.yaml](https://github.com/raiken-mf/robrowser_docker/blob/main/deploy/overlays/flux/kustomization.yaml),
+[deploy/k8s/overlays/flux/kustomization.yaml](https://github.com/raiken-mf/robrowser_docker/blob/main/deploy/k8s/overlays/flux/kustomization.yaml),
 not whichever local test image or stable tag happens to exist.
 
 ## Verified installation selection

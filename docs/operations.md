@@ -1,13 +1,13 @@
 # Existing GitOps cluster: operation and recovery
 
-The Pi stack is installed. Both Flux Kustomizations are active/Ready and seven
+In the verified example installation, both Flux Kustomizations were active/Ready and seven
 application pods were confirmed Running/ready with successful browser login on
 2026-11-02. Do not use setup-k8s.sh, setup-k8s-flux.sh, k8s-all.sh --apply, namespace
 resets or blanket image/volume pruning for routine maintenance.
 
 ## Health checks
 
-Select the intended authorized kubeconfig/context before any action. On pi the
+Select the intended authorized kubeconfig/context before any action. The
 application scripts default to /etc/rancher/k3s/k3s.yaml; an operator can instead
 explicitly use the user kubeconfig created by infrastructure setup:
 
@@ -51,17 +51,20 @@ Vite/HMR WebSocket query strings, before sharing reports.
 
 ## HTTP, module and game checks
 
-The verified Pi configuration uses these public URLs; for another installation
-use its actual HOST/ports, not internal cluster DNS names:
+Set these values to the browser-reachable host and ports of your installation,
+not internal cluster DNS names:
 
 ```bash
-curl -fsS http://pi:30080/ >/dev/null
-curl -fsS http://pi:30080/remote/System/add-system-folder-files-here.txt >/dev/null
-curl -fsS http://pi:30000/ >/dev/null
-curl -fsS http://pi:30000/applications/api/api.js >/dev/null
-curl -fsS 'http://pi:30000/applications/api/api.html?0.138571' >/dev/null
-curl -fsS http://pi:30000/applications/api/api-bootstrap.js >/dev/null
-curl -fsS http://pi:30000/src/Renderer/GR2/GR2ModelRenderer.js >/dev/null
+HOST=127.0.0.1
+PORT_HTTP=30080
+PORT_FRONTEND=30000
+curl -fsS "http://$HOST:$PORT_HTTP/" >/dev/null
+curl -fsS "http://$HOST:$PORT_HTTP/remote/System/add-system-folder-files-here.txt" >/dev/null
+curl -fsS "http://$HOST:$PORT_FRONTEND/" >/dev/null
+curl -fsS "http://$HOST:$PORT_FRONTEND/applications/api/api.js" >/dev/null
+curl -fsS "http://$HOST:$PORT_FRONTEND/applications/api/api.html?0.138571" >/dev/null
+curl -fsS "http://$HOST:$PORT_FRONTEND/applications/api/api-bootstrap.js" >/dev/null
+curl -fsS "http://$HOST:$PORT_FRONTEND/src/Renderer/GR2/GR2ModelRenderer.js" >/dev/null
 ```
 
 A successful HTML request is not proof that all browser modules work. Inspect the

@@ -6,11 +6,14 @@
 - images/remote: Apache/PHP, RemoteClient, translations and client-file configuration.
 - images/rathena and images/hercules: game-server images; images/wsproxy: proxy.
 - build/dependencies.env: exact upstream Git revision pins.
-- deploy/compose: local runtime; deploy/k8s: concrete GitOps base;
-  deploy/k8s-templates: `.env`-based bootstrap/preview templates;
-  deploy/overlays/flux: reviewed release selection.
-- clusters/pi-cluster: Flux parent/source and child application configuration.
-- scripts: bootstrap, renderers and isolated validation helpers.
+- deploy/compose: local runtime; deploy/k8s/base: concrete GitOps base;
+  deploy/k8s/templates: bootstrap templates; deploy/k8s/overlays: release selection.
+- deploy/clusters/default: Flux parent/source and installation-specific child.
+- scripts/sh, scripts/py and scripts/js: project-wide administration and checks;
+  image-specific tests and helpers live with their image. Documented legacy shell
+  and test entrypoints remain as compatibility wrappers. The wsproxy stdin test
+  remains at its historical path because it is piped into a remote container.
+- clusters/pi-cluster and deploy/overlays/flux: temporary Flux migration bridges.
 - docs: installation, operation, development, release and security guidance.
 
 The separate custom-scripts repository owns K3s/Longhorn/Flux bootstrap wrappers;
@@ -52,19 +55,24 @@ docker build -f images/robrowser/Dockerfile \
   --build-arg ROBROWSER_REF="$ROBROWSER_REF" -t robrowser:ci .
 ```
 
-The remote build accepts SET_PRERENEWAL=1 for its additional translation layer.
+The remote container selects its translation layer at startup with SET_PRERENEWAL;
+the rAthena build uses the same setting to select its compiled ruleset.
 The frontend alone fetches roBrowserLegacy; do not add that source tree to remote.
 Project-owned npm manifest/lockfile are installed with npm ci. Update the lockfile
 and source pin together when the new upstream revision needs a dependency change.
+The rAthena build preserves the upstream or override custom header and applies
+validated packet-key build arguments after it. The Compose initializer runs the
+image entrypoint with database initialization enabled before starting the servers.
 
 ## Validation without Kubernetes deployment
 
 Offline/fake-API checks:
 
 ```bash
-python3 scripts/check-k8s-bootstrap.py
-python3 scripts/check-k8s-all.py
-kubectl kustomize deploy/overlays/flux >/dev/null
+python3 scripts/py/check-k8s-bootstrap.py
+python3 scripts/py/check-k8s-all.py
+bash scripts/sh/ci/check-platform-config.sh
+kubectl kustomize deploy/k8s/overlays/flux >/dev/null
 ```
 
 The bootstrap tests use synthetic fixtures/fake kubectl, check confidentiality,
@@ -76,14 +84,17 @@ After building the local images, the Docker checks start/remove their own test
 containers/networks. Do not confuse them with cluster acceptance:
 
 ```bash
-bash scripts/check-roenglish.sh remote:ci
-bash scripts/check-image-boundaries.sh remote:ci robrowser:ci
-python3 scripts/check-image-overrides.py
-python3 scripts/check-api-module.py robrowser:ci
-python3 scripts/check-compose.py remote:ci robrowser:ci
+bash images/remote/tests/check-roenglish.sh remote:ci
+bash scripts/sh/ci/check-image-boundaries.sh remote:ci robrowser:ci
+python3 scripts/py/check-image-overrides.py
+python3 images/robrowser/tests/check-api-module.py robrowser:ci
+python3 scripts/py/check-compose.py remote:ci robrowser:ci
+python3 scripts/py/check-dockerfile-configs.py
+bash images/rathena/tests/check-entrypoint.sh
 ```
 
-check-compose.py reads this checkout's `.env` by default; `COMPOSE_TEST_ENV_FILE`
+The Dockerfile configuration check requires `envsubst` and a C compiler.
+check-compose.py reads this checkout's `.env-tmpl` by default; `COMPOSE_TEST_ENV_FILE`
 selects an explicit alternative. It isolates the web services on temporary networks
 and loopback ephemeral ports. `CLIENT_TEST_ROOT` optionally points to readonly client
 fixtures. On case-insensitive filesystems, the two case-conflict fixtures are skipped;
@@ -101,7 +112,8 @@ The required `validate` job runs on every pull request, including documentation
 changes; documentation-only PRs skip Docker builds. Relevant changes exercise
 all web and proxy smoke tests because they validate cross-service integration.
 rAthena validation builds only when its inputs or dependency pins change.
-Hercules is Compose-config validated but is not built or published by CI.
+Hercules is Compose-config validated and affected PRs build and scan it on both
+architectures; it is not published by the release workflow.
 
 Buildx stores AMD64 test layers in separate GitHub Actions scopes
 `ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and
@@ -133,9 +145,9 @@ cross-run npm cache-mount persistence is assumed.
 
 ## Documentation checks
 
-The existing documentation workflow installs mkdocs-material and publishes the
-site on main changes to docs or mkdocs.yml. A local strict build is the relevant
-pre-PR check:
+The documentation workflow runs a strict build on relevant pull requests and
+publishes the site on main changes to docs or mkdocs.yml. A local strict build is
+the relevant pre-PR check:
 
 ```bash
 python3 -m venv /tmp/robrowser-docs-tools

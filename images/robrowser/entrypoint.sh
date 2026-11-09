@@ -23,5 +23,4 @@ exec /app/node_modules/.bin/vite \
   --host 0.0.0.0 \
   --port 3000 \
   --strictPort \
-  --cors \
   --no-open

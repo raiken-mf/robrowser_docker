@@ -83,7 +83,7 @@ with tempfile.TemporaryDirectory(prefix='compose-empty-env-') as directory:
         'docker', 'compose', '--env-file', str(empty_env), '-f', str(common),
         '-f', str(root / 'deploy/compose/docker-compose-rathena.yml'), 'config', '--quiet',
     ], cwd=root, env=environment, check=True, capture_output=True, text=True)
-for engine in ('rathena',):
+for engine in ('rathena', 'hercules'):
     result = subprocess.check_output([
         'docker', 'compose', '--env-file', str(root / '.env-tmpl'), '-f', str(common),
         '-f', str(root / f'deploy/compose/docker-compose-{engine}.yml'),
@@ -98,6 +98,11 @@ for engine in ('rathena',):
         'config', '--format', 'json',
     ], cwd=root, input=json.dumps(config), text=True, env=environment)
     services = json.loads(result)['services']
+    mounts = services['database']['volumes']
+    assert any(volume['type'] == 'bind' and volume['source'] == str(root / 'deploy/compose/conf.d')
+               and volume['target'] == '/etc/mariadb.conf.d' and volume['read_only'] for volume in mounts)
+    if engine == 'hercules':
+        continue
     assert 'SET_PRERENEWAL' not in services['remote']['build']['args']
     assert 'SET_PRERENEWAL' in services['remote']['environment']
     assert 'SET_PRERENEWAL' in services[engine]['build']['args']

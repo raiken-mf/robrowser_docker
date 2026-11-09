@@ -44,7 +44,7 @@ wsProxy resolves game-service names inside the cluster/network.
   running from another worktree.
 - **Offline renderers:** `render-web-manifests.sh` honors ENV_FILE;
   `render-k8s-bootstrap.py` accepts `--env-file` explicitly.
-- **Flux:** reads `deploy/k8s/base/` through the `deploy/overlays/flux` bridge; it does not read
+- **Flux:** reads `deploy/k8s/base/` through `deploy/k8s/overlays/flux`; it does not read
   local `.env`, rerun the renderer or upload local client files. The existing
   cluster's Flux Kustomization patches its own
   hostname; configure that patch for your installation before reconciliation.
@@ -97,8 +97,11 @@ Starting the rAthena stack requires nonempty database and interserver passwords;
 MariaDB also requires a root password for initialization.
 
 The starter checks Docker and Compose but does not install them. The historical
-`./start.sh` entrypoint forwards to it. Compose mounts `database/conf.d` read-only;
-local configuration files there are ignored by Git. Kubernetes explicitly configures `utf8mb4_unicode_ci`
+`./start.sh` entrypoint forwards to it. Compose mounts `deploy/compose/conf.d` read-only;
+local configuration files there are ignored by Git. Before restarting an existing
+Compose installation, copy any operator-owned overrides from the former
+`database/conf.d` directory to `deploy/compose/conf.d` and review them. The old
+directory remains ignored to protect overrides left behind. Kubernetes explicitly configures `utf8mb4_unicode_ci`
 and UTC. Verify collation and time-zone requirements before moving data between
 the two environments. Compose does not configure persistent database storage;
 plan and test persistence and backups before using it for valuable data.

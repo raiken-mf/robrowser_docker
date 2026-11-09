@@ -37,11 +37,10 @@ Follow the user's instructions and preserve existing uncommitted and ignored wor
   component; keep genuinely shared tools under `scripts/` by language and purpose.
 - Place shell tools in `scripts/sh/k8s`, `compose`, `ci` or, when shared, `lib`;
   use `scripts/py`, `scripts/js` and `scripts/php` for other project-wide tools.
-  Root-level script wrappers are limited to documented compatibility entrypoints;
-  the historical wsproxy stdin test remains there for remote execution.
+  Keep the wsproxy stdin test under its owning image for remote execution.
 - Put Compose configuration in `deploy/compose`, Kubernetes bases, templates and
   overlays in `deploy/k8s`, and cluster-specific GitOps configuration in
-  `deploy/clusters`. Retain migration bridges until their removal is approved.
+  `deploy/clusters`.
 - Update callers, build contexts, documentation and regression tests when moving
   files. Preserve executable bits and Flux resource identities and pruning safety.
 

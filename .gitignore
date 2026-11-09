@@ -22,7 +22,8 @@
 /client/SystemEN/
 !/client/System/add-system-folder-files-here.txt
 /database/conf.d/*
-!/database/conf.d/mariadb.cnf
+/deploy/compose/conf.d/*
+!/deploy/compose/conf.d/mariadb.cnf
 
 # ==========================================
 # Secrets & Credentials (STRICTLY IGNORED)

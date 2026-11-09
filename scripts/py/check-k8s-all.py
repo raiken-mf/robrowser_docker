@@ -10,7 +10,7 @@ import tempfile
 ROOT=Path(__file__).resolve().parents[2]
 with tempfile.TemporaryDirectory(prefix='k8s-all-check-') as directory:
     work=Path(directory)
-    for name in ('scripts','deploy'):
+    for name in ('scripts','deploy','images/wsproxy/tests'):
         shutil.copytree(ROOT/name,work/name,ignore=shutil.ignore_patterns('__pycache__'))
     shutil.copyfile(ROOT/'.env-tmpl',work/'.env-tmpl')
     fixture=work/'operator.env'

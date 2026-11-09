@@ -11,7 +11,7 @@ services:
     #ports:
     #  - 3306:3306
     volumes:
-      - ../../database/conf.d:/etc/mariadb.conf.d:ro
+      - ./conf.d:/etc/mariadb.conf.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       start_period: 10s

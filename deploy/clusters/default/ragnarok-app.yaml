@@ -4,10 +4,9 @@ metadata:
   name: ragnarok-stack
   namespace: flux-system
 spec:
-  # Installation hold: resuming the parent must not start this stack.
   suspend: false
   interval: 10m0s
-  path: ./deploy/overlays/flux
+  path: ./deploy/k8s/overlays/flux
   patches:
     - target:
         kind: ConfigMap

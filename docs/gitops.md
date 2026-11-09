@@ -3,9 +3,9 @@
 ## Source of truth and current state
 
 `deploy/clusters/default/flux-system/gotk-sync.yaml` defines the GitRepository and
-parent Kustomization flux-system. The active parent path remains clusters/pi-cluster;
+parent Kustomization flux-system. Its desired path is `deploy/clusters/default`;
 it manages the child object in ragnarok-app.yaml. Both use the same source.
-The active child path remains deploy/overlays/flux, whose base is deploy/k8s/base.
+The child path is `deploy/k8s/overlays/flux`, whose base is deploy/k8s/base.
 The shared base retains the existing host during migration stage one; the existing
 cluster's child Kustomization patches `robrowser-config` with its installation-specific browser hostname. Set
 that patch to your own reachable hostname or IP before adopting this configuration.
@@ -19,34 +19,46 @@ relationship is not an application-health dependency.
 
 ## Cluster path migration
 
-The existing parent continues to point to `clusters/pi-cluster` after this merge.
-That path is a temporary Kustomize bridge to the new cluster package;
-the old `deploy/overlays/flux` is an equivalent temporary overlay. Both render
-the same resource identities and image pins as their new counterparts. Keep both
-bridges and their pins synchronized until migration is verified; CI checks equality.
+The former paths `clusters/pi-cluster` and `deploy/overlays/flux` are absent from
+the migration commit. An operator must suspend **both** existing Kustomizations
+before merging it and keep them suspended until both live paths are patched.
+Record their inventories, applied revisions and workload health before the merge;
+compare the rendered resources and live inventories, including namespaces, PVCs
+and StatefulSets. Both reconcilers prune: stop if identities or ownership differ.
+Do not rebootstrap Flux. The external bootstrap wrapper may still default to the
+former path; explicitly set `CLUSTER_PATH=deploy/clusters/default`.
 
-1. Merge the preparation PR with both old paths unchanged. Run
-   `bash scripts/sh/ci/check-platform-config.sh` and record the live inventories,
-   applied revisions and workload health using the read-only commands below.
-2. In a separate reviewed PR, change only `spec.path` in
-   `deploy/clusters/default/ragnarok-app.yaml` to `./deploy/k8s/overlays/flux`.
-   Merge, wait for normal reconciliation, and verify the child path, Ready
-   condition, applied revision, inventory and workload health before proceeding.
-3. In another reviewed PR, change only `spec.path` in
-   `deploy/clusters/default/flux-system/gotk-sync.yaml` to
-   `./deploy/clusters/default`. Merge and verify both reconcilers, inventories,
-   revisions and workload health again. Do not rebootstrap Flux.
-4. Only after every installation and external bootstrap tool uses the new paths,
-   remove the bridges in a later reviewed PR, updating the publisher, tests and
-   documentation together. The external bootstrap wrapper's default may still be
-   the old path: explicitly set `CLUSTER_PATH` until updated.
+After the reviewed migration is merged, set `APPROVED_SHA` to its exact main
+commit. The following commands are operator actions on the intended cluster:
 
-Before each merge, compare both old and new rendered parent and child resources;
-the preparation check also verifies that changing the two paths changes no other
-parent resource. Compare the live `status.inventory.entries` before and after each
-stage, including namespaces, PVCs and StatefulSets. Both reconcilers prune, so
-stop if identities or ownership differ; rendered equality alone cannot prove live
-inventory safety. Flux Ready does not prove application health (`wait: false`).
+```bash
+: "${APPROVED_SHA:?Set the reviewed migration commit SHA}"
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{" path="}{.spec.path}{" suspended="}{.spec.suspend}{"\n"}{end}'
+kubectl -n flux-system patch kustomization flux-system --type=merge -p '{"spec":{"path":"./deploy/clusters/default","suspend":true}}'
+kubectl -n flux-system patch kustomization ragnarok-stack --type=merge -p '{"spec":{"path":"./deploy/k8s/overlays/flux","suspend":true}}'
+flux reconcile source git flux-system -n flux-system
+kubectl -n flux-system get gitrepository flux-system -o jsonpath='{.status.artifact.revision}{"\n"}'
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{" path="}{.spec.path}{" suspended="}{.spec.suspend}{"\n"}{end}'
+```
+
+Stop unless both paths and `suspended=true` are correct and the source artifact
+revision is exactly `main@sha1:$APPROVED_SHA`. Freeze merges to main until both
+reconcilers have applied that revision; the GitRepository continues polling while
+Kustomizations are suspended. The Git child spec is `suspend:false`: resuming the parent can resume
+the child immediately, before the parent reports Ready. Both paths, source and
+inventories must therefore be approved before resuming the parent:
+
+```bash
+flux resume kustomization flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o yaml
+```
+
+Verify the parent Ready condition and applied revision, and the child path and
+state. If the child is still suspended, resume it with
+`flux resume kustomization ragnarok-stack -n flux-system`. Verify both applied
+revisions, inventories and workload health using the commands below. Flux Ready
+does not prove application health (`wait: false`).
 
 ```bash
 flux get sources git -n flux-system
@@ -63,11 +75,37 @@ kubectl -n ragnarok rollout status deployment/wsproxy
 ```
 
 Record the inventory and applied revision securely without publishing private
-configuration. For rollback, submit a reviewed `git revert <migration-merge-sha>`
-PR for the affected stage, keeping both bridges and matching pins available;
-verify reconciliation and inventory before proceeding. Do not delete or recreate
-Flux objects, workloads or PVCs. A fresh install requires a separately reviewed
-source path and suspended-child procedure below.
+configuration. For rollback, suspend both reconcilers immediately. Keep them
+suspended while a reviewed revert restores both former directories and matching
+pins; merge it and verify the source artifact is exactly the approved revert SHA.
+Freeze merges to main until rollback completes. Only then patch both old paths
+while retaining the suspension:
+
+```bash
+flux suspend kustomization flux-system -n flux-system
+flux suspend kustomization ragnarok-stack -n flux-system
+# Merge the reviewed revert and verify its source artifact revision first.
+flux reconcile source git flux-system -n flux-system
+kubectl -n flux-system get gitrepository flux-system -o jsonpath='{.status.artifact.revision}{"\n"}'
+kubectl -n flux-system patch kustomization flux-system --type=merge -p '{"spec":{"path":"./clusters/pi-cluster","suspend":true}}'
+kubectl -n flux-system patch kustomization ragnarok-stack --type=merge -p '{"spec":{"path":"./deploy/overlays/flux","suspend":true}}'
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{" path="}{.spec.path}{" suspended="}{.spec.suspend}{"\n"}{end}'
+```
+
+Stop unless the artifact is the approved revert revision, both old paths and
+suspensions are correct, and the source and inventories are approved. Then resume
+the parent:
+
+```bash
+flux resume kustomization flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system
+```
+
+The parent may resume the child immediately here too. Verify both paths, source,
+inventories and health after resuming; resume the child separately only if it
+remains suspended. If the revert is unavailable, leave both suspended and the
+existing workloads running. Never delete or recreate Flux objects, workloads,
+PVCs or PVs. A fresh install requires the suspended-child procedure below.
 The later shared-HOST migration remains a separate change after the child patch is
 confirmed; this path migration does not activate it.
 

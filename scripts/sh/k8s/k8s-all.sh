@@ -117,7 +117,7 @@ for component in wsproxy remote robrowser; do
   kubectl apply -f "$workdir/web/$component.yaml"
   kubectl rollout status "deployment/$component" -n "$NAMESPACE" --timeout=300s
 done
-kubectl exec -i -n "$NAMESPACE" deployment/wsproxy -- node - < scripts/check-wsproxy.cjs
+kubectl exec -i -n "$NAMESPACE" deployment/wsproxy -- node - < images/wsproxy/tests/check-wsproxy.cjs
 kubectl exec -i -n "$NAMESPACE" deployment/remote -- php <<'PHP'
 <?php
 chdir('/var/www/localhost/htdocs/remote');

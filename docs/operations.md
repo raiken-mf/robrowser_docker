@@ -75,7 +75,7 @@ cover the cache-busted HTML path that previously failed with HTTP 500.
 A scoped WebSocket test can be run with operator permission:
 
 ```bash
-kubectl -n ragnarok exec -i deployment/wsproxy -- node - < scripts/check-wsproxy.cjs
+kubectl -n ragnarok exec -i deployment/wsproxy -- node - < images/wsproxy/tests/check-wsproxy.cjs
 ```
 
 It checks a real handshake, not a game login. A new browser session should verify

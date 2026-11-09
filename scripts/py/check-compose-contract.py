@@ -101,8 +101,6 @@ for engine in ('rathena', 'hercules'):
     mounts = services['database']['volumes']
     assert any(volume['type'] == 'bind' and volume['source'] == str(root / 'deploy/compose/conf.d')
                and volume['target'] == '/etc/mariadb.conf.d' and volume['read_only'] for volume in mounts)
-    if engine == 'hercules':
-        continue
     assert 'SET_PRERENEWAL' not in services['remote']['build']['args']
     assert 'SET_PRERENEWAL' in services['remote']['environment']
     assert 'SET_PRERENEWAL' in services[engine]['build']['args']
@@ -118,4 +116,9 @@ for engine in ('rathena', 'hercules'):
             assert services[name]['environment']['SET_INTERSRV_PASSWORD'] == 'p1', f'{engine}/{name}: incorrect interserver credential'
         build_args = services[name].get('build', {}).get('args', {})
         assert not any('PASSWORD' in key for key in build_args), f'{engine}/{name}: password in build arguments'
+    if engine == 'hercules':
+        for name, port in (('ragnarok-login', '6900'), ('ragnarok-char', '6121'), ('ragnarok-map', '5121')):
+            assert services[name]['healthcheck']['test'] == ['CMD', 'nc', '-z', '127.0.0.1', port]
+        assert services['ragnarok-char']['depends_on']['ragnarok-login']['condition'] == 'service_healthy'
+        assert services['ragnarok-map']['depends_on']['ragnarok-char']['condition'] == 'service_healthy'
 print('PASS Compose service environment boundaries')

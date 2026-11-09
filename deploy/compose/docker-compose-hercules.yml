@@ -1,9 +1,18 @@
+x-game-environment: &game-environment
+  MARIADB_HOST: ${MARIADB_HOST:-database}
+  MARIADB_DATABASE: ${MARIADB_DATABASE:-ragnarok}
+  MARIADB_USER: ${MARIADB_USER:-ragnarok}
+  MARIADB_PASSWORD: ${MARIADB_PASSWORD:-}
+  SET_INTERSRV_USER: ${SET_INTERSRV_USER:-s1}
+  SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD:-}
+  SET_MOTD: ${SET_MOTD:-Welcome}
+  SET_PRERENEWAL: ${SET_PRERENEWAL:-0}
+
 services:
   hercules:
     container_name: "hercules"
     image: hercules
     pull_policy: never
-    env_file: ../../.env
     volumes:
       - ../../images/hercules/repository_override:/opt/repository_override
     build:
@@ -16,17 +25,10 @@ services:
           PACKET_OBFUSCATION_KEY1: ${PACKET_OBFUSCATION_KEY1}
           PACKET_OBFUSCATION_KEY2: ${PACKET_OBFUSCATION_KEY2}
           PACKET_OBFUSCATION_KEY3: ${PACKET_OBFUSCATION_KEY3}
-          MARIADB_HOST: ${MARIADB_HOST}
-          MARIADB_DATABASE: ${MARIADB_DATABASE}
-          MARIADB_USER: ${MARIADB_USER}
-          MARIADB_PASSWORD: ${MARIADB_PASSWORD}
-          SET_MOTD: ${SET_MOTD}
-          SET_INTERSRV_USER: ${SET_INTERSRV_USER}
-          SET_INTERSRV_PASSWORD: ${SET_INTERSRV_PASSWORD}
     command: ["/bin/true"]
     environment:
+      <<: *game-environment
       INIT_DB: "true"
-      INIT_ONLY: "true"
     depends_on:
       database:
         condition: service_healthy
@@ -39,6 +41,8 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
     #volumes:
     #  - ../../images/hercules/repository:/opt/ragnarok
     command: ["/opt/ragnarok/login-server"]
@@ -46,6 +50,12 @@ services:
     depends_on:
       hercules:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "6900"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     ports:
       - 6900:6900
     networks:
@@ -57,13 +67,21 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
     #volumes:
     #  - ../../images/hercules/repository:/opt/ragnarok
     command: ["/opt/ragnarok/char-server"]
     tty: true
     depends_on:
       ragnarok-login:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "6121"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     ports:
       - 6121:6121
     networks:
@@ -75,13 +93,21 @@ services:
     restart: always
     pull_policy: never
     user: ragnarok:ragnarok
+    environment:
+      <<: *game-environment
     #volumes:
     #  - ../../images/hercules/repository:/opt/ragnarok
     command: ["/opt/ragnarok/map-server"]
     tty: true
     depends_on:
       ragnarok-char:
-        condition: service_started
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "5121"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
     ports:
       - 5121:5121
     networks:

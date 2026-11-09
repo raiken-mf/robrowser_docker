@@ -46,14 +46,16 @@ defaults for credentials; supply unique credentials. The MariaDB client receives
 its password through `MYSQL_PWD`, which may be visible to processes with access
 to its environment; restrict process access.
 
-The active rAthena Compose stack passes explicitly selected environment variables
-to each service. Empty database or interserver passwords are rejected by the
-rAthena entrypoint; MariaDB rejects initialization without a root password.
-The starter's lifecycle commands can render without credentials; it suppresses
-the Hercules service env file only for stop and down. Hercules is outside the
-current scope: its existing Compose
-credential propagation, runtime configuration, SQL interpolation and password
-arguments require a separate security and integration review before Hercules use.
+Both Compose game stacks pass explicitly selected environment variables to each
+service. Their entrypoints reject empty database or interserver passwords; MariaDB
+rejects initialization without a root password. Hercules uses `MYSQL_PWD` for
+database initialization and removes it before starting the server. Its login
+server suppresses Info and Notice messages because upstream logs passwords in
+those categories; this also reduces operational visibility. Restrict access to
+container environments, generated configuration and the game network. Hercules
+is scanned in the PR image-security matrix but is not published by the release
+workflow. A scan and isolated integration test do not establish production safety.
+The starter's lifecycle commands can render without credentials.
 The standalone MariaDB installer renders private Secret files
 and includes interserver credentials; it still changes cluster resources and must
 only be run with explicit approval. The shared Flux base retains the historical

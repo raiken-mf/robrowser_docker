@@ -27,14 +27,15 @@ RUN apk add --no-cache \
 RUN set -eu; \
     test -n "${RATHENA_REF}"; \
     printf '%s' "${PACKETVER}" | grep -Eq '^[0-9]{8}$'; \
-    printf '%s' "${SET_PRERENEWAL}" | grep -Eq '^[01]$'; \
+    if [ -n "${SET_PRERENEWAL}" ]; then [ "${SET_PRERENEWAL}" -eq 0 ] || [ "${SET_PRERENEWAL}" -ne 0 ]; fi; \
     for key in "${PACKET_OBFUSCATION_KEY1}" "${PACKET_OBFUSCATION_KEY2}" "${PACKET_OBFUSCATION_KEY3}"; do \
-        printf '%s' "$key" | grep -Eq '^0[xX][0-9a-fA-F]{1,8}$'; \
+        printf '%s' "$key" | grep -Eq '^0[xX][0-9a-fA-F]{1,8}$' || exit 1; \
     done && \
     git clone "${RATHENA_REPOSITORY}" /opt/ragnarok && \
     git -C /opt/ragnarok checkout --detach "${RATHENA_REF}"
 
 COPY templates/ /usr/local/share/rathena/templates/
+COPY repository_override /opt/ragnarok/
 
 RUN test -f /opt/ragnarok/src/custom/defines_pre.hpp && \
     PACKET_OBFUSCATION_KEY1="${PACKET_OBFUSCATION_KEY1}" \
@@ -44,10 +45,8 @@ RUN test -f /opt/ragnarok/src/custom/defines_pre.hpp && \
       < /usr/local/share/rathena/templates/defines_pre.hpp.template \
       > /opt/ragnarok/src/custom/defines_pre.hpp
 
-COPY repository_override /opt/ragnarok/
-
 RUN cd /opt/ragnarok && \
-    if [ "${SET_PRERENEWAL}" -ne 0 ]; then \
+    if [ -n "${SET_PRERENEWAL}" ] && [ "${SET_PRERENEWAL}" -ne 0 ]; then \
         ./configure --enable-packetver="${PACKETVER}" --enable-prere; \
     else \
         ./configure --enable-packetver="${PACKETVER}"; \

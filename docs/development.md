@@ -83,9 +83,11 @@ python3 scripts/check-api-module.py robrowser:ci
 python3 scripts/check-compose.py remote:ci robrowser:ci
 ```
 
-check-compose.py reads this checkout's `.env` and actual Compose configuration,
-then isolates the web services on temporary networks and loopback ephemeral ports.
-CLIENT_TEST_ROOT optionally points to readonly client fixtures. check-roenglish.sh
+check-compose.py reads this checkout's `.env` by default; `COMPOSE_TEST_ENV_FILE`
+selects an explicit alternative. It isolates the web services on temporary networks
+and loopback ephemeral ports. `CLIENT_TEST_ROOT` optionally points to readonly client
+fixtures. On case-insensitive filesystems, the two case-conflict fixtures are skipped;
+run them on a case-sensitive filesystem for full coverage. check-roenglish.sh
 builds/tests the additional Pre-Renewal variant. The upstream-layout check clones
 pinned sources temporarily; it does not modify their original repositories.
 

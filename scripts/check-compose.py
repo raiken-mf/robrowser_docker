@@ -14,9 +14,16 @@ import uuid
 root = pathlib.Path(__file__).resolve().parents[1]
 def run(*args, **kw):
     return subprocess.run(args, check=True, text=True, **kw)
-def output(*args):
-    return subprocess.check_output(args, text=True)
-config=json.loads(output('docker','compose','--env-file',str(root/'.env'),'-f',str(root/'deploy/compose/docker-compose-common.yml'),'config','--format','json'))
+def output(*args, **kw):
+  return subprocess.check_output(args, text=True, **kw)
+env_file=pathlib.Path(os.environ.get('COMPOSE_TEST_ENV_FILE', root/'.env')).resolve()
+config=json.loads(output('docker','compose','--env-file',str(env_file),'-f',str(root/'deploy/compose/docker-compose-common.yml'),'config','--format','json',
+                         '--no-env-resolution'))
+for service in config['services'].values():
+ if 'env_file' in service:
+  service['env_file']=[str(env_file)]
+config=json.loads(output('docker','compose','--env-file',str(env_file),'-f','-', 'config','--format','json',
+                         input=json.dumps(config)))
 services={}
 allowed={'HOST','PORT_HTTP','PORT_FRONTEND','PORT_WSPROXY','PACKETVER','SET_PRERENEWAL','ROENGLISH_ADDITIONS','ROENGLISH_ADDONS','ROENGLISH_LEGACY_MAPS','PACKET_OBFUSCATION_KEY1','PACKET_OBFUSCATION_KEY2','PACKET_OBFUSCATION_KEY3','ROBROWSER_ROLE','GRF_ENCODING','PATH_MAPPING_ENABLED','CACHE_ENABLED','CACHE_MAX_FILES','CACHE_MAX_MEMORY_MB'}
 for name,port,image in [('remote',8080,sys.argv[1] if len(sys.argv)>1 else 'remote:ci'),('robrowser',3000,sys.argv[2] if len(sys.argv)>2 else 'robrowser:ci')]:
@@ -191,23 +198,27 @@ try:
     if name=='footprinteffectinfo.lub':
      assert b'Type = STR = 4' not in content, 'invalid footprint source served'
   conflict=data_fixture/'fogparametertable.txt'
-  conflict.write_bytes(b'conflicting override\n')
-  try:
-   failed=subprocess.run(['docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php'],
-                         capture_output=True,text=True)
-   assert failed.returncode != 0 and 'Ambiguous overlay source' in failed.stderr, failed.stderr
-   verify_overrides()  # failed generation must not replace the published one
-  finally:
-   conflict.unlink()
+  if not conflict.exists():
+   conflict.write_bytes(b'conflicting override\n')
+   try:
+    failed=subprocess.run(['docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php'],
+                          capture_output=True,text=True)
+    assert failed.returncode != 0 and 'Ambiguous overlay source' in failed.stderr, failed.stderr
+    verify_overrides()
+   finally:
+    conflict.unlink()
+  else:
+   print('SKIP case-conflict fixtures on case-insensitive filesystem')
   system_conflict=loose_system_fixture/'checkattendance.lub'
-  system_conflict.write_bytes(b'-- ambiguous attendance\n')
-  try:
-   failed=subprocess.run(['docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php'],
-                         capture_output=True,text=True)
-   assert failed.returncode != 0 and 'Ambiguous loose System files' in failed.stderr, failed.stderr
-   verify_overrides()
-  finally:
-   system_conflict.unlink()
+  if not system_conflict.exists():
+   system_conflict.write_bytes(b'-- ambiguous attendance\n')
+   try:
+    failed=subprocess.run(['docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php'],
+                          capture_output=True,text=True)
+    assert failed.returncode != 0 and 'Ambiguous loose System files' in failed.stderr, failed.stderr
+    verify_overrides()
+   finally:
+    system_conflict.unlink()
   run('docker','exec',loose,'php','/usr/local/bin/roenglish-startup.php')
   verify_overrides()
   assert (data_fixture/'resnametable.txt').read_bytes()==b'user data override\n'

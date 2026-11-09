@@ -56,15 +56,9 @@ with tempfile.TemporaryDirectory(prefix="rathena-cfg-test-") as tmpdir:
     assert "${" not in rendered_defines
 
     # Verify rAthena build-arg validator rejects invalid values and accepts valid ones.
-    validator = (
-        'set -eu; '
-        'test -n "${RATHENA_REF}"; '
-        'printf "%s" "${PACKETVER}" | grep -Eq "^[0-9]{8}$"; '
-        'printf "%s" "${SET_PRERENEWAL}" | grep -Eq "^[01]$"; '
-        'for key in "${PACKET_OBFUSCATION_KEY1}" "${PACKET_OBFUSCATION_KEY2}" "${PACKET_OBFUSCATION_KEY3}"; do '
-        'printf "%s" "$key" | grep -Eq "^0[xX][0-9a-fA-F]{1,8}$"; '
-        'done'
-    )
+    dockerfile = (ROOT / "images/rathena/Dockerfile").read_text()
+    validator = dockerfile.split("RUN set -eu;", 1)[1].split("git clone", 1)[0]
+    validator = "set -eu;" + validator.replace("\\\n", " ").rsplit("&&", 1)[0]
     valid_build_env = {
         **os.environ,
         "RATHENA_REF": "87d006378bf1b2cfba84781f9e9e3547be44ed46",
@@ -75,10 +69,12 @@ with tempfile.TemporaryDirectory(prefix="rathena-cfg-test-") as tmpdir:
         "PACKET_OBFUSCATION_KEY3": "0x0A3D5C0D",
     }
     subprocess.run(["sh", "-c", validator], env=valid_build_env, check=True)
+    for value in ("", "2", "-1", "+1", " 1"):
+        subprocess.run(["sh", "-c", validator], env={**valid_build_env, "SET_PRERENEWAL": value}, check=True)
     for bad_override in (
         {"RATHENA_REF": ""},
         {"PACKETVER": "2021-11-03"},
-        {"SET_PRERENEWAL": "2"},
+        {"SET_PRERENEWAL": "invalid"},
         {"PACKET_OBFUSCATION_KEY1": "6DED6DEE"},
         {"PACKET_OBFUSCATION_KEY2": "0x123456789"},
         {"PACKET_OBFUSCATION_KEY3": "0x1234; rm -rf /"},

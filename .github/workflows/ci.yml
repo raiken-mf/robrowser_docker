@@ -155,14 +155,18 @@ jobs:
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
 
-      - name: Test roBrowser Lua module loader
+      - name: Test roBrowser Lua module loader and cursor
         if: steps.scope.outputs.relevant == 'true'
         run: |
-          docker run --rm --entrypoint sh robrowser:ci -c '
-            set -eu
-            npm install --no-save --package-lock=false --ignore-scripts vitest-canvas-mock@1.2.0
-            npm test -- --globals tests/core/LuaModuleLoader.test.js
-          '
+          docker run --rm --entrypoint sh \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/images/robrowser/tests/normalize-cursor-test.cjs,dst=/tmp/normalize-cursor-test.cjs,readonly" \
+            robrowser:ci -c '
+              set -eu
+              npm install --prefix /tmp/test-tools --no-save --ignore-scripts vitest-canvas-mock@1.2.0
+              ln -s /tmp/test-tools/node_modules/vitest-canvas-mock node_modules/vitest-canvas-mock
+              node /tmp/normalize-cursor-test.cjs
+              npm test -- --globals tests/core/LuaModuleLoader.test.js tests/ui/CursorManager.test.js
+            '
 
       - name: Regress cache-busted iframe HTML and Vite module handshake
         if: steps.scope.outputs.relevant == 'true'

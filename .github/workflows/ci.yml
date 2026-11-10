@@ -4,10 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-    paths-ignore:
-      - '.gitignore'
-      - 'README.md'
-      - 'docs/**'
 
 # Called workflows inherit no more than these job-specific permissions.
 permissions:
@@ -25,8 +21,71 @@ jobs:
       contents: read
     uses: ./.github/workflows/pr-image-security.yml
 
+  checks:
+    name: Validate ${{ matrix.group }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [contracts, layout, xerj, upstream, platform, web_manifests, setup, bootstrap, compose]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Determine validation scope
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            python3 scripts/py/ci-scope.py "$BASE_SHA" "$HEAD_SHA" --pull-request >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/py/ci-scope.py "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install YAML contract dependency
+        if: steps.scope.outputs[matrix.group] == 'true' && (matrix.group == 'contracts' || matrix.group == 'platform')
+        run: python3 -m pip install --user 'PyYAML==6.0.2'
+      - name: Run affected validation
+        if: steps.scope.outputs[matrix.group] == 'true'
+        env:
+          GROUP: ${{ matrix.group }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$GROUP" in
+            contracts)
+              python3 scripts/py/check-ci-scope.py
+              python3 scripts/py/check-dockerfile-configs.py ;;
+            layout) python3 scripts/py/check-script-layout.py ;;
+            xerj) python3 scripts/py/check-xerj-monitor.py ;;
+            upstream) bash scripts/sh/ci/check-upstream-layout.sh ;;
+            platform) bash scripts/sh/ci/check-platform-config.sh ;;
+            web_manifests)
+              ENV_FILE=.env-tmpl bash scripts/sh/k8s/k8s-render-web-manifests.sh "$RUNNER_TEMP/web-manifests"
+              if grep -R -F '\${' "$RUNNER_TEMP/web-manifests"; then exit 1; fi ;;
+            setup) bash scripts/sh/ci/check-k8s-setup.sh ;;
+            bootstrap)
+              python3 scripts/py/check-k8s-bootstrap.py
+              python3 scripts/py/check-k8s-all.py ;;
+            compose)
+              python3 scripts/py/check-compose-contract.py
+              cp .env-tmpl .env
+              set -a
+              source .env
+              source build/dependencies.env
+              set +a
+              docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
+              docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet ;;
+            *) echo 'Unknown validation group' >&2; exit 1 ;;
+          esac
+
   validate:
-    needs: pr-image-security
+    needs: [pr-image-security, checks]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -37,24 +96,15 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           SCAN_RESULT: ${{ needs.pr-image-security.result }}
-        run: test "$EVENT_NAME" != pull_request || test "$SCAN_RESULT" = success
+          CHECK_RESULT: ${{ needs.checks.result }}
+        run: |
+          test "$CHECK_RESULT" = success
+          test "$EVENT_NAME" != pull_request || test "$SCAN_RESULT" = success
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Test XERJ reference monitor
-        run: python3 scripts/py/check-xerj-monitor.py
-
-      - name: Validate repository script layout
-        run: python3 scripts/py/check-script-layout.py
-
-      - name: Install YAML test dependency
-        run: python3 -m pip install --user 'PyYAML==6.0.2'
-
-      - name: Test CI and Dockerfile contracts
-        run: python3 scripts/py/check-dockerfile-configs.py
 
       - name: Determine scope
         id: scope
@@ -64,83 +114,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            echo 'relevant=true' >> "$GITHUB_OUTPUT"
-            echo 'build=true' >> "$GITHUB_OUTPUT"
-            echo 'rathena=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            comparison="$BASE_SHA...$HEAD_SHA"
+            python3 scripts/py/ci-scope.py "$BASE_SHA" "$HEAD_SHA" --pull-request >> "$GITHUB_OUTPUT"
           else
-            comparison="$BASE_SHA..$HEAD_SHA"
+            python3 scripts/py/ci-scope.py "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
           fi
-          changed=$(git diff --name-only "$comparison")
-          if grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/|Dockerfile$|\.dockerignore$)' <<< "$changed"; then
-            echo 'relevant=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'relevant=false' >> "$GITHUB_OUTPUT"
-          fi
-          if grep -Ev '^(deploy/clusters/|deploy/k8s/overlays/flux/|docs/|README\.md$|\.gitignore$)' <<< "$changed" | grep -Eq '^(images/|build/|\.github/workflows/|deploy/|scripts/py/check-(compose|image-overrides)\.py$|scripts/sh/ci/check-image-boundaries\.sh$|Dockerfile$|\.dockerignore$)'; then
-            echo 'build=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'build=false' >> "$GITHUB_OUTPUT"
-          fi
-          if grep -Eq '^(images/rathena/|scripts/sh/ci/check-rathena-pin-scope\.sh$)' <<< "$changed" || ! bash scripts/sh/ci/check-rathena-pin-scope.sh "$comparison"; then
-            echo 'rathena=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'rathena=false' >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Validate pinned source layouts
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          bash scripts/sh/ci/check-upstream-layout.sh
-
-      - name: Validate Kustomize manifests
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          bash scripts/sh/ci/check-platform-config.sh
-
-      - name: Render configurable Kubernetes web manifests
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          ENV_FILE=.env-tmpl bash scripts/sh/k8s/k8s-render-web-manifests.sh "$RUNNER_TEMP/web-manifests"
-          if grep -R -F "\${" "$RUNNER_TEMP/web-manifests"; then
-            echo 'Unresolved Kubernetes template variables' >&2
-            exit 1
-          fi
-
-      - name: Validate private offline Kubernetes bootstrap
-        if: steps.scope.outputs.relevant == 'true'
-        run: |
-          bash scripts/sh/ci/check-k8s-setup.sh
-          python3 scripts/py/check-k8s-bootstrap.py
-          python3 scripts/py/check-k8s-all.py
-
-      - name: Validate Docker Compose
-        if: steps.scope.outputs.relevant == 'true'
-        shell: bash
-        run: |
-          python3 scripts/py/check-compose-contract.py
-          cp .env-tmpl .env
-          set -a
-          source .env
-          source build/dependencies.env
-          set +a
-          docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-rathena.yml config --quiet
-          docker compose -f deploy/compose/docker-compose-common.yml -f deploy/compose/docker-compose-hercules.yml config --quiet
 
       - name: Set up Docker Buildx
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.build == 'true' || steps.scope.outputs.integration == 'true' || steps.scope.outputs.boundaries == 'true' || steps.scope.outputs.overrides == 'true' || steps.scope.outputs.remote_tests == 'true' || steps.scope.outputs.robrowser_tests == 'true' || steps.scope.outputs.rathena_tests == 'true' || steps.scope.outputs.wsproxy_tests == 'true'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v3.11.1
 
       - name: Load pinned source revisions
-        if: steps.scope.outputs.build == 'true' || steps.scope.outputs.rathena == 'true'
+        if: steps.scope.outputs.build == 'true' || steps.scope.outputs.remote_tests == 'true'
         run: grep -E '^[A-Z0-9_]+=' build/dependencies.env >> "$GITHUB_ENV"
 
       - name: Build RemoteClient for smoke test
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.remote == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
         with:
           context: .
@@ -156,7 +145,7 @@ jobs:
             ROENGLISH_REF=${{ env.ROENGLISH_REF }}
 
       - name: Build roBrowser frontend for smoke test
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.robrowser == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
         with:
           context: .
@@ -169,8 +158,26 @@ jobs:
             ROBROWSER_REPOSITORY=${{ env.ROBROWSER_REPOSITORY }}
             ROBROWSER_REF=${{ env.ROBROWSER_REF }}
 
+      - name: Load unchanged integration images by verified digest
+        env:
+          OWNER: ${{ github.repository_owner }}
+          REMOTE_BUILD: ${{ steps.scope.outputs.remote }}
+          ROBROWSER_BUILD: ${{ steps.scope.outputs.robrowser }}
+          RATHENA_BUILD: ${{ steps.scope.outputs.rathena }}
+          WSPROXY_BUILD: ${{ steps.scope.outputs.wsproxy }}
+          REMOTE_TESTS: ${{ steps.scope.outputs.remote_tests }}
+          ROBROWSER_TESTS: ${{ steps.scope.outputs.robrowser_tests }}
+          RATHENA_TESTS: ${{ steps.scope.outputs.rathena_tests }}
+          WSPROXY_TESTS: ${{ steps.scope.outputs.wsproxy_tests }}
+          WEB_TESTS: ${{ steps.scope.outputs.integration == 'true' || steps.scope.outputs.boundaries == 'true' || steps.scope.outputs.overrides == 'true' }}
+        run: bash scripts/sh/ci/load-ci-images.sh
+
+      - name: Install integration YAML dependency
+        if: steps.scope.outputs.integration == 'true'
+        run: python3 -m pip install --user 'PyYAML==6.0.2'
+
       - name: Test roBrowser Lua module loader and cursor
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.robrowser_tests == 'true'
         run: |
           docker run --rm --entrypoint sh \
             --mount "type=bind,src=$GITHUB_WORKSPACE/images/robrowser/tests/normalize-cursor-test.cjs,dst=/tmp/normalize-cursor-test.cjs,readonly" \
@@ -183,50 +190,56 @@ jobs:
             '
 
       - name: Regress cache-busted iframe HTML and Vite module handshake
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.robrowser_tests == 'true'
         run: python3 images/robrowser/tests/check-api-module.py robrowser:ci
 
       - name: Run ROEnglish generator fixtures
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.remote_tests == 'true'
         run: |
           docker run --rm --entrypoint php \
             --mount "type=bind,src=$GITHUB_WORKSPACE,dst=/repo,readonly" \
             remote:ci /repo/images/remote/tests/check-roenglish-generator.php
 
       - name: Verify generated Renewal and Pre-Renewal translations
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.remote_tests == 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y lua5.1
           bash images/remote/tests/check-roenglish.sh
 
       - name: Smoke-test runtime generation and HTTP via isolated Compose web services
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.integration == 'true'
         run: python3 scripts/py/check-compose.py
 
       - name: Verify image filesystem boundaries
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.boundaries == 'true'
         run: bash scripts/sh/ci/check-image-boundaries.sh remote:ci robrowser:ci
 
       - name: Verify independent image overrides
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.remote == 'true' || steps.scope.outputs.robrowser == 'true' || steps.scope.outputs.overrides == 'true'
         env:
           OVERRIDE_BUILDX: "1"
-        run: python3 scripts/py/check-image-overrides.py
+          REMOTE_BUILD: ${{ steps.scope.outputs.remote }}
+          ROBROWSER_BUILD: ${{ steps.scope.outputs.robrowser }}
+          OVERRIDE_TESTS: ${{ steps.scope.outputs.overrides }}
+        run: |
+          if [ "$REMOTE_BUILD" = true ]; then python3 scripts/py/check-image-overrides.py --component remote; fi
+          if [ "$ROBROWSER_BUILD" = true ]; then python3 scripts/py/check-image-overrides.py --component robrowser; fi
+          if [ "$OVERRIDE_TESTS" = true ]; then python3 scripts/py/check-image-overrides.py --no-build; fi
 
       - name: Smoke-test roBrowser
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.integration == 'true'
         shell: bash
         run: |
           set -euo pipefail
           docker run -d --name remote-ci \
             -e ROBROWSER_ROLE=web -e PACKETVER=20211103 -e ROENGLISH_LEGACY_MAPS=0 \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
-            -p 8080:8080 remote:ci
+            -p 127.0.0.1:8080:8080 remote:ci
           docker run -d --name robrowser-ci \
             -e ROBROWSER_ROLE=vite \
             -e HOST=ro.example.test -e PORT_HTTP=30080 -e PORT_WSPROXY=30599 \
-            -p 3000:3000 robrowser:ci
+            -p 127.0.0.1:3000:3000 robrowser:ci
           wait_http() {
             local url="$1" count
             for ((count=1; count<=30; count++)); do
@@ -263,12 +276,12 @@ jobs:
           ! grep -q 'Failed to resolve import' /tmp/gr2-module.js
 
       - name: roBrowser diagnostics
-        if: always() && steps.scope.outputs.build == 'true'
+        if: always() && steps.scope.outputs.integration == 'true'
         run: |
           docker logs remote-ci || true
           docker logs robrowser-ci || true
       - name: Remove roBrowser container
-        if: always() && steps.scope.outputs.build == 'true'
+        if: always() && steps.scope.outputs.integration == 'true'
         run: |
           docker rm -f remote-ci || true
           docker rm -f robrowser-ci || true
@@ -289,11 +302,11 @@ jobs:
             RATHENA_REF=${{ env.RATHENA_REF }}
 
       - name: Test rAthena entrypoint
-        if: steps.scope.outputs.rathena == 'true'
+        if: steps.scope.outputs.rathena_tests == 'true'
         run: bash images/rathena/tests/check-entrypoint.sh
 
       - name: Build wsProxy
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.wsproxy == 'true'
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v6.18.0
         with:
           context: ./images/wsproxy
@@ -302,15 +315,15 @@ jobs:
           cache-from: type=gha,scope=ci-wsproxy-amd64
           cache-to: type=gha,scope=ci-wsproxy-amd64,mode=max,ignore-error=true
       - name: Smoke-test wsProxy
-        if: steps.scope.outputs.build == 'true'
+        if: steps.scope.outputs.wsproxy_tests == 'true'
         run: |
-          docker run -d --name wsproxy-ci -p 5999:5999 wsproxy:ci -a ragnarok-login:6900
+          docker run -d --name wsproxy-ci -p 127.0.0.1:5999:5999 wsproxy:ci -a ragnarok-login:6900
           docker exec -i wsproxy-ci node - < images/wsproxy/tests/check-wsproxy.cjs
       - name: wsProxy diagnostics
-        if: always() && steps.scope.outputs.build == 'true'
+        if: always() && steps.scope.outputs.wsproxy_tests == 'true'
         run: docker logs wsproxy-ci || true
       - name: Remove wsProxy container
-        if: always() && steps.scope.outputs.build == 'true'
+        if: always() && steps.scope.outputs.wsproxy_tests == 'true'
         run: docker rm -f wsproxy-ci || true
 
   security:

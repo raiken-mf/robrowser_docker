@@ -36,9 +36,7 @@ grep -Fq 'path: ./deploy/clusters/default' deploy/clusters/default/flux-system/g
 grep -Fq 'path: ./deploy/k8s/overlays/flux' deploy/clusters/default/ragnarok-app.yaml
 grep -Fq 'prune: true' deploy/clusters/default/flux-system/gotk-sync.yaml
 grep -Fq 'prune: true' deploy/clusters/default/ragnarok-app.yaml
-scope=$(sed -n "s/.*grep -Eq '\([^']*\)' <<< \"\$changed\".*/\1/p" .github/workflows/ci.yml | head -n 1)
-test -n "$scope"
-printf '%s\n' 'deploy/clusters/default/ragnarok-app.yaml' | grep -Eq "$scope"
+python3 scripts/py/check-ci-scope.py
 if grep -Fq -- "- 'clusters/**'" .github/workflows/ci.yml; then
     printf '%s\n' 'Cluster changes must not be excluded from CI.' >&2
     exit 1

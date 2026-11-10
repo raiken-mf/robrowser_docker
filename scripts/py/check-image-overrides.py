@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build real per-image override fixtures without editing local override payloads."""
 import os
+import argparse
 import pathlib
 import shutil
 import subprocess
@@ -9,6 +10,10 @@ import time
 import uuid
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--component', choices=('remote', 'robrowser'))
+parser.add_argument('--no-build', action='store_true')
+arguments = parser.parse_args()
 pins = dict(
     line.split("=", 1)
     for line in (ROOT / "build/dependencies.env").read_text().splitlines()
@@ -17,12 +22,21 @@ pins = dict(
 
 with tempfile.TemporaryDirectory(prefix="remote-override-") as directory:
     context = pathlib.Path(directory)
-    shutil.copytree(ROOT / "images", context / "images")
+    tracked = subprocess.check_output(['git', 'ls-files', '-z', '--', 'images'], cwd=ROOT).decode().split('\0')
+    for relative in tracked:
+        if not relative or (arguments.component and not relative.startswith('images/' + arguments.component + '/')):
+            continue
+        source = ROOT / relative
+        destination = context / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, destination)
     shutil.copyfile(ROOT / ".dockerignore", context / ".dockerignore")
     for component, port, keys in (
         ("remote", 8080, ("REMOTECLIENT", "ROENGLISH")),
         ("robrowser", 3000, ("ROBROWSER",)),
     ):
+        if arguments.component and arguments.component != component:
+            continue
         fixture = context / "images" / component / "repository_override"
         (fixture / "boundary-override.txt").write_text(component)
         page = "index.html" if component == "remote" else "index.html.template"
@@ -39,14 +53,21 @@ with tempfile.TemporaryDirectory(prefix="remote-override-") as directory:
                 variable = f"{key}_{suffix}"
                 command.extend(["--build-arg", f"{variable}={pins[variable]}"])
         command.append(".")
-        subprocess.run(command, cwd=context, check=True)
+        if not arguments.no_build:
+            subprocess.run(command, cwd=context, check=True)
+        else:
+            image = component + ':ci'
         name = "remote-override-" + uuid.uuid4().hex[:12]
         try:
+            root = "/var/www/localhost/htdocs" if component == "remote" else "/app"
             subprocess.run([
-                "docker", "run", "-d", "--name", name, "--network", "none",
+                "docker", "create", "--name", name, "--network", "none",
                 "-e", "HOST=override.example", "-e", "PORT_HTTP=31080", image,
             ], check=True)
-            root = "/var/www/localhost/htdocs" if component == "remote" else "/app"
+            if arguments.no_build:
+                for filename in ('boundary-override.txt', page):
+                    subprocess.run(['docker', 'cp', str(fixture / filename), name + ':' + root + '/' + filename], check=True)
+            subprocess.run(['docker', 'start', name], check=True)
             marker = subprocess.check_output([
                 "docker", "exec", name, "cat", root + "/boundary-override.txt",
             ], text=True)

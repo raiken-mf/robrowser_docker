@@ -6,6 +6,71 @@ Python 3.15.2, Bash 3.2. This is not certification of a live deployment.
 
 ## Workflow inventory
 
+### Scope optimization
+
+The shared `scripts/py/ci-scope.py` resolver drives CI, PR scans and release
+scans. Image scopes follow Dockerfile COPY inputs, owned Dockerfiles and ignore
+files, plus consumed repository/ref values. Root `.dockerignore` affects only the
+two root-context web images. There are no local cross-image COPY dependencies.
+Tests are not image build inputs. A contract checks that current COPY sources
+remain covered; new Dockerfile inputs must update the resolver and contract.
+
+CI starts nine independent validation-group jobs and retains `validate` as the
+required aggregate. Each group runs only for its declared dependencies. Image
+smoke builds have independent image gates. The ten PR scan jobs and four release
+jobs retain their names and success aggregation; starting a job is not building
+or scanning an image. CI runs on every PR and main push so required checks do not
+remain pending and publishing can recover interrupted releases without new
+image inputs. MkDocs retains its docs/config/workflow path filters.
+
+| Change | Previous smoke builds / PR scans | New smoke builds / PR scans | Applicable validation |
+| --- | --- | --- | --- |
+| CI workflow only | remote, frontend, proxy / none | none / none | All validation groups and test scripts |
+| Frontend npm lockfile | all web/proxy / frontend | frontend / frontend | Contracts, layout, frontend tests, web integration/boundaries/own overrides |
+| Remote runtime file | all web/proxy / remote | remote / remote | Contracts, layout, remote tests, web integration/boundaries/own overrides |
+| wsproxy runtime file | all web/proxy / proxy | proxy / proxy | Contracts, layout, proxy tests |
+| rAthena runtime file | all web/proxy plus rAthena / rAthena | rAthena / rAthena | Contracts, layout, entrypoint tests |
+| Hercules runtime file | all web/proxy / Hercules | none / Hercules | Contracts, layout; no Hercules release pipeline |
+| One consumed source pin | all web/proxy, possibly rAthena / multiple unrelated images | consuming image only / consuming image only | Pin/layout contracts, upstream layouts, Compose and affected image tests |
+| Pin comments only | all web/proxy / multiple images | none / none | Dependency and Compose contracts |
+| Compose helper only | all web/proxy / none | none / none | Integration and script layout |
+| Owned image test only | all web/proxy / owning image | none / none | Owning tests and applicable contracts |
+| Bootstrap or monitor helper | none / none | none / none | Bootstrap/setup or monitor and script layout |
+| Kubernetes/Flux manifest | often all web/proxy / none | none / none | Platform, bootstrap and applicable template/contracts |
+| Root ignore file | all web/proxy / web images | web images / web images | Contracts, layout, web tests |
+| Documentation only | none / none | none / none | MkDocs; CI aggregates succeed without heavy work |
+
+Release comparisons deliberately differ from the event matrix: each image is
+compared to the source annotation on its published stable OCI index. A skipped
+event does not discard an earlier unpublished image change. Missing history,
+invalid revisions, Git errors or malformed dependency declarations conservatively
+enable checks/builds/scans, never report uncertainty as unchanged. NUL-delimited
+Git paths preserve newline filenames; disabling rename detection includes both
+ends of renames and deleted inputs. Pins are parsed as data, never executed.
+
+Script-only runtime tests load unchanged partner images from stable by immutable
+digest. The source must be an ancestor of HEAD and its image inputs must still
+match. Missing or incompatible published fixtures fail validation explicitly;
+there is no implicit rebuild or fallback to an unverified mutable image. Override
+tests rebuild only changed components; script-only override tests inject isolated
+payloads before startup without building. Build fixtures copy tracked files only,
+not ignored local overrides. Main promotion, exact-digest two-architecture security
+gates, approval journaling and rebuild-free recovery remain unchanged.
+
+`check-ci-scope.py` exercises synthetic commits for isolated image inputs, both
+pin fields, comments, script dependencies, multiple changes, renames, deletions,
+newline filenames and error fallbacks. Mocked fixture-loader checks cover the
+no-build path and metadata rejection. Local contracts cannot prove registry
+availability, runner execution or repository branch-protection configuration;
+maintainers must verify the existing `validate` and `PR image security` required
+checks on GitHub before merging.
+
+### Historical inventory
+
+The following inventory and findings record the pre-optimization audit. The scope
+optimization above supersedes its broad `build`/`relevant` gates and open per-pin
+scope finding; release recovery findings remain applicable.
+
 | Workflow | Trigger and path filter | Jobs and dependency gates | Actual expensive work |
 | --- | --- | --- | --- |
 | `ci.yml` | Every PR; main pushes except docs, README and `.gitignore` only | PR security -> validate; main validate -> security -> publish. Validate uses `always()` but explicitly rejects failed PR security. Main release jobs require successful prerequisites. | Web/proxy smoke builds use `build`; rAthena uses its separate input/pin check. Infrastructure and contract validations use `relevant`. |
@@ -37,14 +102,12 @@ Dependabot version PRs, then limits proposals to one per weekly cycle.
 
 ## Why scripts changes start jobs
 
-The PR workflow has no top-level path filter. Ten scan jobs starting is not ten
-images being built: their scope steps can skip every build and Trivy step.
-`validate` must still run and require the aggregate security result. On main the
-four release jobs similarly start before deciding whether candidates are needed.
-The corrected smoke-build filter skips isolated monitor/bootstrap scripts but
-retains configuration validation. Workflow and deployment changes remain broad
-integration inputs. Missing comparison history deliberately fails open to more
-validation/builds rather than silently skipping coverage.
+CI has no top-level path filter. Ten scan jobs starting is not ten images being
+built: their scope steps can skip every build and Trivy step. `validate` requires
+the aggregate security result and all validation-group results. Main release jobs
+compare published inputs before deciding whether candidates are needed. Script
+and deployment changes run applicable contracts or tests, not image builds.
+Missing comparison history conservatively enables required work.
 
 ## PR #115 and #117 evidence
 

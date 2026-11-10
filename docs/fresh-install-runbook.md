@@ -11,6 +11,8 @@ K3s/node access, Longhorn, a ready MariaDB operator/webhook and its CRDs must
 already exist. The [cluster guide](cluster-installation.md) explains the separate
 infrastructure scripts and their side effects. k8s-all.sh checks these prerequisites;
 it does not install/upgrade them.
+Complete K3s and storage first, then Longhorn, then Flux, before the Ragnarok
+bootstrap. The infrastructure setup scripts do not install the MariaDB operator.
 
 For a genuinely new stack, obtain installation approval, review storage and image
 pins, and ensure the target namespace is absent. Do not delete a working namespace

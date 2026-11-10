@@ -2,14 +2,14 @@
 
 In the verified example installation, both Flux Kustomizations were active/Ready and seven
 application pods were confirmed Running/ready with successful browser login on
-2026-11-02. Do not use setup-k8s.sh, setup-k8s-flux.sh, k8s-all.sh --apply, namespace
+2026-11-02. Do not use installation or bootstrap modes, k8s-all.sh --apply, namespace
 resets or blanket image/volume pruning for routine maintenance.
 
 ## Health checks
 
 Select the intended authorized kubeconfig/context before any action. The
 application scripts default to /etc/rancher/k3s/k3s.yaml; an operator can instead
-explicitly use the user kubeconfig created by infrastructure setup:
+explicitly use an authorized user kubeconfig:
 
 ```bash
 export KUBECONFIG="$HOME/.kube/config"
@@ -17,6 +17,8 @@ kubectl config current-context
 kubectl get nodes -o wide
 flux get sources git -n flux-system
 flux get kustomizations -n flux-system
+bash scripts/sh/k8s/k8s-setup-flux.sh --check
+bash scripts/sh/k8s/k8s-setup-storage.sh --check
 kubectl -n ragnarok get deployments,statefulsets,pods
 kubectl -n ragnarok get pvc,services,endpointslices
 kubectl -n ragnarok get events --field-selector type=Warning --sort-by=.lastTimestamp

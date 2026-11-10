@@ -113,6 +113,7 @@ jobs:
       - name: Validate private offline Kubernetes bootstrap
         if: steps.scope.outputs.relevant == 'true'
         run: |
+          bash scripts/sh/ci/check-k8s-setup.sh
           python3 scripts/py/check-k8s-bootstrap.py
           python3 scripts/py/check-k8s-all.py
 

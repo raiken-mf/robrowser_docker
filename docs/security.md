@@ -89,6 +89,11 @@ or restart an old image and call it a security update.
 
 ## Secrets and local files
 
+K3s setup requires a locally supplied installer and trusted SHA-256; review the
+installer and its downloaded artifacts separately. Flux bootstrap requires an
+explicit confirmation and may commit and push to GitHub. Existing installations
+are inspected without automatic repair. Never log tokens or kubeconfig contents.
+
 `.env`, client files and unversioned overrides are local configuration, not CI
 inputs automatically copied to GHCR. Keep actual credentials outside Git. The
 bootstrap uses the supplied `.env` values exactly; it does not silently generate

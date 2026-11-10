@@ -23,7 +23,9 @@ No upstream repository, package dependency, source revision, runtime security,
 port setting or Kubernetes resource is changed.
 
 These two files are intentionally versioned exceptions to the local override
-ignore rules. Other custom override payloads remain ignored. A source-pin update
+ignore rules and keep the override directory in Git without a placeholder.
+The Compose smoke test checks both API override files rather than an empty marker.
+Other custom override payloads remain ignored. A source-pin update
 must recheck this extraction: `check-upstream-layout.sh` runs
 `check-api-override.py` against the actual fetched upstream HTML and rejects a
 stale override instead of silently masking an upstream bootstrap change.

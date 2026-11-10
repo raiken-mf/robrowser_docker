@@ -293,7 +293,8 @@ try:
  assert 'grfsLoaded' in health and health['status'] in ('ok','error')
  print('PASS /remote/ .htaccess fallback executes RemoteClient PHP')
  run(*base,'exec','-T','remote','sh','-c','test -f /var/www/localhost/htdocs/put_files_to_override_here.txt && ! command -v node && ! command -v npm')
- run(*base,'exec','-T','robrowser','test','-f','/app/.gitkeep')
+ run(*base,'exec','-T','robrowser','sh','-c',
+   'test -f /app/applications/api/api.html && test -f /app/applications/api/api-bootstrap.js')
  run(*base,'exec','-T','remote','sh','-c',
      'for file in src applications vite.config.js package.json package-lock.json index.html.template; do '
      'test ! -e "/var/www/localhost/htdocs/$file" || exit 1; done')

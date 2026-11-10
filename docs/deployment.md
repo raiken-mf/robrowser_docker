@@ -42,15 +42,19 @@ wsProxy resolves game-service names inside the cluster/network.
   ragnarok) and KUBECONFIG (default `/etc/rancher/k3s/k3s.yaml`). It changes to the
   repository root internally. Use absolute ENV_FILE/CLIENT_SOURCE_DIR paths when
   running from another worktree.
-- **Offline renderers:** `render-web-manifests.sh` honors ENV_FILE;
+- **Offline renderers:** `k8s-render-web-manifests.sh` honors ENV_FILE;
   `render-k8s-bootstrap.py` accepts `--env-file` explicitly.
+  Bootstrap objects inherit `K8S_NAMESPACE`; an explicit value in the selected
+  environment file takes precedence.
 - **Flux:** reads `deploy/k8s/base/` through `deploy/k8s/overlays/flux`; it does not read
   local `.env`, rerun the renderer or upload local client files. The existing
   cluster's Flux Kustomization patches its own
   hostname; configure that patch for your installation before reconciliation.
-- **Legacy component scripts:** several still source `.env` directly. They are
-  not the normal GitOps update path and do not all implement ENV_FILE semantics.
-  The MariaDB component installer accepts ENV_FILE and defaults to `.env`.
+- **Compatibility entrypoints:** `k8s-robrowser.sh` forwards to full bootstrap,
+  check-only by default. It no longer independently deletes resources or restarts
+  deployments. `--apply` requires full-stack preflight, not a web-only update.
+  MariaDB accepts ENV_FILE but permits only fresh installation without Flux or
+  existing operator infrastructure.
 
 The web ConfigMap contains HOST, the three ports, SERVER_NAME, SET_PRERENEWAL
 and PACKETVER. rathena-config contains non-secret DB/game configuration. The
@@ -112,18 +116,35 @@ plan and test persistence and backups before using it for valuable data.
 
 ## Kubernetes
 
-The legacy `scripts/sh/k8s/k8s-rathena.sh` installer is disabled because it exposed
-credentials and interpolated SQL. Use the reviewed fresh-install procedure;
+The old unsafe rAthena installer was disabled without replacement because it
+exposed credentials and interpolated SQL. Its unused exit-only placeholder has
+been removed; no alternative legacy installation is enabled. For new deployments,
+use the separately reviewed fresh-install procedure;
 its preflight is read-only and cluster changes require separate approval.
 
 [Cluster setup](cluster-installation.md), [fresh stack installation](fresh-install-runbook.md)
 and [normal operation](operations.md) are separate procedures. Existing K3s,
 Longhorn, MariaDB operator and Flux must not be reinstalled as routine updates.
+Manual MariaDB installation requires explicitly reviewed `MARIADB_OPERATOR_VERSION`
+(`MAJOR.MINOR.PATCH`) for both charts. No latest/default version is selected.
+Missing prerequisites or webhook endpoints abort. See the separate
+[storage and operator plans](operations.md#compose-database-persistence-plan).
+
+With Flux CRDs present, full bootstrap requires both expected Kustomizations in
+`flux-system` and all listed Kustomizations across namespaces suspended. This
+conservative gate can block unrelated active tenants: use normal GitOps changes
+instead of bypassing ownership checks.
+
+Client uploads write unique `.upload-*` siblings, verify byte counts, flush and
+rename only after successful streaming. Failed uploads preserve the previous
+destination and attempt scoped temporary-file cleanup. API loss or process/node
+termination can prevent cleanup. This is per-file atomicity, not whole-client
+release atomicity or cryptographic content verification.
 
 To review web manifests without changing the cluster:
 
 ```bash
-ENV_FILE=/absolute/path/to/.env bash scripts/sh/k8s/render-web-manifests.sh /tmp/ragnarok-web-review
+ENV_FILE=/absolute/path/to/.env bash scripts/sh/k8s/k8s-render-web-manifests.sh /tmp/ragnarok-web-review
 kubectl kustomize deploy/k8s/overlays/flux
 ```
 

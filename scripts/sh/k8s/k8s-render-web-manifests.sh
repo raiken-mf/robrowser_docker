@@ -15,7 +15,7 @@ export PORT_WSPROXY="${PORT_WSPROXY:-30599}"
 export REMOTE_IMAGE_TAG="${REMOTE_IMAGE_TAG:-${ROBROWSER_IMAGE_TAG:-stable}}"
 export VITE_IMAGE_TAG="${VITE_IMAGE_TAG:-stable}"
 export WSPROXY_IMAGE_TAG="${WSPROXY_IMAGE_TAG:-stable}"
-output_dir="${1:?Usage: bash scripts/sh/k8s/render-web-manifests.sh OUTPUT_DIRECTORY}"
+output_dir="${1:?Usage: bash scripts/sh/k8s/k8s-render-web-manifests.sh OUTPUT_DIRECTORY}"
 mkdir -p "$output_dir"
 for component in remote robrowser wsproxy; do
   envsubst '${NAMESPACE} ${PORT_HTTP} ${PORT_FRONTEND} ${PORT_WSPROXY} ${REMOTE_IMAGE_TAG} ${VITE_IMAGE_TAG} ${WSPROXY_IMAGE_TAG}' \

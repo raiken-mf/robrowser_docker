@@ -23,7 +23,8 @@ def read_environment(path, defaults=None):
     result = subprocess.run(
         ['bash', '-c', 'set -ae; source "$1" >/dev/null 2>&1; python3 -c "$2"',
          'bootstrap-env', str(path.resolve()), code],
-        env={'PATH': os.environ['PATH'], **(defaults or {})}, capture_output=True, text=True,
+           env={'PATH': os.environ['PATH'], **(defaults or {}),
+               **{key: os.environ[key] for key in KEYS if key in os.environ}}, capture_output=True, text=True,
     )
     if result.returncode:
         raise ValueError('Cannot load the trusted environment file')

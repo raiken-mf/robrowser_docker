@@ -156,8 +156,9 @@ repeat bootstrap or pause/resume working reconcilers for a routine image update.
    candidates for AMD64/ARM64, applies the existing HIGH/CRITICAL vulnerability
    gate and emits platform SBOMs/approved digest records.
 3. Publish promotes the **exact scanned digests**, checks their source revision
-   and rejects publication if main moved during the scan. It sets sha-source and
-   stable tags; unchanged components retain their previous releases.
+   against main ancestry and records approval before promotion. It sets sha-source
+   and stable tags; unchanged components retain their previous releases. Main may
+   advance during scanning; newer approved component releases are never downgraded.
 4. Publish opens a **draft GitOps image-bump PR**, without enabling auto-merge,
    updating only the corresponding overlay image tags.
 5. Approve any GitHub Actions runs awaiting approval on the bot-created PR, then

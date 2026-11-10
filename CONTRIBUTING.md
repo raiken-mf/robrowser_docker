@@ -64,5 +64,5 @@ site files. Report unavailable tools, skipped checks and failures explicitly.
   results and reasons. Do not claim a test passed when it was skipped or failed.
 - Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
-See [best practices](docs/BEST_PRACTICES.md) for the external references and
+See [best practices](docs/best-practices.md) for the external references and
 the human-reviewed update process.

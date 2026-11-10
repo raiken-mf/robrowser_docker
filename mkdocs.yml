@@ -11,7 +11,9 @@ nav:
   - Image revisions: image-revisions.md
   - Upstream updates: upstream-updates.md
   - Development: development.md
-  - Best practices: BEST_PRACTICES.md
+  - CI/CD audit: ci-audit.md
+  - Repository audit: repository-audit.md
+  - Best practices: best-practices.md
   - Validation: validation.md
   - Security: security.md
   - Frontend iframe regression: frontend-api-module.md

@@ -112,11 +112,15 @@ payloads stay ignored and are not supplied to clean GitHub Actions builds.
 ## CI build caches and release boundaries
 
 The required `validate` job runs on every pull request, including documentation
-changes; documentation-only PRs skip Docker builds. Relevant changes exercise
-all web and proxy smoke tests because they validate cross-service integration.
+changes; documentation-only PRs skip Docker builds. Image, workflow, deployment
+and selected integration-helper changes exercise web and proxy smoke tests.
+Isolated monitor and bootstrap script changes retain configuration checks but
+skip those smoke builds. See the [CI/CD audit](ci-audit.md) for the full inventory.
 rAthena validation builds only when its inputs or dependency pins change.
 Hercules is Compose-config validated and included in the AMD64/ARM64 PR image
 security scan matrix; it is not published by the release workflow.
+The root `.dockerignore` affects the root-context web images, not wsProxy, whose
+build context is `images/wsproxy`; changing it alone does not rebuild wsProxy.
 
 Buildx stores AMD64 test layers in separate GitHub Actions scopes
 `ci-remote-amd64`, `ci-robrowser-amd64`, `ci-wsproxy-amd64` and
@@ -135,7 +139,12 @@ only the latter; BuildKit matches platform-specific layers. The scoped CI cache
 has one writer per workflow/ref, while the release cache has one writer per image
 and main CI runs are serialized. Publish promotes the exact security-approved
 candidate digests; it never rebuilds from these caches. The scans, SBOMs, release
-tags and draft image-pin PR remain mandatory and unchanged.
+tags and draft image-pin PR remain mandatory. If stable's source revision differs
+from the reviewed Flux pin, release recovery rebuilds and rescans the image.
+This can repeat expensive work while a GitOps PR awaits review. Publishing now
+reconciles a durable approval journal into one PR with immutable source tags;
+see [publishing protocol](image-revisions.md#publishing-protocol). The rebuild
+cost remains separate from publishing idempotency.
 
 On a cold or evicted cache, BuildKit rebuilds normally; exports use
 `ignore-error=true` so an unavailable cache does not skip a test. Inspect the

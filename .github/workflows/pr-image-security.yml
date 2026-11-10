@@ -41,19 +41,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          case "$IMAGE" in
-            remote|robrowser) paths=("images/$IMAGE" .dockerignore build/dependencies.env) ;;
-            rathena) paths=(images/rathena scripts/sh/ci/check-rathena-pin-scope.sh) ;;
-            hercules) paths=(images/hercules build/dependencies.env) ;;
-            wsproxy) paths=(images/wsproxy) ;;
-          esac
-          if git diff --quiet "$BASE_SHA...$HEAD_SHA" -- "${paths[@]}" && { [ "$IMAGE" != rathena ] || bash scripts/sh/ci/check-rathena-pin-scope.sh "$BASE_SHA...$HEAD_SHA"; }; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-            echo "$IMAGE has no image-affecting changes"
-          else
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-            echo "Scanning $IMAGE built from PR head $HEAD_SHA (${{ matrix.arch }})"
-          fi
+          python3 scripts/py/ci-scope.py "$BASE_SHA" "$HEAD_SHA" --pull-request --image "$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Load pinned source revisions
         if: steps.scope.outputs.changed == 'true'

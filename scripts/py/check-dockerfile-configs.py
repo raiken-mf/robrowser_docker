@@ -117,6 +117,8 @@ with tempfile.TemporaryDirectory(prefix="rathena-scope-") as directory:
 with tempfile.TemporaryDirectory(prefix="release-recovery-") as directory:
     fixture = pathlib.Path(directory)
     subprocess.run(["git", "init", "-q", directory], check=True)
+    (fixture / 'scripts/py').mkdir(parents=True)
+    (fixture / 'scripts/py/ci-scope.py').write_text((ROOT / 'scripts/py/ci-scope.py').read_text())
     environment = {**os.environ, "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.test",
                    "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.test"}
     empty_tree = subprocess.check_output(["git", "write-tree"], cwd=fixture, text=True).strip()
@@ -182,8 +184,7 @@ for workflow, job, step_id in (("pr-image-security.yml", "scan", "scope"),
                                ("security.yml", "build-and-scan", "changes")):
     workflow_steps = yaml_document(ROOT / ".github/workflows" / workflow)["jobs"][job]["steps"]
     scope_script = next(step["run"] for step in workflow_steps if step.get("id") == step_id)
-    wsproxy_paths = re.search(r"wsproxy\)\s+paths=\(([^)]*)\)", scope_script)
-    assert wsproxy_paths and wsproxy_paths.group(1).split() == ["images/wsproxy"], workflow
+    assert 'python3 scripts/py/ci-scope.py' in scope_script and '--image "$IMAGE"' in scope_script, workflow
     build_step = next(step for step in workflow_steps if step.get("name") in
                       ("Build PR image", "Build candidate wsProxy image"))
     assert "./images/wsproxy" in build_step["with"]["context"], workflow
@@ -199,30 +200,20 @@ for invalid in ({**matrix, "image": matrix["image"][1:]}, {**matrix, "image": ma
 ci = yaml_document(ROOT / ".github/workflows/ci.yml")
 validate = ci["jobs"]["validate"]
 steps = validate["steps"]
-assert validate["needs"] == "pr-image-security"
+assert validate["needs"] == ["pr-image-security", "checks"]
 assert any('test "$SCAN_RESULT" = success' in step.get("run", "") for step in steps)
-for name in ("Build RemoteClient for smoke test", "Build roBrowser frontend for smoke test", "Build wsProxy"):
-    assert next(step for step in steps if step.get("name") == name)["if"] == "steps.scope.outputs.build == 'true'"
+assert any('test "$CHECK_RESULT" = success' in step.get("run", "") for step in steps)
+for name, image in (("Build RemoteClient for smoke test", "remote"),
+                    ("Build roBrowser frontend for smoke test", "robrowser"), ("Build wsProxy", "wsproxy")):
+    assert next(step for step in steps if step.get("name") == name)["if"] == f"steps.scope.outputs.{image} == 'true'"
 assert next(step for step in steps if step.get("name") == "Build rAthena on AMD64 (PR validation)")["if"] == "steps.scope.outputs.rathena == 'true'"
 scope_run = next(step for step in steps if step.get("id") == "scope")["run"]
-build_line = next(line for line in scope_run.splitlines() if "grep -Ev" in line and "grep -Eq" in line)
-patterns = re.findall(r"grep -E[vq] '([^']+)'", build_line)
-assert len(patterns) == 2
-for paths, expected in ((["docs/gitops.md"], False), (["deploy/clusters/default/ragnarok-app.yaml"], False),
-                        (["deploy/k8s/overlays/flux/kustomization.yaml"], False),
-                        (["deploy/clusters/default/kustomization.yaml", "images/robrowser/Dockerfile"], True),
-                        (["images/rathena/Dockerfile"], True), (["deploy/k8s/base/rathena.yaml"], True),
-                        (["deploy/k8s/overlays/other/kustomization.yaml"], True),
-                        (["scripts/py/check-xerj-monitor.py"], False),
-                        (["scripts/py/check-k8s-bootstrap.py"], False),
-                        (["scripts/sh/k8s/k8s-setup.sh"], False),
-                        (["scripts/py/check-compose.py"], True),
-                        (["scripts/py/check-image-overrides.py"], True),
-                        (["scripts/sh/ci/check-image-boundaries.sh"], True)):
-    filtered = subprocess.run(["grep", "-Ev", patterns[0]], input="\n".join(paths) + "\n", text=True, capture_output=True)
-    assert filtered.returncode in (0, 1)
-    matched = subprocess.run(["grep", "-Eq", patterns[1]], input=filtered.stdout, text=True)
-    assert (matched.returncode == 0) == expected, paths
+assert 'python3 scripts/py/ci-scope.py' in scope_run
+assert '--pull-request' in scope_run
+assert 'paths-ignore' not in ci[True]['push']
+assert ci['jobs']['checks']['strategy']['matrix']['group'] == [
+    'contracts', 'layout', 'xerj', 'upstream', 'platform', 'web_manifests', 'setup', 'bootstrap', 'compose']
+subprocess.run([sys.executable, str(ROOT / 'scripts/py/check-ci-scope.py')], check=True)
 dependabot = yaml_document(ROOT / ".github/dependabot.yml")
 assert dependabot["multi-ecosystem-groups"]["dependencies"]["schedule"] == {
     "interval": "weekly", "day": "monday", "time": "12:00", "timezone": "Europe/Berlin"}

@@ -1,5 +1,15 @@
 # Security and private configuration
 
+## CI Scope and Test Fixtures
+
+CI and security workflows share a data-only source-pin and image-input resolver.
+Uncertain Git comparisons or malformed pins enable conservative validation and
+image security work. PR scan aggregation and exact-digest AMD64/ARM64 release
+gates are unchanged. Script-only tests may reuse a published image only by
+immutable digest, with an ancestor source revision and unchanged image inputs;
+unreliable fixtures fail rather than trigger an implicit rebuild. Local override
+fixtures exclude ignored files, and HTTP smoke-test ports bind to loopback.
+
 ## Bootstrap safeguards
 
 The old unsafe rAthena installer remains disabled without replacement. Its

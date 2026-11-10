@@ -17,7 +17,7 @@ Hercules is Compose-only and is not covered by that image publishing workflow.
 ## Choose the correct procedure
 
 - **New cluster:** [K3s, Longhorn and Flux bootstrap](docs/cluster-installation.md).
-  Infrastructure scripts live in the separate `custom-scripts` repository.
+  Infrastructure scripts live in `scripts/sh/k8s`.
 - **New Ragnarok stack on an existing cluster:** [Fresh-install runbook](docs/fresh-install-runbook.md).
   `k8s-all.sh --check` is read-only; `--apply` needs installation approval and
   requires existing Flux reconcilers to be paused. It never deletes a namespace.

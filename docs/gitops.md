@@ -25,8 +25,8 @@ before merging it and keep them suspended until both live paths are patched.
 Record their inventories, applied revisions and workload health before the merge;
 compare the rendered resources and live inventories, including namespaces, PVCs
 and StatefulSets. Both reconcilers prune: stop if identities or ownership differ.
-Do not rebootstrap Flux. The external bootstrap wrapper may still default to the
-former path; explicitly set `CLUSTER_PATH=deploy/clusters/default`.
+Do not rebootstrap Flux. The local setup wrapper defaults to
+`CLUSTER_PATH=deploy/clusters/default` and reports existing drift without repair.
 
 After the reviewed migration is merged, set `APPROVED_SHA` to its exact main
 commit. The following commands are operator actions on the intended cluster:

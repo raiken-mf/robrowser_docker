@@ -83,8 +83,9 @@ release newer main or bypass the publication freshness/security gates.
 CI validates the pinned Dockerfile-required source layout, API override parity,
 Compose/templates, translations, runtime isolation and frontend modules. Changed
 main candidates pass both platform scans and SBOM generation before exact-digest
-promotion. The workflow refuses a stale publication when main moved during scans.
-Unchanged image components retain their existing release tags.
+promotion. Main ancestry and recorded component approvals determine publication
+order even when main advances during scans; a newer approved release is not
+downgraded. Unchanged image components retain their existing release tags.
 
 roBrowserLegacy changes affect the frontend robrowser image. RemoteClient and
 ROEnglishRE changes affect remote. rAthena and wsProxy are separate images.

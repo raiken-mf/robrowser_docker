@@ -5,8 +5,6 @@ set -euo pipefail
 # Relative Directory Traversal
 # ==========================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PARENT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 # Configurable environment variables
 ROLE="${ROLE:-server}"                          # server | agent
@@ -197,8 +195,6 @@ if [ "$ROLE" = "server" ]; then
   fi
   if sudo test -e /etc/systemd/system/k3s.service || sudo test -s /var/lib/rancher/k3s/server/db/etcd/member/snap/db || sudo test -e /var/lib/rancher/k3s/server/db/state.db; then
     echo "--> Existing K3s installation detected; skipping installer."
-  elif [ -n "$K3S_URL" ] && [ -n "$K3S_TOKEN" ]; then
-    K3S_KUBECONFIG_MODE="600" K3S_URL="$K3S_URL" K3S_TOKEN="$K3S_TOKEN" sh "$K3S_INSTALLER" server
   else
     K3S_KUBECONFIG_MODE="600" sh "$K3S_INSTALLER" server --cluster-init
   fi

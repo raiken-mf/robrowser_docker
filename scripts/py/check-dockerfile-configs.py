@@ -114,8 +114,79 @@ with tempfile.TemporaryDirectory(prefix="rathena-scope-") as directory:
         assert (subprocess.run(scope + [tree], cwd=fixture, capture_output=True).returncode == 0) == expected
     assert subprocess.run(scope + ["invalid-revision"], cwd=fixture, capture_output=True).returncode != 0
 
+with tempfile.TemporaryDirectory(prefix="release-recovery-") as directory:
+    fixture = pathlib.Path(directory)
+    subprocess.run(["git", "init", "-q", directory], check=True)
+    environment = {**os.environ, "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.test",
+                   "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.test"}
+    empty_tree = subprocess.check_output(["git", "write-tree"], cwd=fixture, text=True).strip()
+    baseline = subprocess.check_output(["git", "commit-tree", empty_tree], input="baseline\n",
+                                       cwd=fixture, env=environment, text=True).strip()
+    overlay = fixture / "deploy/k8s/overlays/flux/kustomization.yaml"
+    overlay.parent.mkdir(parents=True)
+    overlay.write_text(f"images:\n- name: ghcr.io/owner/wsproxy\n  newTag: sha-{baseline}\n")
+    (fixture / "images/wsproxy").mkdir(parents=True)
+    (fixture / "images/wsproxy/Dockerfile").write_text("FROM fixture\n")
+    subprocess.run(["git", "add", "."], cwd=fixture, check=True)
+    release_tree = subprocess.check_output(["git", "write-tree"], cwd=fixture, text=True).strip()
+    published = subprocess.check_output(["git", "commit-tree", release_tree, "-p", baseline],
+                                        input="published\n", cwd=fixture, env=environment, text=True).strip()
+    subprocess.run(["git", "update-ref", "HEAD", published], cwd=fixture, check=True)
+    docker = fixture / "docker"
+    docker.write_text('#!/bin/sh\nprintf \'{"annotations":{"org.opencontainers.image.revision":"%s"}}\\n\' "$PUBLISHED_SHA"\n')
+    docker.chmod(0o700)
+    python_wrapper = fixture / "python3"
+    python_wrapper.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+    python_wrapper.chmod(0o700)
+    output = fixture / "output"
+    release_steps = yaml_document(ROOT / ".github/workflows/security.yml")["jobs"]["build-and-scan"]["steps"]
+    release_scope = next(step["run"] for step in release_steps if step.get("id") == "changes")
+    release_scope = release_scope.replace("${OWNER,,}", "${OWNER}")
+    environment.update({"PATH": f"{fixture}{os.pathsep}{environment['PATH']}", "IMAGE": "wsproxy",
+                        "OWNER": "owner", "PUBLISHED_SHA": published, "GITHUB_OUTPUT": str(output)})
+    for adopted, ignore_only, expected in ((False, False, False), (True, False, False), (True, True, False)):
+        overlay.write_text(f"images:\n- name: ghcr.io/owner/wsproxy\n  newTag: sha-{published if adopted else baseline}\n")
+        if ignore_only:
+            (fixture / ".dockerignore").write_text("client/\n")
+            subprocess.run(["git", "add", ".dockerignore"], cwd=fixture, check=True)
+            ignored_tree = subprocess.check_output(["git", "write-tree"], cwd=fixture, text=True).strip()
+            ignored_commit = subprocess.check_output(["git", "commit-tree", ignored_tree, "-p", published],
+                                                     input="ignore-only\n", cwd=fixture, env=environment,
+                                                     text=True).strip()
+            subprocess.run(["git", "update-ref", "HEAD", ignored_commit], cwd=fixture, check=True)
+        output.write_text("")
+        result = subprocess.run(["bash", "-c", release_scope], cwd=fixture, env=environment,
+                                text=True, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        assert f"changed={str(expected).lower()}\n" in output.read_text(), (
+            f"Release scope rebuilt unchanged unadopted wsproxy: {result.stdout}")
+    for prior in ('', 'invalid', 'f' * 40):
+        output.write_text('')
+        result = subprocess.run(['bash', '-c', release_scope], cwd=fixture,
+                                env={**environment, 'PUBLISHED_SHA': prior}, text=True, capture_output=True)
+        assert result.returncode == 0 and 'changed=true\n' in output.read_text(), 'Invalid revision skipped build'
+    (fixture / 'images/wsproxy/Dockerfile').write_text('FROM fixture-changed\n')
+    subprocess.run(['git', 'add', 'images/wsproxy/Dockerfile'], cwd=fixture, check=True)
+    changed_tree = subprocess.check_output(['git', 'write-tree'], cwd=fixture, text=True).strip()
+    changed_commit = subprocess.check_output(['git', 'commit-tree', changed_tree, '-p', published],
+                                            input='component-change\n', cwd=fixture, env=environment, text=True).strip()
+    subprocess.run(['git', 'update-ref', 'HEAD', changed_commit], cwd=fixture, check=True)
+    output.write_text('')
+    result = subprocess.run(['bash', '-c', release_scope], cwd=fixture, env=environment,
+                            text=True, capture_output=True)
+    assert result.returncode == 0 and 'changed=true\n' in output.read_text(), 'Changed component skipped build'
+
 matrix = yaml_document(ROOT / ".github/workflows/pr-image-security.yml")["jobs"]["scan"]["strategy"]["matrix"]
 validate_matrix(matrix)
+for workflow, job, step_id in (("pr-image-security.yml", "scan", "scope"),
+                               ("security.yml", "build-and-scan", "changes")):
+    workflow_steps = yaml_document(ROOT / ".github/workflows" / workflow)["jobs"][job]["steps"]
+    scope_script = next(step["run"] for step in workflow_steps if step.get("id") == step_id)
+    wsproxy_paths = re.search(r"wsproxy\)\s+paths=\(([^)]*)\)", scope_script)
+    assert wsproxy_paths and wsproxy_paths.group(1).split() == ["images/wsproxy"], workflow
+    build_step = next(step for step in workflow_steps if step.get("name") in
+                      ("Build PR image", "Build candidate wsProxy image"))
+    assert "./images/wsproxy" in build_step["with"]["context"], workflow
 for invalid in ({**matrix, "image": matrix["image"][1:]}, {**matrix, "image": matrix["image"] + ["other"]},
                 {**matrix, "arch": ["amd64"]}, {**matrix, "arch": matrix["arch"] + ["other"]},
                 {**matrix, "exclude": [{"image": "remote", "arch": "arm64"}]},
@@ -141,7 +212,13 @@ for paths, expected in ((["docs/gitops.md"], False), (["deploy/clusters/default/
                         (["deploy/k8s/overlays/flux/kustomization.yaml"], False),
                         (["deploy/clusters/default/kustomization.yaml", "images/robrowser/Dockerfile"], True),
                         (["images/rathena/Dockerfile"], True), (["deploy/k8s/base/rathena.yaml"], True),
-                        (["deploy/k8s/overlays/other/kustomization.yaml"], True)):
+                        (["deploy/k8s/overlays/other/kustomization.yaml"], True),
+                        (["scripts/py/check-xerj-monitor.py"], False),
+                        (["scripts/py/check-k8s-bootstrap.py"], False),
+                        (["scripts/sh/k8s/k8s-setup.sh"], False),
+                        (["scripts/py/check-compose.py"], True),
+                        (["scripts/py/check-image-overrides.py"], True),
+                        (["scripts/sh/ci/check-image-boundaries.sh"], True)):
     filtered = subprocess.run(["grep", "-Ev", patterns[0]], input="\n".join(paths) + "\n", text=True, capture_output=True)
     assert filtered.returncode in (0, 1)
     matched = subprocess.run(["grep", "-Eq", patterns[1]], input=filtered.stdout, text=True)
@@ -171,15 +248,17 @@ assert pr_step["if"] == "steps.update.outputs.changed == 'true'"
 assert all(value in pr_step["run"] for value in ("scripts/py/check-fork-update-cycle.py", "branch='automation/upstream-dependency-update'", "gh pr create", "gh pr edit"))
 
 publish = (ROOT / ".github/workflows/publish.yml").read_text()
-assert "pushd deploy/k8s/overlays/flux" in publish
-assert "git add deploy/k8s/overlays/flux/kustomization.yaml" in publish
+docs_workflow = yaml_document(ROOT / ".github/workflows/docs.yml")
+assert ".github/workflows/docs.yml" in docs_workflow[True]["push"]["paths"]
+assert any(step.get("run") == "mkdocs gh-deploy --strict --force"
+           for step in docs_workflow["jobs"]["deploy"]["steps"])
+assert "python3 scripts/py/publish-images.py" in publish
+subprocess.run([sys.executable, str(ROOT / "scripts/py/check-publishing.py")], check=True)
 assert "gh pr merge" not in (ROOT / ".github/workflows/dependency-update.yml").read_text()
 assert not (ROOT / ".github/workflows/dependabot-automerge.yml").exists()
 assert subprocess.run(["git", "check-ignore", "-q", "--no-index", "database/conf.d/local.cnf"], cwd=ROOT).returncode == 0
 assert subprocess.run(["git", "check-ignore", "-q", "--no-index", "deploy/compose/conf.d/local.cnf"], cwd=ROOT).returncode == 0
 assert "./conf.d:/etc/mariadb.conf.d:ro" in (ROOT / "deploy/compose/docker-compose-common.yml").read_text()
-legacy = subprocess.run(["bash", str(ROOT / "scripts/sh/k8s/k8s-rathena.sh")], capture_output=True, text=True)
-assert legacy.returncode != 0 and "disabled" in legacy.stderr
 
 # 1. Ensure Dockerfiles and entrypoints do not regress to in-place sed/patch/heredoc config mutations.
 for rel in (

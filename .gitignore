@@ -88,7 +88,6 @@ ENV/
 Thumbs.db
 # Vite overrides are local customization, like the Apache overrides.
 /images/robrowser/repository_override/*
-!/images/robrowser/repository_override/.gitkeep
 *.bak
 *.backup
 *.orig

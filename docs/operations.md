@@ -1,5 +1,42 @@
 # Existing GitOps cluster: operation and recovery
 
+## Compose database persistence plan
+
+This is a proposed migration, not an executed change. Shared Compose currently
+does not declare `/var/lib/mysql` persistence; an existing container may own an
+anonymous image volume. Never attach a fresh empty volume as an automatic upgrade.
+
+1. With explicit target approval, record the actual database volume, engine/image
+	version, ownership and free space without exposing credentials.
+2. Create a private consistent backup and prove restoration into an isolated
+	database. Retain the original volume and test rollback before migration.
+3. Stop writers in an approved maintenance window and take a final backup. For
+	existing installations, prepare an installation-only external-volume override
+	pointing to the verified original volume. Do not commit host-specific identity.
+4. For fresh installations, propose a named `/var/lib/mysql` volume only after
+	testing both emulator stacks, initialization and persistence across recreation.
+5. Verify accounts, schema and game login before resuming writes. Retain original
+	data until human acceptance. Never use volume pruning/deletion in this plan.
+
+## MariaDB operator upgrade plan
+
+The fresh-only installer requires `MARIADB_OPERATOR_VERSION` for both charts and
+refuses existing Flux/operator infrastructure before Helm writes. No chart version
+has been certified here and no installed release was inspected.
+
+1. With permission, record installed chart/CRD, Kubernetes and application versions,
+	Flux ownership and database/PVC state. Verify authoritative compatibility and
+	release notes for the exact proposed pair; equal versions alone prove nothing.
+2. Test backup restoration and operator/CRD transitions in an isolated environment
+	matching relevant architectures/schema. Review conversion, webhooks and storage
+	immutability. Define forward recovery where CRD downgrades are unsafe; Helm
+	rollback is not database restoration.
+3. Propose exact verified versions through the owning GitOps manifests and human
+	review. Do not run fresh installers or create competing Helm ownership live.
+4. Obtain explicit maintenance/target approval, adopt the reviewed Git change and
+	verify operator/webhook, database readiness, unchanged PVC identity and login.
+	PVC/data migration requires separate approval; retain backups until acceptance.
+
 In the verified example installation, both Flux Kustomizations were active/Ready and seven
 application pods were confirmed Running/ready with successful browser login on
 2026-11-02. Do not use installation or bootstrap modes, k8s-all.sh --apply, namespace

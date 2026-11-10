@@ -41,28 +41,35 @@ for cat_dir in resources BGM AI System data; do
     echo "  --> Processing ${cat_dir}..."
 
     # Iterate over every file individually to avoid API streaming timeouts
-    find "${src_path}" -mindepth 1 -type f | while IFS= read -r file; do
+    while IFS= read -r -d '' file; do
       rel_path="${file#"${src_path}/"}"
       target_file="/data/${cat_dir}/${rel_path}"
       target_parent="$(dirname "${target_file}")"
 
       # Ensure parent directory exists inside the volume
       kubectl exec -n "${NAMESPACE}" client-data-loader -- mkdir -p "${target_parent}"
+      temporary_file=$(kubectl exec -n "${NAMESPACE}" client-data-loader -- mktemp "${target_parent}/.upload-XXXXXX")
+      [[ "$temporary_file" == "${target_parent}/.upload-"* && "$temporary_file" != *$'\n'* ]] || { echo 'Invalid upload temporary path' >&2; exit 1; }
+      trap 'kubectl exec -n "${NAMESPACE}" client-data-loader -- rm -f -- "$temporary_file" >/dev/null' EXIT
 
       # Stream file with rate limiting (25 MB/s) if pv is present, otherwise fallback to cat
       if command -v pv >/dev/null 2>&1; then
-        pv -q -L 25M "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${target_file}" >/dev/null
+        pv -q -L 25M "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${temporary_file}" >/dev/null
       else
-        cat "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${target_file}" >/dev/null
+        cat "${file}" | kubectl exec -i -n "${NAMESPACE}" client-data-loader -- tee "${temporary_file}" >/dev/null
       fi
 
       expected_size=$(wc -c < "$file" | tr -d '[:space:]')
-      actual_size=$(kubectl exec -n "${NAMESPACE}" client-data-loader -- stat -c %s "$target_file")
+      actual_size=$(kubectl exec -n "${NAMESPACE}" client-data-loader -- stat -c %s "$temporary_file")
       [[ "$actual_size" = "$expected_size" ]] || { echo 'Client upload size mismatch' >&2; exit 1; }
+      kubectl exec -n "${NAMESPACE}" client-data-loader -- chmod 644 "$temporary_file"
+      kubectl exec -n "${NAMESPACE}" client-data-loader -- sync
+      kubectl exec -n "${NAMESPACE}" client-data-loader -- mv -f -- "$temporary_file" "$target_file"
+      trap - EXIT
 
       # 100ms pause to let Kubernetes API server process heartbeats and pings
       sleep 0.1
-    done
+    done < <(find "${src_path}" -mindepth 1 -type f -print0)
   fi
 done
 

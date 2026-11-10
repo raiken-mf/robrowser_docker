@@ -17,10 +17,13 @@ jobs:
     concurrency:
       group: promote-main
       cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
         with:
-          ref: main
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v3.5.0
         with:
@@ -37,84 +40,11 @@ jobs:
           path: ready
           merge-multiple: true
 
-      - name: Promote exact scanned digests
-        id: promote
-        shell: bash
-        env:
-          OWNER: ${{ github.repository_owner }}
-          EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          shopt -s nullglob
-          files=(ready/*.txt)
-          if (( ${#files[@]} == 0 )); then
-            echo 'No changed images; nothing to publish.'
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git fetch origin main
-          [ "$(git rev-parse origin/main)" = "$EXPECTED_SHA" ] || {
-            echo 'main moved during security scan; refusing stale publication' >&2
-            exit 1
-          }
-          echo 'changed=true' >> "$GITHUB_OUTPUT"
-          for file in "${files[@]}"; do
-            mapfile -t values < "$file"
-            image="${values[0]:-}"
-            digest="${values[1]:-}"
-            source_sha="${values[2]:-}"
-            [[ "$image" =~ ^(remote|robrowser|rathena|wsproxy)$ ]]
-            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-            [ "$source_sha" = "$EXPECTED_SHA" ]
-            ref="ghcr.io/${OWNER,,}/$image"
-            # Verify staging tag still points to the exact scanned digest.
-            candidate="$ref:candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-            current=$(docker buildx imagetools inspect "$candidate" --format '{{json .Manifest}}' | jq -r '.digest')
-            [ "$current" = "$digest" ] || { echo "Candidate digest mismatch for $image" >&2; exit 1; }
-            docker buildx imagetools create \
-              -t "$ref:sha-$EXPECTED_SHA" \
-              -t "$ref:stable" \
-              "$ref@$digest"
-            echo "Published $ref@$digest"
-          done
+      - name: Install YAML contract dependency
+        run: python3 -m pip install --user 'PyYAML==6.0.2'
 
-      - name: Set up Kustomize
-        if: steps.promote.outputs.changed == 'true'
-        uses: imranismail/setup-kustomize@53f941b41dca13ed61874bbc6b4b6e1562877530 # v3.0.0
-
-      - name: Update Flux image references
-        if: steps.promote.outputs.changed == 'true'
-        shell: bash
-        env:
-          OWNER: ${{ github.repository_owner }}
-        run: |
-          set -euo pipefail
-          pushd deploy/k8s/overlays/flux >/dev/null
-          for file in "$GITHUB_WORKSPACE"/ready/*.txt; do
-            [ -f "$file" ] || continue
-            image=$(head -n 1 "$file")
-            kustomize edit set image "ghcr.io/${OWNER,,}/$image:sha-$GITHUB_SHA"
-          done
-          popd >/dev/null
-
-      - name: Create GitOps PR
-        if: steps.promote.outputs.changed == 'true'
-        shell: bash
+      - name: Reconcile approved releases and the GitOps PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add deploy/k8s/overlays/flux/kustomization.yaml
-          if git diff --staged --quiet; then
-            echo 'No GitOps changes.'
-            exit 0
-          fi
-          branch="gitops/image-bump-$GITHUB_SHA"
-          git switch -c "$branch"
-          git commit -m "chore(gitops): bump images to sha-$GITHUB_SHA"
-          git push --set-upstream origin "$branch"
-          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" --draft \
-            --title "chore(gitops): bump images to sha-$GITHUB_SHA" \
-            --body "Update Flux image references to the scanned and promoted images for $GITHUB_SHA."
+          OWNER: ${{ github.repository_owner }}
+        run: python3 scripts/py/publish-images.py

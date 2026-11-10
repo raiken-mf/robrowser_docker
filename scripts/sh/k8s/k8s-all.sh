@@ -59,10 +59,12 @@ for name in ('mariadb-operator','mariadb-operator-webhook'):
  assert o.get('status',{}).get('availableReplicas',0)>=o['spec'].get('replicas',1), name+' not available'
 PY
 if [[ -n "$(kubectl get crd kustomizations.kustomize.toolkit.fluxcd.io --ignore-not-found -o name)" ]]; then
-  kubectl -n flux-system get kustomizations flux-system ragnarok-stack --ignore-not-found -o json > "$workdir/flux.json"
+  kubectl get kustomizations -A -o json > "$workdir/flux.json"
   python3 - "$workdir/flux.json" <<'PY'
 import json,sys
-for o in json.load(open(sys.argv[1]))['items']:
+items=json.load(open(sys.argv[1]))['items']
+assert {'flux-system','ragnarok-stack'} <= {o['metadata']['name'] for o in items if o['metadata'].get('namespace','flux-system')=='flux-system'}, 'Expected Flux owners missing; review cluster ownership'
+for o in items:
  assert o['spec'].get('suspend') is True, o['metadata']['name']+' must stay suspended during manual bootstrap'
 PY
 fi
@@ -84,7 +86,7 @@ section=next(s for s in ini.sections() if s.lower()=='data'); assert ini[section
 for name in ini[section].values():
  p=(resources/name).resolve(); assert p.is_relative_to(resources) and p.is_file() and p.stat().st_size>46, 'Missing/invalid referenced GRF'
 PY
-ENV_FILE="$ENV_FILE" bash scripts/sh/k8s/render-web-manifests.sh "$workdir/web"
+ENV_FILE="$ENV_FILE" bash scripts/sh/k8s/k8s-render-web-manifests.sh "$workdir/web"
 for component in namespace network-policy mariadb rathena; do
   envsubst < "deploy/k8s/templates/$component.yaml" > "$workdir/$component.yaml"
 done

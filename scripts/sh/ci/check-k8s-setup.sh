@@ -118,6 +118,8 @@ grep -q -- '--path=deploy/clusters/default' "$TEST_LOG"
 ROLE=agent bash "$k3s_script" >/dev/null
 ROLE=agent bash "$k3s_script" >/dev/null
 if ROLE=server bash "$k3s_script" >/dev/null 2>&1; then echo 'FAIL: K3s role mismatch accepted' >&2; exit 1; fi
+if TEST_STATE=fresh ROLE=server K3S_URL=https://fixture.invalid K3S_TOKEN=fixture bash "$k3s_script" >"$tmp/server-join-output" 2>&1; then echo 'FAIL: Server join accepted' >&2; exit 1; fi
+grep -q 'Joining an existing server requires a separately reviewed procedure' "$tmp/server-join-output"
 if TEST_STATE=fresh ROLE=agent bash "$k3s_script" >/dev/null 2>&1; then echo 'FAIL: Missing agent prerequisites accepted' >&2; exit 1; fi
 if TEST_STATE=interrupted ROLE=agent bash "$k3s_script" >/dev/null 2>&1; then echo 'FAIL: Interrupted setup accepted' >&2; exit 1; fi
 if TEST_STATE=partial-k3s ROLE=server bash "$k3s_script" >/dev/null 2>&1; then echo 'FAIL: Partial K3s installation accepted' >&2; exit 1; fi

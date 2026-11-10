@@ -1,5 +1,27 @@
 # Security and private configuration
 
+## Bootstrap safeguards
+
+The old unsafe rAthena installer remains disabled without replacement. Its
+exit-only legacy placeholder was removed after finding no necessary internal
+caller or documented compatibility requirement. No unsafe alternative was enabled.
+
+Client uploads stage temporary siblings and verify size before atomic per-file
+replacement. Failed streams preserve existing files; cleanup is best-effort if
+the API or node is unavailable. Whole-client atomicity and cryptographic content
+validation are not claimed.
+
+Manual bootstrap requires expected suspended Flux owners and rejects active
+Kustomizations across namespaces. The old web entrypoint delegates to this same
+check-only default. Fresh-only MariaDB installation requires explicit chart
+version, refuses existing Flux/operator infrastructure and aborts missing
+prerequisites/webhook readiness. Live upgrades or data migration require separate
+approval and tested recovery; see [operations](operations.md).
+
+Publisher code is pinned to the validated initiating commit. Unchanged unadopted
+releases use existing digest/source/security-proof journal recovery without
+unconditional rebuilds. Security gates, human review and permissions are unchanged.
+
 The fork pin updater runs only from the default branch, checks pull requests
 through the GitHub API before and after candidate validation, and fails closed
 on API errors. Its 24-hour Dependabot window is a heuristic, not proof of a
@@ -10,8 +32,14 @@ completed update run; see [upstream updates](upstream-updates.md).
 Main CI gates the existing Container Security workflow. It builds changed
 remote, robrowser, rAthena and wsProxy candidates for AMD64/ARM64, scans each
 platform and generates SPDX SBOMs. Publication does **not** rebuild them: it
-promotes the exact approved digest, verifies its source SHA/candidate digest and
-refuses a stale release when main moved during the scan.
+promotes the exact approved digest and verifies its source SHA/candidate digest.
+Source must belong to main ancestry; per-component ancestry checks prevent older
+releases from replacing newer tags even when scan completion order differs.
+The pre-promotion journal on `automation/image-release-state` is trusted approval
+state: restrict writes and do not delete or merge it. The publisher updates one
+draft PR with blob-SHA compare-and-swap, preserves newer pins, and fails closed on
+missing proof or API permissions. See [publishing protocol](image-revisions.md#publishing-protocol)
+for artifact retention, migration, recovery and required-check prerequisites.
 
 The configured Trivy threshold is HIGH/CRITICAL, ignore-unfixed=true, exit-code=1.
 Fixable findings at that threshold block publishing; lower severities and

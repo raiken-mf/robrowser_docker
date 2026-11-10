@@ -4,6 +4,7 @@ set +x
 cd "$(dirname "$0")/../../.."
 
 export KUBECONFIG=${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}
+for executable in kubectl helm python3 envsubst; do command -v "$executable" >/dev/null; done
 
 ENV_FILE="${ENV_FILE:-.env}"
 if [ ! -f "$ENV_FILE" ]; then
@@ -14,6 +15,12 @@ fi
 set -a
 source "$ENV_FILE"
 set +a
+: "${MARIADB_OPERATOR_VERSION:?Select a reviewed MariaDB operator chart version before installation}"
+[[ "$MARIADB_OPERATOR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid MariaDB operator chart version' >&2; exit 1; }
+existing=$(kubectl get crd kustomizations.kustomize.toolkit.fluxcd.io mariadbs.k8s.mariadb.com --ignore-not-found -o name)
+[[ -z "$existing" ]] || { echo 'Existing Flux or MariaDB operator detected; use a separately approved upgrade procedure' >&2; exit 1; }
+existing=$(kubectl get deployment mariadb-operator -n mariadb-operator --ignore-not-found -o name)
+[[ -z "$existing" ]] || { echo 'Existing MariaDB operator detected; refusing installer upgrade' >&2; exit 1; }
 
 # Defaults / Fallbacks
 export NAMESPACE="${K8S_NAMESPACE:-ragnarok}"
@@ -34,10 +41,11 @@ helm repo add mariadb-operator https://mariadb-operator.github.io/mariadb-operat
 helm repo update mariadb-operator
 
 echo "==> 2. Installing/upgrading MariaDB CRDs..."
-helm upgrade --install mariadb-operator-crds mariadb-operator/mariadb-operator-crds
+helm upgrade --install mariadb-operator-crds mariadb-operator/mariadb-operator-crds --version "$MARIADB_OPERATOR_VERSION"
 
 echo "==> 3. Installing/upgrading MariaDB Operator..."
 helm upgrade --install mariadb-operator mariadb-operator/mariadb-operator \
+  --version "$MARIADB_OPERATOR_VERSION" \
   --namespace mariadb-operator \
   --create-namespace
 
@@ -59,6 +67,7 @@ for i in {1..30}; do
   echo "Waiting for webhook endpoints to register ($i/30)..."
   sleep 2
 done
+[[ -n "${ENDPOINTS:-}" ]] || { echo 'MariaDB webhook endpoints unavailable; refusing resource changes' >&2; exit 1; }
 
 echo "==> 5. Ensuring target namespace exists..."
 kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
@@ -73,16 +82,7 @@ json.dump(manifest, sys.stdout)
 PY
 
 echo "==> 7. Applying MariaDB custom resources (templated from .env)..."
-if command -v envsubst >/dev/null 2>&1; then
-  envsubst < deploy/k8s/templates/mariadb.yaml | kubectl apply -f -
-else
-  # Fallback if envsubst is not installed
-  python3 -c '
-import os, sys, string
-template = open("deploy/k8s/templates/mariadb.yaml").read()
-print(string.Template(template).safe_substitute(os.environ))
-' | kubectl apply -f -
-fi
+envsubst < deploy/k8s/templates/mariadb.yaml | kubectl apply -f -
 
 envsubst < deploy/k8s/templates/network-policy.yaml | kubectl apply -f -
 

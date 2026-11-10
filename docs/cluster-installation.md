@@ -39,7 +39,8 @@ the installer or changing mounts, kubeconfig or Longhorn. Some inconsistent or
 partial states are rejected; this is not a recovery tool.
 An interrupted setup leaves `/var/lib/robrowser-k3s-setup-in-progress`; inspect
 the host and recover manually before removing it. Joining an existing server is
-not supported by this setup script.
+not supported by this setup script; the rejection is covered by an isolated
+regression check and there is no server-join installer path.
 
 The server installs Longhorn chart 1.12.1 only when its namespace is absent.
 It does not change the default StorageClass. Verify Longhorn readiness, data

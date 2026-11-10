@@ -41,7 +41,7 @@ for template in templates:
 
 
 def validate_matrix(matrix):
-    assert sorted(matrix["image"]) == sorted(["remote", "robrowser", "rathena", "wsproxy"])
+    assert sorted(matrix["image"]) == sorted(["remote", "robrowser", "rathena", "hercules", "wsproxy"])
     assert sorted(matrix["arch"]) == ["amd64", "arm64"]
     assert "exclude" not in matrix
     assert all(set(entry) == {"arch", "runner"} for entry in matrix["include"])
@@ -116,7 +116,7 @@ with tempfile.TemporaryDirectory(prefix="rathena-scope-") as directory:
 
 matrix = yaml_document(ROOT / ".github/workflows/pr-image-security.yml")["jobs"]["scan"]["strategy"]["matrix"]
 validate_matrix(matrix)
-for invalid in ({**matrix, "image": matrix["image"][1:]}, {**matrix, "image": matrix["image"] + ["hercules"]},
+for invalid in ({**matrix, "image": matrix["image"][1:]}, {**matrix, "image": matrix["image"] + ["other"]},
                 {**matrix, "arch": ["amd64"]}, {**matrix, "arch": matrix["arch"] + ["other"]},
                 {**matrix, "exclude": [{"image": "remote", "arch": "arm64"}]},
                 {**matrix, "include": matrix["include"] + [{"image": "hercules", "arch": "amd64"}]}):

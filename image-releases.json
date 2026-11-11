@@ -6,11 +6,32 @@
     "run": "42998642223",
     "source": "abfecf4968ee217fa19ae5385caaf4abd5b5e624"
   },
+  "remote:d334d556814350b351522a7abeb06eb1cd3268ba": {
+    "attempt": "1",
+    "digest": "sha256:04d020d64379926a28aafc962f7cf5e37f2b115f0647c84e09d8169ff49c86d3",
+    "image": "remote",
+    "run": "43028169936",
+    "source": "d334d556814350b351522a7abeb06eb1cd3268ba"
+  },
   "robrowser:795c876769735b3475769a761d2071f7b80caf4f": {
     "attempt": "1",
     "digest": "sha256:00720fe0566aed69c83da8ed279a6225700e6658cc060502bf355dc201aa5ec7",
     "image": "robrowser",
     "run": "42819870818",
     "source": "795c876769735b3475769a761d2071f7b80caf4f"
+  },
+  "robrowser:d334d556814350b351522a7abeb06eb1cd3268ba": {
+    "attempt": "1",
+    "digest": "sha256:81af1f0f47704bc001d33fadef914bd3e5b2507bb63c985b30e95a77387f7872",
+    "image": "robrowser",
+    "run": "43028169936",
+    "source": "d334d556814350b351522a7abeb06eb1cd3268ba"
+  },
+  "wsproxy:d334d556814350b351522a7abeb06eb1cd3268ba": {
+    "attempt": "1",
+    "digest": "sha256:6ece159971326bdd68f98e3685e907d4c7e1beb81a78e4e32b35dda997c07947",
+    "image": "wsproxy",
+    "run": "43028169936",
+    "source": "d334d556814350b351522a7abeb06eb1cd3268ba"
   }
 }

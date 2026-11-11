@@ -84,6 +84,10 @@ defaults for credentials; supply unique credentials. The MariaDB client receives
 its password through `MYSQL_PWD`, which may be visible to processes with access
 to its environment; restrict process access.
 
+Remote and roBrowser fetch pinned sources in build stages and do not include Git
+in their runtime images. roBrowser retains npm and its locked development
+dependencies for the existing in-image CI tests.
+
 Both Compose game stacks pass explicitly selected environment variables to each
 service. Their entrypoints reject empty database or interserver passwords; MariaDB
 rejects initialization without a root password. Hercules uses `MYSQL_PWD` for

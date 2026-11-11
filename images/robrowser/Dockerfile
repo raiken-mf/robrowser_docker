@@ -1,15 +1,23 @@
 # Pinned Alpine base, matching the roBrowser image.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS source
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
+
+RUN apk add --no-cache git \
+    && test -n "${ROBROWSER_REF}" \
+    && git clone "${ROBROWSER_REPOSITORY}" /app \
+    && git -C /app checkout --detach "${ROBROWSER_REF}" \
+    && mv /app/vite.config.js /app/vite.upstream.config.js \
+    && rm -rf /app/.git
+
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
 
 # Vite requires Node.js, not Apache or PHP.
 # Upgrade zlib and libexpat in the base package layer while keeping runtime non-root.
 RUN apk add --no-cache \
       nodejs \
       npm \
-      git \
       gettext \
     && apk upgrade --no-cache zlib libexpat \
     && addgroup -g 1000 vite \
@@ -20,12 +28,8 @@ RUN apk add --no-cache \
 USER vite
 WORKDIR /app
 
-# Fetch the exact pinned upstream revision and preserve its Vite configuration.
-RUN test -n "${ROBROWSER_REF}" \
-    && git clone "${ROBROWSER_REPOSITORY}" /app \
-    && git checkout --detach "${ROBROWSER_REF}" \
-    && mv /app/vite.config.js /app/vite.upstream.config.js \
-    && rm -rf .git
+# Preserve the exact pinned upstream revision and its Vite configuration.
+COPY --from=source --chown=vite:vite /app /app
 
 # Reproducible npm dependencies.
 COPY --chown=vite:vite images/robrowser/package.json /app/package.json

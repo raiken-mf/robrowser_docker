@@ -47,6 +47,12 @@ must be reviewed against the target context and current external scripts.
 
 ## Scope intentionally left open
 
+The rAthena multi-stage image built and passed entrypoint checks on local ARM64
+for Renewal and Pre-Renewal. Two local AMD64 builds under emulation failed with
+compiler segmentation faults at different compilation steps. The cause is not
+established; the AMD64 build and entrypoint tests must pass on a native GitHub
+runner before merging. Local ARM64 results do not establish AMD64 compatibility.
+
 Graphics, Lua, GRF-content and other client/gameplay errors are separate tasks.
 Do not hide them by weakening security/readiness checks or resetting a working
 namespace/database. Capture sanitized browser/server diagnostics and use a

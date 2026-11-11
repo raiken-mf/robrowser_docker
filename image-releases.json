@@ -1,4 +1,11 @@
 {
+  "rathena:abfecf4968ee217fa19ae5385caaf4abd5b5e624": {
+    "attempt": "1",
+    "digest": "sha256:e57e1998ae997e39f25fed29ebfe36dc8f4c34f384b6e3ef51494a47c0f2982b",
+    "image": "rathena",
+    "run": "42998642223",
+    "source": "abfecf4968ee217fa19ae5385caaf4abd5b5e624"
+  },
   "robrowser:795c876769735b3475769a761d2071f7b80caf4f": {
     "attempt": "1",
     "digest": "sha256:00720fe0566aed69c83da8ed279a6225700e6658cc060502bf355dc201aa5ec7",

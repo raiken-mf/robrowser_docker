@@ -119,6 +119,12 @@ skip those smoke builds. See the [CI/CD audit](ci-audit.md) for the full invento
 rAthena validation builds only when its inputs or dependency pins change.
 Hercules is Compose-config validated and included in the AMD64/ARM64 PR image
 security scan matrix; it is not published by the release workflow.
+Hercules builds in a separate stage and retains its complete built server tree
+in the runtime image without the compiler or Git. wsProxy installs its locked
+dependencies in a build stage; its runtime image contains Node.js but not npm.
+After building both images, run `bash scripts/sh/ci/check-runtime-images.sh
+hercules:ci wsproxy:ci` to check runtime dependencies, permissions and the proxy
+handshake without a database or external network.
 The root `.dockerignore` affects the root-context web images, not wsProxy, whose
 build context is `images/wsproxy`; changing it alone does not rebuild wsProxy.
 

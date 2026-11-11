@@ -156,6 +156,8 @@ esac
             for line in dockerfile.read_text().splitlines():
                 if not line.startswith('COPY '):
                     continue
+                if any(token.startswith('--from=') for token in line.split()[1:-1]):
+                    continue
                 sources = [token for token in line.split()[1:-1] if not token.startswith('--')]
                 for source in sources:
                     source = source.removeprefix(f'images/{image}/')

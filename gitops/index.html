@@ -1,0 +1,1114 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deployment, GitOps operation and validation for the roBrowser stack">
+      
+      
+      
+      
+        <link rel="prev" href="../deployment/">
+      
+      
+        <link rel="next" href="../operations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>GitOps lifecycle - roBrowser Docker Stack</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#fluxcd-lifecycle-and-release-adoption" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="roBrowser Docker Stack" class="md-header__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            roBrowser Docker Stack
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GitOps lifecycle
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="roBrowser Docker Stack" class="md-nav__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    roBrowser Docker Stack
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cluster-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    New K3s and Flux cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fresh-install-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fresh Ragnarok installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker and configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitOps lifecycle
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitOps lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#source-of-truth-and-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source of truth and current state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-path-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster path migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controlled-first-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlled first activation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-approved-release-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal approved-release path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-inspection-and-optional-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal inspection and optional reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovering-from-a-bad-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovering from a bad release
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations and rollback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image revisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-updates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upstream updates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../frontend-api-module/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend iframe regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#source-of-truth-and-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source of truth and current state
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cluster-path-migration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster path migration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#controlled-first-activation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Controlled first activation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-approved-release-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal approved-release path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-inspection-and-optional-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal inspection and optional reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recovering-from-a-bad-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recovering from a bad release
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="fluxcd-lifecycle-and-release-adoption">FluxCD lifecycle and release adoption</h1>
+<h2 id="source-of-truth-and-current-state">Source of truth and current state</h2>
+<p><code>deploy/clusters/default/flux-system/gotk-sync.yaml</code> defines the GitRepository and
+parent Kustomization flux-system. Its desired path is <code>deploy/clusters/default</code>;
+it manages the child object in ragnarok-app.yaml. Both use the same source.
+The child path is <code>deploy/k8s/overlays/flux</code>, whose base is deploy/k8s/base.
+The shared base retains the existing host during migration stage one; the existing
+cluster's child Kustomization patches <code>robrowser-config</code> with its installation-specific browser hostname. Set
+that patch to your own reachable hostname or IP before adopting this configuration.
+For an existing installation, first deploy this stage-one child patch while retaining
+the old shared HOST, then verify the parent has applied it before a separate change
+sets the shared HOST to <code>127.0.0.1</code>. Otherwise the child can reconcile loopback before the
+parent applies its patch. Roll back by restoring the previous shared HOST before
+removing the child patch. These are separate reviewed changes, not automatic steps.
+There is no explicit dependsOn in these manifests; the parent/child management
+relationship is not an application-health dependency.</p>
+<h2 id="cluster-path-migration">Cluster path migration</h2>
+<p>The former paths <code>clusters/pi-cluster</code> and <code>deploy/overlays/flux</code> are absent from
+the migration commit. An operator must suspend <strong>both</strong> existing Kustomizations
+before merging it and keep them suspended until both live paths are patched.
+Record their inventories, applied revisions and workload health before the merge;
+compare the rendered resources and live inventories, including namespaces, PVCs
+and StatefulSets. Both reconcilers prune: stop if identities or ownership differ.
+Do not rebootstrap Flux. The local setup wrapper defaults to
+<code>CLUSTER_PATH=deploy/clusters/default</code> and reports existing drift without repair.</p>
+<p>After the reviewed migration is merged, set <code>APPROVED_SHA</code> to its exact main
+commit. The following commands are operator actions on the intended cluster:</p>
+<pre><code class="language-bash">: &quot;${APPROVED_SHA:?Set the reviewed migration commit SHA}&quot;
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{&quot; path=&quot;}{.spec.path}{&quot; suspended=&quot;}{.spec.suspend}{&quot;\n&quot;}{end}'
+kubectl -n flux-system patch kustomization flux-system --type=merge -p '{&quot;spec&quot;:{&quot;path&quot;:&quot;./deploy/clusters/default&quot;,&quot;suspend&quot;:true}}'
+kubectl -n flux-system patch kustomization ragnarok-stack --type=merge -p '{&quot;spec&quot;:{&quot;path&quot;:&quot;./deploy/k8s/overlays/flux&quot;,&quot;suspend&quot;:true}}'
+flux reconcile source git flux-system -n flux-system
+kubectl -n flux-system get gitrepository flux-system -o jsonpath='{.status.artifact.revision}{&quot;\n&quot;}'
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{&quot; path=&quot;}{.spec.path}{&quot; suspended=&quot;}{.spec.suspend}{&quot;\n&quot;}{end}'
+</code></pre>
+<p>Stop unless both paths and <code>suspended=true</code> are correct and the source artifact
+revision is exactly <code>main@sha1:$APPROVED_SHA</code>. Freeze merges to main until both
+reconcilers have applied that revision; the GitRepository continues polling while
+Kustomizations are suspended. The Git child spec is <code>suspend:false</code>: resuming the parent can resume
+the child immediately, before the parent reports Ready. Both paths, source and
+inventories must therefore be approved before resuming the parent:</p>
+<pre><code class="language-bash">flux resume kustomization flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o yaml
+</code></pre>
+<p>Verify the parent Ready condition and applied revision, and the child path and
+state. If the child is still suspended, resume it with
+<code>flux resume kustomization ragnarok-stack -n flux-system</code>. Verify both applied
+revisions, inventories and workload health using the commands below. Flux Ready
+does not prove application health (<code>wait: false</code>).</p>
+<pre><code class="language-bash">flux get sources git -n flux-system
+flux get kustomizations -n flux-system
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o yaml
+kubectl -n ragnarok get deployments,statefulsets,pods,pvc
+kubectl -n ragnarok get mariadb database
+kubectl -n ragnarok rollout status deployment/ragnarok-login
+kubectl -n ragnarok rollout status deployment/ragnarok-char
+kubectl -n ragnarok rollout status deployment/ragnarok-map
+kubectl -n ragnarok rollout status deployment/remote
+kubectl -n ragnarok rollout status deployment/robrowser
+kubectl -n ragnarok rollout status deployment/wsproxy
+</code></pre>
+<p>Record the inventory and applied revision securely without publishing private
+configuration. For rollback, suspend both reconcilers immediately. Keep them
+suspended while a reviewed revert restores both former directories and matching
+pins; merge it and verify the source artifact is exactly the approved revert SHA.
+Freeze merges to main until rollback completes. Only then patch both old paths
+while retaining the suspension:</p>
+<pre><code class="language-bash">flux suspend kustomization flux-system -n flux-system
+flux suspend kustomization ragnarok-stack -n flux-system
+# Merge the reviewed revert and verify its source artifact revision first.
+flux reconcile source git flux-system -n flux-system
+kubectl -n flux-system get gitrepository flux-system -o jsonpath='{.status.artifact.revision}{&quot;\n&quot;}'
+kubectl -n flux-system patch kustomization flux-system --type=merge -p '{&quot;spec&quot;:{&quot;path&quot;:&quot;./clusters/pi-cluster&quot;,&quot;suspend&quot;:true}}'
+kubectl -n flux-system patch kustomization ragnarok-stack --type=merge -p '{&quot;spec&quot;:{&quot;path&quot;:&quot;./deploy/overlays/flux&quot;,&quot;suspend&quot;:true}}'
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack -o jsonpath='{range .items[*]}{.metadata.name}{&quot; path=&quot;}{.spec.path}{&quot; suspended=&quot;}{.spec.suspend}{&quot;\n&quot;}{end}'
+</code></pre>
+<p>Stop unless the artifact is the approved revert revision, both old paths and
+suspensions are correct, and the source and inventories are approved. Then resume
+the parent:</p>
+<pre><code class="language-bash">flux resume kustomization flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system
+</code></pre>
+<p>The parent may resume the child immediately here too. Verify both paths, source,
+inventories and health after resuming; resume the child separately only if it
+remains suspended. If the revert is unavailable, leave both suspended and the
+existing workloads running. Never delete or recreate Flux objects, workloads,
+PVCs or PVs. A fresh install requires the suspended-child procedure below.
+The later shared-HOST migration remains a separate change after the child patch is
+confirmed; this path migration does not activate it.</p>
+<p>The last operator-verified operating state had both reconcilers active/Ready. The child Git
+spec is suspend:false. An absent suspend field on the parent also means active.
+The last operator-confirmed installation revision was <code>109430d1</code> (2026-11-02);
+later documentation-only merges can advance source/applied revisions without
+changing workload specifications.</p>
+<p>Local <code>.env</code> is not read by Flux. Review and commit non-secret ConfigMaps,
+selectors, ports and release pins explicitly. Private bootstrap supplies Secrets
+and client PVC contents. <code>wait:false</code> on the application means Flux Ready proves
+reconciliation, not healthy DB/game/frontend processes.</p>
+<h2 id="controlled-first-activation">Controlled first activation</h2>
+<p>This section is for a <strong>new installation</strong>, not normal operation. It describes the
+hold used during installation; it is not a request to reapply it to today's
+working stack.</p>
+<ol>
+<li>Have a reviewed Git installation state explicitly holding the child at
+   suspend:true. During manual bootstrap both existing reconcilers stay paused.
+   The full application installer refuses an active reconciler and never resumes it.
+   The GitRepository manifest in that installation state must also reference the
+   intended repository and installation branch, not the checked-in main branch.
+   Verify the rendered source and live source revision before resuming the parent;
+   otherwise the parent can switch sources and remove the installation hold.</li>
+<li>After bootstrap/acceptance and activation approval, confirm the intended source
+   revision and SSH Secret. Resume <strong>only the parent</strong> while the Git child hold
+   remains true; wait for the parent's Ready condition and exact applied revision.
+   Verify the child remains suspended. Do not infer application health from this.</li>
+<li>Review a separate Git change lifting the child hold (suspend:false). With the
+   parent active, merging it lets the parent update the child and start its
+   reconciliation. A one-off CLI child resume while Git still says true is not
+   durable: the parent would restore the hold.</li>
+<li>Verify both Flux revisions/conditions, then actual pods, PVCs, endpoints,
+   frontend, RemoteClient, WebSocket and browser login. Resolve manifest drift
+   from any <code>.env</code>-based manual bootstrap before accepting GitOps ownership.</li>
+</ol>
+<p>The completed installation used the reviewed child activation in PR #90. Do not
+repeat bootstrap or pause/resume working reconcilers for a routine image update.</p>
+<h2 id="normal-approved-release-path">Normal approved-release path</h2>
+<ol>
+<li>Source/dependency changes pass required PR validation and enter main through
+   human review and the repository's branch protection.</li>
+<li>Main CI validates the affected images. Container Security builds changed
+   candidates for AMD64/ARM64, applies the existing HIGH/CRITICAL vulnerability
+   gate and emits platform SBOMs/approved digest records.</li>
+<li>Publish promotes the <strong>exact scanned digests</strong>, checks their source revision
+   against main ancestry and records approval before promotion. It sets sha-source
+   and stable tags; unchanged components retain their previous releases. Main may
+   advance during scanning; newer approved component releases are never downgraded.</li>
+<li>Publish opens a <strong>draft GitOps image-bump PR</strong>, without enabling auto-merge,
+   updating only the corresponding overlay image tags.</li>
+<li>Approve any GitHub Actions runs awaiting approval on the bot-created PR, then
+   review the actual registry digest/source/platforms, CI, component pairing and
+   release approval, then merge that image-pin PR. Active Flux automatically
+   applies the new Git desired state; a manual reconcile command is not required.</li>
+</ol>
+<p>This is automatic <strong>adoption after approval</strong>, not automatic approval of all
+published images. Publishing stable alone does not change SHA-pinned pods. Review
+any externally configured auto-merge separately; it is not promised by these
+workflows. See <a href="../upstream-updates/">upstream updates</a> for source-PR and
+Dependabot review requirements.</p>
+<h2 id="normal-inspection-and-optional-reconciliation">Normal inspection and optional reconciliation</h2>
+<p>Read-only:</p>
+<pre><code class="language-bash">flux get sources git -n flux-system
+flux get kustomizations -n flux-system
+kubectl -n flux-system get kustomizations flux-system ragnarok-stack
+</code></pre>
+<p>If an operator explicitly needs to accelerate an <strong>approved</strong> desired-state
+change, these are mutating reconciliation requests, not passive health checks:</p>
+<pre><code class="language-bash">flux reconcile source git flux-system -n flux-system
+flux reconcile kustomization flux-system -n flux-system --with-source
+flux reconcile kustomization ragnarok-stack -n flux-system --with-source
+</code></pre>
+<p>Do not run them, resume/suspend Flux or bootstrap the cluster during unrelated
+documentation/cleanup work. Normal polling already reconciles Git automatically.</p>
+<h2 id="recovering-from-a-bad-release">Recovering from a bad release</h2>
+<p>Prefer a reviewed Git revert to the last verified component tag/digest, preserving
+other image pins and configuration. Once merged, verify Flux and application
+health. Do not substitute newest main into every component tag or roll stable
+back blindly.</p>
+<p>An imperative deployment-only rollback is an emergency action needing explicit
+approval and coordination with active Flux; otherwise it will reconcile back to
+Git. Record the previous reference, actual container name and scope. Never use
+namespace/PVC deletion as rollback, and never restore DB storage without a
+separate verified recovery plan. See <a href="../operations/#rollback-and-failure-handling">operations</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

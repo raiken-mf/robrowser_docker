@@ -1,0 +1,1117 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deployment, GitOps operation and validation for the roBrowser stack">
+      
+      
+      
+      
+        <link rel="prev" href="../gitops/">
+      
+      
+        <link rel="next" href="../image-revisions/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Operations and rollback - roBrowser Docker Stack</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#existing-gitops-cluster-operation-and-recovery" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="roBrowser Docker Stack" class="md-header__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            roBrowser Docker Stack
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Operations and rollback
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="roBrowser Docker Stack" class="md-nav__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    roBrowser Docker Stack
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cluster-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    New K3s and Flux cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fresh-install-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fresh Ragnarok installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker and configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitOps lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations and rollback
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations and rollback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#compose-database-persistence-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose database persistence plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mariadb-operator-upgrade-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MariaDB operator upgrade plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-module-and-game-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP, module and game checks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTTP, module and game checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remoteclient-quick-health-caveat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RemoteClient quick-health caveat
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-and-failure-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback and failure handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image revisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-updates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upstream updates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../frontend-api-module/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend iframe regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#compose-database-persistence-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compose database persistence plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mariadb-operator-upgrade-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MariaDB operator upgrade plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health checks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#http-module-and-game-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP, module and game checks
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="HTTP, module and game checks">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#remoteclient-quick-health-caveat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RemoteClient quick-health caveat
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#normal-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Normal changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback-and-failure-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback and failure handling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="existing-gitops-cluster-operation-and-recovery">Existing GitOps cluster: operation and recovery</h1>
+<h2 id="compose-database-persistence-plan">Compose database persistence plan</h2>
+<p>This is a proposed migration, not an executed change. Shared Compose currently
+does not declare <code>/var/lib/mysql</code> persistence; an existing container may own an
+anonymous image volume. Never attach a fresh empty volume as an automatic upgrade.</p>
+<ol>
+<li>With explicit target approval, record the actual database volume, engine/image
+    version, ownership and free space without exposing credentials.</li>
+<li>Create a private consistent backup and prove restoration into an isolated
+    database. Retain the original volume and test rollback before migration.</li>
+<li>Stop writers in an approved maintenance window and take a final backup. For
+    existing installations, prepare an installation-only external-volume override
+    pointing to the verified original volume. Do not commit host-specific identity.</li>
+<li>For fresh installations, propose a named <code>/var/lib/mysql</code> volume only after
+    testing both emulator stacks, initialization and persistence across recreation.</li>
+<li>Verify accounts, schema and game login before resuming writes. Retain original
+    data until human acceptance. Never use volume pruning/deletion in this plan.</li>
+</ol>
+<h2 id="mariadb-operator-upgrade-plan">MariaDB operator upgrade plan</h2>
+<p>The fresh-only installer requires <code>MARIADB_OPERATOR_VERSION</code> for both charts and
+refuses existing Flux/operator infrastructure before Helm writes. No chart version
+has been certified here and no installed release was inspected.</p>
+<ol>
+<li>With permission, record installed chart/CRD, Kubernetes and application versions,
+    Flux ownership and database/PVC state. Verify authoritative compatibility and
+    release notes for the exact proposed pair; equal versions alone prove nothing.</li>
+<li>Test backup restoration and operator/CRD transitions in an isolated environment
+    matching relevant architectures/schema. Review conversion, webhooks and storage
+    immutability. Define forward recovery where CRD downgrades are unsafe; Helm
+    rollback is not database restoration.</li>
+<li>Propose exact verified versions through the owning GitOps manifests and human
+    review. Do not run fresh installers or create competing Helm ownership live.</li>
+<li>Obtain explicit maintenance/target approval, adopt the reviewed Git change and
+    verify operator/webhook, database readiness, unchanged PVC identity and login.
+    PVC/data migration requires separate approval; retain backups until acceptance.</li>
+</ol>
+<p>In the verified example installation, both Flux Kustomizations were active/Ready and seven
+application pods were confirmed Running/ready with successful browser login on
+2026-11-02. Do not use installation or bootstrap modes, k8s-all.sh --apply, namespace
+resets or blanket image/volume pruning for routine maintenance.</p>
+<h2 id="health-checks">Health checks</h2>
+<p>Select the intended authorized kubeconfig/context before any action. The
+application scripts default to /etc/rancher/k3s/k3s.yaml; an operator can instead
+explicitly use an authorized user kubeconfig:</p>
+<pre><code class="language-bash">export KUBECONFIG=&quot;$HOME/.kube/config&quot;
+kubectl config current-context
+kubectl get nodes -o wide
+flux get sources git -n flux-system
+flux get kustomizations -n flux-system
+bash scripts/sh/k8s/k8s-setup-flux.sh --check
+bash scripts/sh/k8s/k8s-setup-storage.sh --check
+kubectl -n ragnarok get deployments,statefulsets,pods
+kubectl -n ragnarok get pvc,services,endpointslices
+kubectl -n ragnarok get events --field-selector type=Warning --sort-by=.lastTimestamp
+kubectl -n longhorn-system get pods
+kubectl get storageclass
+</code></pre>
+<p>These commands inspect state; they do not reconcile/install/restart resources.
+Expected application roles: database-0 (operator StatefulSet), rAthena login/char/map,
+remote, robrowser and wsProxy. There are six application Deployments plus MariaDB;
+the confirmed one-replica baseline has seven pods, each 1/1. Names/counts can change
+with a deliberate reviewed scaling/version change.</p>
+<p>Check Ready/available replicas, Bound PVCs, populated EndpointSlices, current Flux
+source/applied revision and no repeated scheduling/pull/crash errors. Longhorn
+controller readiness and an existing StorageClass alone do not prove volume
+health or data recovery; inspect actual relevant volumes when investigating a
+storage incident, without deleting them.</p>
+<p>Read-only workload details, scoped to the actual failing service:</p>
+<pre><code class="language-bash">kubectl -n ragnarok describe deployment robrowser
+kubectl -n ragnarok logs deployment/robrowser --tail=100
+kubectl -n ragnarok logs deployment/remote --tail=100
+kubectl -n ragnarok get deployments -o custom-columns=NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image
+</code></pre>
+<p>Do not dump Secret data, full environments, kubeconfigs or remote URLs with
+embedded credentials. Sanitize console/network diagnostics, including tokens in
+Vite/HMR WebSocket query strings, before sharing reports.</p>
+<h2 id="http-module-and-game-checks">HTTP, module and game checks</h2>
+<p>Set these values to the browser-reachable host and ports of your installation,
+not internal cluster DNS names:</p>
+<pre><code class="language-bash">HOST=127.0.0.1
+PORT_HTTP=30080
+PORT_FRONTEND=30000
+curl -fsS &quot;http://$HOST:$PORT_HTTP/&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_HTTP/remote/System/add-system-folder-files-here.txt&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_FRONTEND/&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_FRONTEND/applications/api/api.js&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_FRONTEND/applications/api/api.html?0.138571&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_FRONTEND/applications/api/api-bootstrap.js&quot; &gt;/dev/null
+curl -fsS &quot;http://$HOST:$PORT_FRONTEND/src/Renderer/GR2/GR2ModelRenderer.js&quot; &gt;/dev/null
+</code></pre>
+<p>A successful HTML request is not proof that all browser modules work. Inspect the
+iframe's module requests and JavaScript console. The API iframe fix in PR #88
+externalizes the inline module; <a href="../frontend-api-module/">its regression checks</a>
+cover the cache-busted HTML path that previously failed with HTTP 500.</p>
+<p>A scoped WebSocket test can be run with operator permission:</p>
+<pre><code class="language-bash">kubectl -n ragnarok exec -i deployment/wsproxy -- node - &lt; images/wsproxy/tests/check-wsproxy.cjs
+</code></pre>
+<p>It checks a real handshake, not a game login. A new browser session should verify
+iframe readiness, public HOST/ports, RemoteClient/CORS and actual login/map
+loading. The operator confirmed login on the completed installation; continuing
+graphics, Lua, GRF-content or client issues are separate investigations.</p>
+<h3 id="remoteclient-quick-health-caveat">RemoteClient quick-health caveat</h3>
+<p>The pinned RemoteClient defaults to lazy GRF indexes. Its quick health endpoint
+can report 503/grfsLoaded=0 before indexes are loaded, even when the mount is
+readable and an explicit parser/resource request succeeds. Distinguish this
+known metric limitation from missing DATA.INI, wrong file case, absent GRFs,
+permissions, real parse failures or HTTP rewrite errors. Do not enable a large
+index/cache solely to turn the quick metric green.</p>
+<h2 id="normal-changes">Normal changes</h2>
+<p>Use <a href="../gitops/#normal-approved-release-path">approved release/image-pin PRs</a>.
+Changing a local <code>.env</code> does not update GitOps-managed ConfigMaps. Review the
+non-secret rendered Git changes; existing pods need a controlled replacement to
+consume changed environment values. Credentials remain private; a password
+change may require coordinated DB/operator/game-account updates, not merely a
+file edit.</p>
+<p><code>k8s-all.sh --check</code> is deliberately not the active-cluster health command: it
+requires paused Flux for a manual-bootstrap preflight. Neither --apply nor
+--reconcile is the ordinary update path.</p>
+<h2 id="rollback-and-failure-handling">Rollback and failure handling</h2>
+<p>On failure, collect scoped status/events/logs and identify the failed layer before
+retrying. Do not rerun installers blindly, bootstrap Flux again, format storage,
+reset namespaces or delete PVC/PV/Longhorn volumes.</p>
+<p>For an image regression, inspect Git history for the last verified component pin
+and propose a narrow revert. Keep the other component pins unchanged, rerun
+required checks, then adopt through normal approved GitOps reconciliation.
+Tag names identify infrastructure source commits, not chronological ordering;
+verify the registry digest and architecture. Stable is mutable and is not a
+rollback record.</p>
+<p>Emergency imperative example (requires explicit target-only approval and Flux
+coordination; not executed during cleanup):</p>
+<pre><code class="language-bash">kubectl -n ragnarok get deployment robrowser -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{&quot; &quot;}{.image}{&quot;\n&quot;}{end}'
+# Record OLD_IMAGE and the actual CONTAINER before changing anything.
+kubectl -n ragnarok set image deployment/robrowser &quot;$CONTAINER=$OLD_IMAGE&quot;
+kubectl -n ragnarok rollout status deployment/robrowser --timeout=180s
+</code></pre>
+<p>An active reconciler restores its Git desired state; make the approved rollback
+consistent with Git rather than leaving uncontrolled drift. Do not touch MariaDB,
+other deployments, configuration or storage for a frontend-only incident.</p>
+<p>Storage/DB recovery is a separate operation with a verified backup, scope,
+credentials and maintenance approval. The fresh-install runbook's automatic
+empty-DB import is not a restore procedure.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

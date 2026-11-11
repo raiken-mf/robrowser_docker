@@ -1,0 +1,1190 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deployment, GitOps operation and validation for the roBrowser stack">
+      
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>ROEnglishRE upstream inventory - roBrowser Docker Stack</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#roenglishre-upstream-inventory" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="roBrowser Docker Stack" class="md-header__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            roBrowser Docker Stack
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ROEnglishRE upstream inventory
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="roBrowser Docker Stack" class="md-nav__button md-logo" aria-label="roBrowser Docker Stack" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    roBrowser Docker Stack
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/raiken-mf/robrowser_docker" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cluster-installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    New K3s and Flux cluster
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fresh-install-runbook/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fresh Ragnarok installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docker and configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gitops/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GitOps lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations and rollback
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image-revisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Image revisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../upstream-updates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upstream updates
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ci-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CI/CD audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../repository-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repository audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../frontend-api-module/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frontend iframe regression
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#integration-before-the-runtime-generation-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration before the runtime-generation work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#clientgenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClientGenerator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#additionsgenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AdditionsGenerator
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#addons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Addons
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-tools-and-linux-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Other tools and Linux limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="roenglishre-upstream-inventory">ROEnglishRE upstream inventory</h1>
+<p>This is a read-only source inventory of ROEnglishRE revision
+<code>680a2f2126c8eb5872bf06cf441685c408ed1358</code>. “Verified” means directly observed
+in that revision's files or in this repository's implementation; it does not mean
+that the upstream Windows scripts were executed or the resources tested in a
+client. “Unclear” identifies intent, runtime behavior, or compatibility that the
+source inspection does not establish.</p>
+<p>The detailed selection and compatibility reviews are in the
+<a href="../roenglish-additions-audit/">Additions audit</a> and the
+<a href="../roenglish-addon-audit/">Addon audit</a>. Both identify remaining unverified
+components; neither audit asserts complete browser compatibility.</p>
+<h2 id="integration-before-the-runtime-generation-work">Integration before the runtime-generation work</h2>
+<p><strong>Verified at baseline <code>7a53448</code>:</strong> <code>images/remote/Dockerfile</code> copied <code>Translation/Renewal/data</code> and
+<code>SystemEN</code>, then overlaid the corresponding Pre-Renewal trees when the build
+argument <code>SET_PRERENEWAL=1</code>. It also copied <code>Additions/SystemEN/PetEvolution.lub</code>.
+It did not run upstream generators or apply Compatibility or other Additions or
+Addons. <code>images/remote/tests/check-roenglish.py</code> checks the resulting base/Pre-Renewal
+translation hashes and PetEvolution, not the omitted layers. Repository overrides
+and mounted client resources may affect what is served separately from this build.</p>
+<p><strong>Unclear:</strong> Upstream client-date compatibility does not establish compatibility
+with roBrowser, its Lua execution, the PHP RemoteClient, a particular GRF, or
+client patches. See <code>docs/loose-client-resources.md</code> for this repository's
+specific System/SystemEN and GRF fallback limitations. Parts of
+<code>docs/deployment.md</code> describe System paths and runtime merging differently from
+the Dockerfile and that more specific document; verify implementation before
+relying on those statements.</p>
+<h2 id="clientgenerator">ClientGenerator</h2>
+<p><strong>Verified:</strong> <code>Tools/ClientGenerator.bat</code> offers Renewal or Pre-Renewal and the
+following fixed selections, in this order:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">Index</th>
+<th>Client date</th>
+<th style="text-align: right;">Index</th>
+<th>Client date</th>
+<th style="text-align: right;">Index</th>
+<th>Client date</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td>2012-04-10</td>
+<td style="text-align: right;">10</td>
+<td>2022-03-30</td>
+<td style="text-align: right;">19</td>
+<td>2024-03-11</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td>2015-05-13</td>
+<td style="text-align: right;">11</td>
+<td>2022-04-06</td>
+<td style="text-align: right;">20</td>
+<td>2024-04-03</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td>2015-10-29</td>
+<td style="text-align: right;">12</td>
+<td>2022-06-02</td>
+<td style="text-align: right;">21</td>
+<td>2024-05-02</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td>2017-06-14</td>
+<td style="text-align: right;">13</td>
+<td>2022-08-31</td>
+<td style="text-align: right;">22</td>
+<td>2024-08-07</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td>2017-12-13</td>
+<td style="text-align: right;">14</td>
+<td>2022-09-28</td>
+<td style="text-align: right;">23</td>
+<td>2024-10-16</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td>2018-06-20</td>
+<td style="text-align: right;">15</td>
+<td>2022-12-07</td>
+<td style="text-align: right;">24</td>
+<td>2025-01-22</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td>2019-06-05</td>
+<td style="text-align: right;">16</td>
+<td>2023-01-18</td>
+<td style="text-align: right;">25</td>
+<td>2025-06-18</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td>2020-09-02</td>
+<td style="text-align: right;">17</td>
+<td>2023-08-02</td>
+<td style="text-align: right;">26</td>
+<td>2025-09-02</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td>2021-10-28</td>
+<td style="text-align: right;">18</td>
+<td>2023-09-20</td>
+<td style="text-align: right;">27</td>
+<td>2025-12-17</td>
+</tr>
+</tbody>
+</table>
+<p>2012-04-10 is restricted to Pre-Renewal. After confirmation, the script removes
+<code>Tools/Client</code>, copies Renewal, and overlays Pre-Renewal when selected. For
+indices 1 and 2 it calls the corresponding dated copy first; index 3 exits after
+the base layers. For other paths it runs a cumulative loop from counter 5
+through the selected index, then copies the selected date itself. Each dated
+copy uses the mode subdirectory if present; otherwise it copies the entire date
+directory. Later copies overwrite earlier ones.</p>
+<p><strong>Verified discrepancy:</strong> loop counter 5 selects 2017-06-14, counter 6 selects
+2017-12-13, and so on through counter 27 selecting 2025-09-02: these are one
+selection behind the menu indices. Selection 4 has no cumulative loop, though
+its exact date is subsequently copied. Selections 1 and 2 also proceed to the
+exact-date copy after their initial copy. <code>Compatibility/2020-01-22</code> exists but
+is not selected in the menu or loop. Starting at selection 19 (2024-03-11), the
+script removes the output <code>data/luafiles514/lua files/hateffectinfo</code> directory;
+starting at selection 25 (2025-06-18), it deletes output
+<code>selectpackage/selectpackageitem.lub</code>.</p>
+<p><strong>Unclear:</strong> Whether the index offset, duplicate old-date copies and omissions
+are intentional. The observed algorithm must not be replaced silently by a
+simple chronological overlay if exact upstream behavior is required.</p>
+<h2 id="additionsgenerator">AdditionsGenerator</h2>
+<p><strong>Verified:</strong> <code>Tools/AdditionsGenerator.bat</code> is an interactive, repeatable
+selection tool intended to run after ClientGenerator; it does not clear the
+existing Client tree. Its categories and choices are:</p>
+<ul>
+<li><strong>Data folder:</strong> all top-level <code>.txt</code> files, or individually
+  <code>bookitemnametable</code>, <code>buyingstoreitemlist</code>, the card group
+  (<code>carditemnametable</code>, <code>cardpostfixnametable</code>, <code>num2cardillustnametable</code>),
+  <code>etcinfo</code>, <code>exceptionminimapnametable</code>, <code>fogParameterTable</code>,
+  <code>indoorrswtable</code>, <code>itemmoveinfov5</code>, <code>leveluseskillspamount</code>, <code>manner</code>,
+  <code>mapobjlighttable</code>, <code>mappostable</code>, <code>metalprocessitemtable</code>, <code>mp3nametable</code>,
+  <code>resnametable</code>, and <code>viewpointtable</code>.</li>
+<li><strong>data/luafiles514:</strong> all-in-one or Headgears, changedirectorylist,
+  DrawItemOnAura, exceptionitemproducer, jobidentity, kaframovemapservicelist,
+  npclocationradius, shadowtable, robes/costume garments, cash-shop banner,
+  attendance banner, weapons, World Map, effecttool, hateffectinfo,
+  skilleffectinfo, skillinfoz, stateicon, stylingshop, ItemDBNameTbl,
+  EquipmentProperties, CashEmotion, probabilityinfo and AdventureGuide.</li>
+<li><strong>System:</strong> all-in-one or ChangeMaterial, CheckAttendance,
+  monster_size_effect, PetEvolution, PrivateAirplane, Signboard_C,
+  OngoingQuests/RecommendedQuests, mapinfo_C, Towninfo_C and Rune. The quests
+  choice also copies <code>datainfo/questinfo_f.lub</code> into data.</li>
+<li><strong>Legacy Maps:</strong> all top-level GAT/GND/RSW files plus selected BMPs, or airport
+  maps (Einbroch, Lighthalzen, Yuno), gefenia01, tur_d03_i, aldeg_cas01,
+  gef_fild02, gl_cas01, mjolnir_07 through _11, moc_fild01, paramk,
+  pay_fild04, prt_fild00–07 and 09–10, 2009rwc, 2012rwc, poring_c01,
+  poring_c02, sch_lab, airplane, payon, ra_temple, spl_fild01 or aldebaran.
+  Individual choices copy the file extensions and any BMP explicitly specified
+  by their branches; they do not all consist of the same file types.</li>
+<li><strong>Legacy Minimaps:</strong> all listed BMPs or individually ama_dun01, ayo_dun01,
+  ice_dun04, map2_int, new_zone02, new_zone04, ra_temsky, tha_t07, tha_t08,
+  thana_boss, tur_dun05, tur_dun06, yggdrasil01 and yuno_in02.</li>
+</ul>
+<p>The date comparisons use the entered <code>YYYYMMDD</code> as follows:</p>
+<table>
+<thead>
+<tr>
+<th>Date condition</th>
+<th>Rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>≤ 2017-06-14</td>
+<td>Copy <code>monster_size_effect 20170614.lub</code> to the normal target name; otherwise copy the normal file.</td>
+</tr>
+<tr>
+<td>≥ 2019-06-05</td>
+<td>Include <code>mapinfo_C.lub</code>.</td>
+</tr>
+<tr>
+<td>≥ 2021-10-28</td>
+<td>Include <code>ItemDBNameTbl.lub</code>.</td>
+</tr>
+<tr>
+<td>≥ 2022-12-07</td>
+<td>Include <code>ChangeMaterial.lub</code>.</td>
+</tr>
+<tr>
+<td>≥ 2023-08-02</td>
+<td>Include EquipmentProperties, CashEmotion and Rune. For dates before 2024-10-16, remove Rune <code>set_reward.lub</code> after copying.</td>
+</tr>
+<tr>
+<td>≥ 2024-03-11</td>
+<td>Include probabilityinfo <code>simplecashshopscript.lub</code>.</td>
+</tr>
+<tr>
+<td>≥ 2024-04-17</td>
+<td>Include hateffectinfo.</td>
+</tr>
+<tr>
+<td>≥ 2024-05-02</td>
+<td>Include AdventureGuide.</td>
+</tr>
+<tr>
+<td>≥ 2025-06-18</td>
+<td>Include <code>skilldelaylist.lub</code> in skillinfoz and its all-in-one branch.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verified defects and limitations:</strong></p>
+<ul>
+<li>The prompt advertises default <code>20220406</code>, but tests and sets <code>date</code> rather
+  than <code>cdate</code>; an empty client-date input therefore does not reliably receive
+  that default. Input is not validated.</li>
+<li>Several all-in-one Lua copy paths omit <code>lua files</code> for effecttool,
+  skilleffectinfo, stylingshop and CashEmotion, unlike the corresponding
+  individual branches and the checked-in layout. The script also references
+  Additions sources <code>skillinfoz/skillid.lub</code>, <code>stateicon/stateiconinfo.lub</code>
+  and <code>SystemEN/Signboard_C.lub</code> that are absent at those paths in this revision.</li>
+<li>The checked-in dated <code>PrivateAirplane 20260520.lub</code> and
+  <code>EquipmentProperties 202509.lub</code> variants are not selected by date in the
+  generator. The menu labels both mjolnir_10 and mjolnir_11 as 11; branch 12
+  actually copies mjolnir_11.</li>
+<li>All-in-one map copying is not identical to the union of individual branches:
+  for example the individual sch_lab branch requests a BMP that the all-in-one
+  map branch does not request. A “Copied” indicator is set without checking
+  successful copies, and <code>xcopy /C</code> continues after errors.</li>
+</ul>
+<p><strong>Unclear:</strong> Whether missing sources and path discrepancies are intentional,
+what a particular Windows environment actually copies when an error occurs, and
+whether dated variants should be selected for any client. No generator was run.</p>
+<h2 id="addons">Addons</h2>
+<p>All groups present at the pinned revision are listed below. Their presence does
+not imply installation or compatibility.</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Verified contents and rules</th>
+<th>Unclear or prerequisite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Custom Lua Support</td>
+<td>28 CLS Lua files; <code>CLSGenerator.bat</code> has all-in-one and groups for headgears, random options, hat effects, NPC/mob/pets, Lapine boxes, signboards, robes, weapons, World Map and skill info. All-in-one contains additional files without individual menu groups.</td>
+<td>Script says Nemo/WARP patches are needed to read these files. Each selection below 12 first deletes the output CLS directory, so sequential individual selections do not accumulate. Patch and client support were not tested.</td>
+</tr>
+<tr>
+<td>Legacy Pre-Re Skillinfoz</td>
+<td>One alternative skill description file in a data tree.</td>
+<td>Appropriate client and interaction with other skill overlays.</td>
+</tr>
+<tr>
+<td>Navigation Legacy</td>
+<td>16 navigation Lua files in krpri/krsak pairs.</td>
+<td>Placement and client-specific support are not established by a generator here.</td>
+</tr>
+<tr>
+<td>NonkROLuaEntries</td>
+<td>Nine Lua files plus a readme; readme says to merge the non-kRO entries manually and use caution.</td>
+<td>No automatic merge or conflict resolution is provided.</td>
+</tr>
+<tr>
+<td>Official Fonts</td>
+<td>13 EOT fonts under <code>System/Font</code>.</td>
+<td>Actual client/font usage and availability in this deployment.</td>
+</tr>
+<tr>
+<td>Signboard Legacy</td>
+<td>One <code>signboardlist.lub</code>.</td>
+<td>Client/version and placement requirements.</td>
+</tr>
+<tr>
+<td>Stateiconimginfo Patch</td>
+<td><code>efstids</code>, <code>stateiconimginfo</code>, <code>stateiconinfo</code>.</td>
+<td>Compatibility and replacement/merge requirements.</td>
+</tr>
+<tr>
+<td>WARP Sessions</td>
+<td>Seven translation YAML sessions for 2015, 2018, 2019-06, 2022-09, 2022-12, 2023-08 and 2024-10.</td>
+<td>These are patch-tool sessions, not proof that patches work with a given executable.</td>
+</tr>
+<tr>
+<td>iRO QuestInfo</td>
+<td>One <code>OngoingQuestInfoList_iRO.lub</code>.</td>
+<td>Client integration and placement.</td>
+</tr>
+<tr>
+<td>itemInfo per Char Server</td>
+<td>2015-10-29 SystemEN itemInfo and helper. Readme requires the “Load iteminfo with char server” patch and checks server name <code>Pre-Renewal</code>.</td>
+<td>Readme reports NEMO success for 2015-10-29, WARP failure for 2018-06-20 and 2022-04-06; exact upper supported version is unknown. These claims were not independently tested.</td>
+</tr>
+<tr>
+<td>jRO Enchants Display</td>
+<td>Four data card tables: card item, postfix, prefix and illustration mapping.</td>
+<td>They may replace or conflict with other card tables; choose and validate deliberately.</td>
+</tr>
+</tbody>
+</table>
+<p>For the current runtime selection, <code>ROENGLISH_ADDONS=compatible</code> does not
+automatically install any of these groups: none has yet been verified end to
+end with this pinned client and its dependencies. In particular, the six
+Legacy Navigation tables load as Lua, but their monster and distance entries
+do not all match the assumptions of the client's navigation code. WARP
+sessions are patch-tool inputs rather than roBrowser resources. CLS and
+per-character-server itemInfo require client patches, and non-kRO entries
+explicitly require a manual merge. The remaining alternative datasets and
+fonts are not yet sufficiently verified for automatic activation.</p>
+<p>The initial <code>ROENGLISH_ADDITIONS=all</code> implementation selects the additions
+listed explicitly in <code>images/remote/roenglish-generate.php</code>, not every file in
+the upstream Additions tree. The generator supplies <code>datainfo/enumvar.lub</code>
+for the base <code>addrandomoptionnametable.lub</code>; together the pinned originals
+execute as 254 numeric-keyed string entries under Lua 5.1. Client-local GRFs
+can still take precedence, so the actual displayed options depend on the
+loaded GRFs and server. Other client-loaded candidates, including hat effects,
+require format, dependency and version checks before they can safely be enabled. This is an
+open integration gap rather than a claim that the remaining files are
+incompatible. <code>ROENGLISH_LEGACY_MAPS=1</code> selects the two upstream all-in-one
+legacy map/minimap choices; <code>0</code> leaves those additions out.</p>
+<p>The client also loads <code>skillinfoz/jobinheritlist.lub</code> before its skill tree.
+The pinned Additions source references five undefined job constants and stops
+under Lua 5.1. The generator supplies these five values from the pinned
+roBrowser's <code>JobConst.js</code> only in a generated copy, after checking the exact
+canonical source hash and one expected insertion point. The source and user
+overrides are left untouched. The resulting inheritance table has 148 numeric
+entries; the tests exercise both Renewal modes and the client's HTTP path.
+The chosen skill-tree data and displayed skills remain dependent on the loaded
+client and server data; this does not establish every version's full UI behavior.</p>
+<p>Similarly, the selected <code>Additions/data/luafiles514/lua files/worldviewdata/worldviewdata_table.lub</code>
+references six <code>WORLD_MSGID</code> keys (<code>MSI_102_CH1_FILD1</code>, <code>MSI_2_CH1_ZERO1</code>
+through <code>MSI_2_CH1_ZERO4</code>, and <code>MSI_DUN51</code>) that were added in upstream commit
+<code>d336ab454031fda5868e710cbf2435216474bff4</code> (<code>8e71824234385c7cd5084ccbd6976c8dbeb44019</code>)
+for <code>2025-08-02</code> but omitted from <code>Translation/Renewal/.../worldviewdata_language.lub</code>
+when <code>worldviewdata_table.lub</code> was moved into <code>Additions/</code> (<code>a2e9b9dd94511a345a730faad9fa988f182a8fa2</code>).
+The generator restores those six upstream strings only in its generated copy of
+<code>worldviewdata_language.lub</code> after verifying the canonical source SHA-256 and a
+single replacement count, leaving the pinned source and user overrides untouched.
+With those six keys restored, all 424 Renewal and 384 Pre-Renewal WorldMap table
+entries resolve non-empty display strings under Lua 5.1.</p>
+<p>For the upstream HatEffect addition (selected by the Windows generator from
+2024-04-17), the pinned <code>HatEffectIDs.lub</code> and <code>HatEffectInfo.lub</code> execute
+under Lua 5.1 and define 290 IDs and 265 effects. The same source directory's
+<code>FootPrintEffectInfo.lub</code> does not parse: its first invalid assignment is at
+line 214, and <code>Type = STR = 4</code> occurs five times. The pinned client loads the
+footprint file after the other two. From 2024-04-17 the generator supplies those
+three client paths and repairs the five assignments only in its generated copy.
+It checks the source SHA-256 after CRLF-to-LF normalization and the replacement
+count before writing, preserving the source line endings; an
+unexpected source fails generation explicitly. The original source is unchanged.
+The corrected copy executes with 25 footprint entries. Correct display still
+depends on the server's IDs and on effect assets in the client GRFs. Tests
+check the date boundary, source immutability, Lua execution and HTTP paths.</p>
+<h2 id="other-tools-and-linux-limits">Other tools and Linux limits</h2>
+<p><strong>Verified:</strong> <code>LuaConverter.bat</code> invokes bundled <code>luac.exe</code> to produce <code>.lub</code>;
+the executable is a 32-bit Windows PE program. The script also mentions
+uncompressed <code>.lub</code> files. <code>Tools/msgstringtable/encode.py</code> and
+<code>Tools/simplemsg/encode.py</code> Base64-encode individual CSV fields into new CSV
+files. Repute and MacroReport batch wrappers call their <code>jsonbson.py</code> converters;
+the converters identify <code>py-bson</code> as a dependency. These tools use relative
+working-directory paths and produce output files when run.</p>
+<p><strong>Porting limits:</strong> Windows batch commands, <code>xcopy</code>, code page 1252 and the
+bundled executable are not native Linux equivalents. Linux case-sensitive paths,
+spaces and legacy encoded non-ASCII path bytes require explicit handling; do not
+blindly normalize or transcode names. Reproduce or deliberately correct ordered
+overwrites, mode fallback, deletions, missing sources and menu behavior. Any
+replacement Lua compiler must match the target runtime's bytecode expectations;
+a <code>.lub</code> extension alone proves nothing. Nemo/WARP patches, GRF lookup and
+resource loading are separate from copying files. No native Linux port, Windows
+execution, generated output comparison or end-to-end client test was performed
+for this inventory.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

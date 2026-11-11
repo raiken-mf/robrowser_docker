@@ -18,6 +18,7 @@ docker run --rm --network none --entrypoint sh "$apache_image" -ec '
   done
   ! command -v node
   ! command -v npm
+  ! command -v git
 '
 # Also reject a frontend checkout hidden in an earlier image layer.
 history=$(docker history --no-trunc --format '{{.CreatedBy}}' "$apache_image")
@@ -34,5 +35,6 @@ docker run --rm --network none --entrypoint sh "$vite_image" -ec '
   test -f /app/vite.upstream.config.js
   ! command -v php
   ! command -v httpd
+  ! command -v git
 '
 echo 'Image filesystem and build-history boundaries passed'

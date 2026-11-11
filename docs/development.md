@@ -58,6 +58,10 @@ docker build -f images/robrowser/Dockerfile \
 The remote container selects its translation layer at startup with SET_PRERENEWAL;
 the rAthena build uses the same setting to select its compiled ruleset.
 The frontend alone fetches roBrowserLegacy; do not add that source tree to remote.
+Both web images fetch their pinned sources in separate build stages; Git is not
+installed in their runtime images. Remote retains the complete ROEnglishRE tree
+for runtime generation. The frontend retains its full locked npm dependencies
+because CI runs its tests in the same image.
 Project-owned npm manifest/lockfile are installed with npm ci. Update the lockfile
 and source pin together when the new upstream revision needs a dependency change.
 The locked jsdom 31 test dependency requires Node.js ^22.22.2, ^24.15.0 or >=26.

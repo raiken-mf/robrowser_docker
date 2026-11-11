@@ -1,12 +1,24 @@
 # alpine:3.24.3 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS sources
 
 ARG REMOTECLIENT_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git
 ARG REMOTECLIENT_REF
 ARG ROENGLISH_REPOSITORY=https://github.com/raiken-mf/ROenglishRE.git
 ARG ROENGLISH_REF
 
-# Install runtime/build packages from the pinned Alpine release.
+RUN apk add --no-cache git && \
+    test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
+    git clone "${REMOTECLIENT_REPOSITORY}" /remote && \
+    git -C /remote checkout --detach "${REMOTECLIENT_REF}" && \
+    rm -rf /remote/.git && \
+    git clone "${ROENGLISH_REPOSITORY}" /translation && \
+    git -C /translation checkout --detach "${ROENGLISH_REF}" && \
+    test -d /translation/Translation && \
+    rm -rf /translation/.git
+
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+
+# Install runtime packages from the pinned Alpine release.
 # Bind the generic CLI explicitly to PHP 8.4; Alpine 3.24 does not provide
 # the unversioned php executable when installing the non-default PHP branch.
 # zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
@@ -19,7 +31,6 @@ RUN apk add --no-cache \
     php84-iconv \
     php84-gd \
     php84-zlib \
-    git \
     && apk upgrade --no-cache zlib \
     && test -x /usr/bin/php84 \
     && ln -sf /usr/bin/php84 /usr/bin/php \
@@ -35,16 +46,10 @@ COPY images/remote/httpd.conf /etc/apache2/httpd.conf
 COPY images/remote/apache-access.conf /etc/apache2/conf.d/robrowser-access.conf
 
 # The Apache image has no dependency on roBrowserLegacy frontend sources.
-RUN test -n "${REMOTECLIENT_REF}" && test -n "${ROENGLISH_REF}" && \
-    git clone "${REMOTECLIENT_REPOSITORY}" /var/www/localhost/htdocs/remote && \
-    git -C /var/www/localhost/htdocs/remote checkout --detach "${REMOTECLIENT_REF}" && \
-    rm -rf /var/www/localhost/htdocs/remote/.git
+COPY --from=sources /remote /var/www/localhost/htdocs/remote
 
 # Keep the complete pinned source tree for runtime selection.
-RUN git clone "${ROENGLISH_REPOSITORY}" /opt/translation && \
-    git -C /opt/translation checkout --detach "${ROENGLISH_REF}" && \
-    test -d /opt/translation/Translation && \
-    rm -rf /opt/translation/.git
+COPY --from=sources /translation /opt/translation
 
 # Prepare symlinks for optional external mounts (GRFs, BGM, AI)
 RUN mkdir -p /opt/client_files/resources /opt/client_files/BGM /opt/client_files/AI /opt/client_files/System && \

@@ -1,4 +1,4 @@
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS build
 
 ARG PACKETVER=20211103
 ARG SET_PRERENEWAL=0
@@ -35,13 +35,25 @@ RUN cd /opt/ragnarok && \
     fi && \
     make clean && make sql && \
     chmod a+x login-server char-server map-server && \
-    rm -rf /opt/ragnarok/.git && \
-    apk del linux-headers pcre-dev zlib-dev mariadb-dev g++ gcc make git patch
+    rm -rf /opt/ragnarok/.git
+
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+
+ARG PACKETVER=20211103
+ARG SET_PRERENEWAL=0
+ENV PACKETVER=$PACKETVER
+ENV SET_PRERENEWAL=$SET_PRERENEWAL
+
+RUN addgroup -S ragnarok && adduser -S ragnarok -G ragnarok && \
+    apk add --no-cache mariadb-connector-c mariadb-client pcre libstdc++ && \
+    apk upgrade --no-cache zlib
+
+COPY --from=build --chown=ragnarok:ragnarok /opt/ragnarok /opt/ragnarok
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh && \
     mkdir -p /opt/ragnarok/conf/import && \
-    chown -R ragnarok:ragnarok /opt/ragnarok
+    chown ragnarok:ragnarok /opt/ragnarok/conf/import
 
 USER ragnarok
 WORKDIR /opt/ragnarok

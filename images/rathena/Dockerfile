@@ -1,5 +1,5 @@
 # alpine:3.24.3 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS build
 
 ARG PACKETVER=20211103
 ARG SET_PRERENEWAL=0
@@ -11,8 +11,6 @@ ARG PACKET_OBFUSCATION_KEY3=0x0A3D5C0D
 
 ENV PACKETVER=$PACKETVER
 ENV SET_PRERENEWAL=$SET_PRERENEWAL
-
-RUN addgroup -g 1000 ragnarok && adduser -u 1000 -G ragnarok -D ragnarok
 
 # Install build/runtime packages from the pinned Alpine release.
 # zlib is upgraded explicitly to pick up the 1.3.2-r1 fix for CVE-2026-85091;
@@ -57,12 +55,25 @@ RUN cd /opt/ragnarok && \
     make clean && \
     make server && \
     chmod a+x login-server char-server map-server && \
-    rm -rf /opt/ragnarok/.git && \
-    apk del linux-headers pcre-dev zlib-dev mariadb-dev g++ gcc make git
+    rm -rf /opt/ragnarok/.git
+
+FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+
+ARG PACKETVER=20211103
+ARG SET_PRERENEWAL=0
+ENV PACKETVER=$PACKETVER
+ENV SET_PRERENEWAL=$SET_PRERENEWAL
+
+RUN addgroup -g 1000 ragnarok && adduser -u 1000 -G ragnarok -D ragnarok && \
+    apk add --no-cache gettext-envsubst mariadb-connector-c mariadb-client pcre libstdc++ && \
+    apk upgrade --no-cache zlib
+
+COPY --from=build --chown=ragnarok:ragnarok /opt/ragnarok/ /opt/ragnarok/
+COPY templates/ /usr/local/share/rathena/templates/
 
 COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN mkdir -p /opt/ragnarok/conf/import && \
-    chown -R ragnarok:ragnarok /opt/ragnarok
+    chown ragnarok:ragnarok /opt/ragnarok/conf/import
 
 USER ragnarok
 WORKDIR /opt/ragnarok

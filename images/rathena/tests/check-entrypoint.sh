@@ -4,6 +4,24 @@ root=$(cd "$(dirname "$0")/../../.." && pwd)
 image=${1:-rathena:ci}
 entrypoint="$root/images/rathena/entrypoint.sh"
 
+docker run --rm --network none --entrypoint sh "$image" -c '
+  set -eu
+  test "$(id -u)" = 1000
+  test -w /opt/ragnarok/conf/import
+  test -d /opt/ragnarok/db
+  test -d /opt/ragnarok/npc
+  test -d /opt/ragnarok/sql-files
+  command -v mariadb >/dev/null
+  command -v envsubst >/dev/null
+  for server in login-server char-server map-server web-server; do
+    test -x "/opt/ragnarok/$server"
+    ldd "/opt/ragnarok/$server" >/dev/null
+  done
+  for server in login-server char-server map-server; do
+    "/opt/ragnarok/$server" --help >/dev/null
+  done
+'
+
 for credential in MARIADB_PASSWORD SET_INTERSRV_PASSWORD; do
   docker run --rm --network none --entrypoint sh \
     --mount "type=bind,src=$entrypoint,dst=/tmp/entrypoint.sh,readonly" \

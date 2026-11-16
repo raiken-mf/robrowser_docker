@@ -1,5 +1,5 @@
 # alpine:3.24.3 pinned by immutable multi-architecture manifest digest.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS sources
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS sources
 
 ARG REMOTECLIENT_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy-RemoteClient-PHP.git
 ARG REMOTECLIENT_REF
@@ -16,7 +16,7 @@ RUN apk add --no-cache git && \
     test -d /translation/Translation && \
     rm -rf /translation/.git
 
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Install runtime packages from the pinned Alpine release.
 # Bind the generic CLI explicitly to PHP 8.4; Alpine 3.24 does not provide

@@ -5,10 +5,10 @@ resources:
 - ../../base
 images:
 - name: ghcr.io/raiken-mf/rathena
-  newTag: sha-abfecf4968ee217fa19ae5385caaf4abd5b5e624
+  newTag: sha-ab2d308a66a65432c8c58e9e0f384c2909737f86
 - name: ghcr.io/raiken-mf/remote
-  newTag: sha-d334d556814350b351522a7abeb06eb1cd3268ba
+  newTag: sha-ab2d308a66a65432c8c58e9e0f384c2909737f86
 - name: ghcr.io/raiken-mf/robrowser
-  newTag: sha-d334d556814350b351522a7abeb06eb1cd3268ba
+  newTag: sha-ab2d308a66a65432c8c58e9e0f384c2909737f86
 - name: ghcr.io/raiken-mf/wsproxy
-  newTag: sha-d334d556814350b351522a7abeb06eb1cd3268ba
+  newTag: sha-ab2d308a66a65432c8c58e9e0f384c2909737f86

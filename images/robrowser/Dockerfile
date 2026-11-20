@@ -1,5 +1,5 @@
 # Pinned Alpine base, matching the roBrowser image.
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a AS source
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS source
 
 ARG ROBROWSER_REPOSITORY=https://github.com/raiken-mf/roBrowserLegacy.git
 ARG ROBROWSER_REF
@@ -11,7 +11,7 @@ RUN apk add --no-cache git \
     && mv /app/vite.config.js /app/vite.upstream.config.js \
     && rm -rf /app/.git
 
-FROM alpine:3.24.3@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Vite requires Node.js, not Apache or PHP.
 # Upgrade zlib and libexpat in the base package layer while keeping runtime non-root.
